@@ -1,0 +1,18 @@
+{
+    "domain": "ci-abbfreeathome",
+    "name": "Busch Jaeger/ABB Free@Home (Local API)",
+    "codeowners": [
+        "@kingsleyadam"
+    ],
+    "config_flow": true,
+    "dependencies": [],
+    "documentation": "https://www.home-assistant.io/integrations/abbfreeathome",
+    "homekit": {},
+    "iot_class": "local_push",
+    "requirements": [
+        "local-abbfreeathome==1.0.0"
+    ],
+    "ssdp": [],
+    "zeroconf": [],
+    "version": "0.0.1"
+}
