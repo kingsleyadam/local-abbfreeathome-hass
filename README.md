@@ -26,7 +26,7 @@ Once added you'll be able to find it by searching for "Busch Jaeger/ABB Free@Hom
 
 ### Manually
 
-1. Clone the code locally and copy all the files in `custom_components/abbfreeathome` to your Home Assistant directory `./config/custom_components/abbfreeathome`
+1. Clone the code locally and copy all the files in `custom_components/abbfreeathome-ci` to your Home Assistant directory `./config/custom_components/abbfreeathome-ci`
 2. Restart Home Assistant
 3. You should be able to add a new integration "Busch Jaeger/ABB Free@Home (Local API)".
 4. Follow the UI configuration to add the integration to your instance.
