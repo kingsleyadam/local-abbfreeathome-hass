@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from ipaddress import IPv4Address
 import logging
 from typing import Any
@@ -9,6 +10,7 @@ from typing import Any
 from abbfreeathome.api import (
     ForbiddenAuthException,
     FreeAtHomeApi,
+    FreeAtHomeSettings,
     InvalidCredentialsException,
     InvalidHostException,
 )
@@ -20,56 +22,67 @@ from homeassistant.config_entries import (
     ConfigFlow,
     ConfigFlowResult,
 )
-from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PASSWORD, CONF_USERNAME
+from homeassistant.core import callback
 
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def _schema_with_defaults(
-    host: str | None = None, name: str | None = None
-) -> vol.Schema:
-    return vol.Schema(
+def _schema_with_defaults(host: str | None = None, step_id: str = "user") -> vol.Schema:
+    schema = vol.Schema({})
+
+    if step_id == "user":
+        schema = schema.extend({vol.Required(CONF_HOST, default=host): str})
+
+    return schema.extend(
         {
-            vol.Required(CONF_HOST, default=host): str,
             vol.Required(CONF_USERNAME, default="installer"): str,
             vol.Required(CONF_PASSWORD): str,
         }
     )
 
 
-async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
-    """Validate the user input allows us to connect.
-
-    Data has the keys from schema with values provided by the user.
-    """
-    api = FreeAtHomeApi(
-        host=data[CONF_HOST], username=data[CONF_USERNAME], password=data[CONF_PASSWORD]
-    )
+async def validate_settings(host: str) -> dict[str, Any]:
+    """Validate the settings endpoint."""
+    errors: dict[str, str] = {}
+    title: str = None
+    settings: FreeAtHomeSettings = FreeAtHomeSettings(host=host)
+    serial_number: str = None
 
     try:
-        sysap = await api.get_sysap()
-        settings = await api.get_settings()
-    except InvalidCredentialsException as ex:
-        raise InvalidAuth from ex
-    except ForbiddenAuthException as ex:
-        raise InvalidAuth from ex
-    except InvalidHostException as ex:
-        raise CannotConnect from ex
+        await settings.load()
 
-    sysap_name = sysap.get("sysapName")
-    sysap_serial_number = settings.get("flags").get("serialNumber")
+        serial_number = settings.serial_number
+        if settings.name and settings.serial_number:
+            title = f"{settings.name} ({settings.serial_number})"
+        else:
+            title = settings.serial_number
+    except InvalidHostException:
+        errors["base"] = "cannot_connect"
 
-    if sysap_name and sysap_serial_number:
-        sysap_title = f"{sysap_name} ({sysap_serial_number})"
-    else:
-        sysap_title = sysap_serial_number
+    return title, serial_number, errors
 
-    # Return info that you want to store in the config entry.
-    return {"title": sysap_title}
+
+async def validate_api(host: str, username: str, password: str) -> dict[str, Any]:
+    """Validate the user input allows us to connect."""
+    errors: dict[str, str] = {}
+    api = FreeAtHomeApi(host=host, username=username, password=password)
+
+    try:
+        await api.get_sysap()
+    except InvalidCredentialsException:
+        errors["base"] = "invalid_auth"
+    except ForbiddenAuthException:
+        errors["base"] = "invalid_auth"
+    except InvalidHostException:
+        errors["base"] = "cannot_connect"
+    except Exception:
+        _LOGGER.exception("Unexpected exception")
+        errors["base"] = "unknown"
+
+    return errors
 
 
 class ConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -78,30 +91,40 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
     CONNECTION_CLASS = CONN_CLASS_LOCAL_PUSH
 
-    def __init__(self) -> None:
-        """Initialize the Free@Home config flow."""
-        self.discovery_schema: vol.Schema | None = None
+    _host: str
+    _username: str
+    _password: str
+    _title: str
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle the initial step."""
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            try:
-                info = await validate_input(self.hass, user_input)
-            except CannotConnect:
-                errors["base"] = "cannot_connect"
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
-            except Exception:
-                _LOGGER.exception("Unexpected exception")
-                errors["base"] = "unknown"
-            else:
-                return self.async_create_entry(title=info["title"], data=user_input)
+        """Handle the initial user step."""
+        if user_input is None:
+            return self._async_show_setup_form(step_id="user")
 
-        data = self.discovery_schema or _schema_with_defaults()
-        return self.async_show_form(step_id="user", data_schema=data, errors=errors)
+        title, serial_number, settings_errors = await validate_settings(
+            host=user_input[CONF_HOST]
+        )
+        api_errors = await validate_api(
+            host=user_input[CONF_HOST],
+            username=user_input[CONF_USERNAME],
+            password=user_input[CONF_PASSWORD],
+        )
+        errors = settings_errors | api_errors
+
+        if errors:
+            return self._async_show_setup_form(step_id="user", errors=errors)
+
+        await self.async_set_unique_id(serial_number)
+        self._abort_if_unique_id_configured()
+
+        self._host = user_input[CONF_HOST]
+        self._username = user_input[CONF_USERNAME]
+        self._password = user_input[CONF_PASSWORD]
+        self._title = title
+
+        return self._async_create_entry()
 
     async def async_step_zeroconf(
         self, discovery_info: zeroconf.ZeroconfServiceInfo
@@ -110,26 +133,71 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         if not isinstance(discovery_info.ip_address, IPv4Address):
             return self.async_abort(reason="not_ipv4address")
 
-        # Set the free@home api endpoint
-        fah_endpoint = f"http://{discovery_info.ip_address.exploded}"
+        self._host = f"http://{discovery_info.ip_address.exploded}"
+        title, serial_number, errors = await validate_settings(host=self._host)
+        self._title = title
 
-        # Set uniqueness of the config flow, or update fah endpoint if changed.
-        await self.async_set_unique_id(discovery_info.name)
-        self._abort_if_unique_id_configured(updates={CONF_HOST: fah_endpoint})
+        if errors:
+            return self.async_abort(reason="invalid_settings")
 
-        # Set the discovery schema to show to the user.
-        self.discovery_schema = _schema_with_defaults(host=fah_endpoint)
+        await self.async_set_unique_id(serial_number)
+        self._abort_if_unique_id_configured(updates={CONF_HOST: self._host})
 
         self.context["title_placeholders"] = {
-            CONF_HOST: fah_endpoint,
+            CONF_NAME: self._title,
+            CONF_HOST: self._host,
         }
 
-        return await self.async_step_user()
+        return self._async_show_setup_form(
+            step_id="zeroconf_confirm",
+            description_placeholders={CONF_NAME: self._title, CONF_HOST: self._host},
+        )
 
+    async def async_step_zeroconf_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Handle a flow initiated by zeroconf."""
+        if user_input is None:
+            return self._async_show_setup_form(step_id="zeroconf_confirm")
 
-class CannotConnect(HomeAssistantError):
-    """Error to indicate we cannot connect."""
+        errors = await validate_api(
+            host=self._host,
+            username=user_input[CONF_USERNAME],
+            password=user_input[CONF_PASSWORD],
+        )
 
+        if errors:
+            return self._async_show_setup_form(
+                step_id="zeroconf_confirm", errors=errors
+            )
 
-class InvalidAuth(HomeAssistantError):
-    """Error to indicate there is invalid auth."""
+        self._username = user_input[CONF_USERNAME]
+        self._password = user_input[CONF_PASSWORD]
+
+        return self._async_create_entry()
+
+    @callback
+    def _async_show_setup_form(
+        self,
+        step_id: str,
+        errors: dict[str, str] | None = None,
+        description_placeholders: Mapping[str, str | None] | None = None,
+    ) -> ConfigFlowResult:
+        """Show the setup form to the user."""
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=_schema_with_defaults(step_id=step_id),
+            errors=errors or {},
+            description_placeholders=description_placeholders,
+        )
+
+    @callback
+    def _async_create_entry(self) -> ConfigFlowResult:
+        return self.async_create_entry(
+            title=self._title,
+            data={
+                CONF_HOST: self._host,
+                CONF_USERNAME: self._username,
+                CONF_PASSWORD: self._password,
+            },
+        )
