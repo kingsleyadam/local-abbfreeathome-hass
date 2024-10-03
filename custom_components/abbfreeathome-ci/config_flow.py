@@ -150,7 +150,6 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return self._async_show_setup_form(
             step_id="zeroconf_confirm",
-            description_placeholders={CONF_NAME: self._title, CONF_HOST: self._host},
         )
 
     async def async_step_zeroconf_confirm(
@@ -178,12 +177,16 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
 
     @callback
     def _async_show_setup_form(
-        self,
-        step_id: str,
-        errors: dict[str, str] | None = None,
-        description_placeholders: Mapping[str, str | None] | None = None,
+        self, step_id: str, errors: dict[str, str] | None = None
     ) -> ConfigFlowResult:
         """Show the setup form to the user."""
+        description_placeholders: Mapping[str, str | None] = {}
+
+        if self._title:
+            description_placeholders[CONF_NAME] = self._title
+        if self._host:
+            description_placeholders[CONF_HOST] = self._host
+
         return self.async_show_form(
             step_id=step_id,
             data_schema=_schema_with_defaults(step_id=step_id),
