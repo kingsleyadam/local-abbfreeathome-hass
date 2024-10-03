@@ -14,7 +14,17 @@
                     "host": "Host",
                     "password": "Password",
                     "username": "Username"
-                }
+                },
+                "title": "Free@Home"
+            },
+            "zeroconf_confirm": {
+                "data": {
+                    "host": "Host",
+                    "password": "Password",
+                    "username": "Username"
+                },
+                "description": "Do you want to setup {name} ({host})?",
+                "title": "Free@Home"
             }
         }
     }
