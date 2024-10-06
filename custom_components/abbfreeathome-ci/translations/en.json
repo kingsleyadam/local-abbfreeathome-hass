@@ -15,7 +15,8 @@
                     "password": "Password",
                     "username": "Username"
                 },
-                "title": "Free@Home"
+                "description": "Enter the hostname/ip address (with schema, e.g. http://), username, and password of your Free@Home SysAP to integrate with Home Assistant.",
+                "title": "Free@Home - Configure"
             },
             "zeroconf_confirm": {
                 "data": {
@@ -23,8 +24,8 @@
                     "password": "Password",
                     "username": "Username"
                 },
-                "description": "Do you want to setup {name} ({host})?",
-                "title": "Free@Home"
+                "description": "Do you want to set up {name} ({serial}) at {host}?",
+                "title": "Free@Home - Confirm"
             }
         }
     }
