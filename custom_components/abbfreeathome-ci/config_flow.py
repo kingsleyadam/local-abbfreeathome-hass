@@ -25,7 +25,7 @@ from homeassistant.config_entries import (
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import callback
 
-from .const import DOMAIN
+from .const import CONF_SERIAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,22 +47,14 @@ def _schema_with_defaults(host: str | None = None, step_id: str = "user") -> vol
 async def validate_settings(host: str) -> dict[str, Any]:
     """Validate the settings endpoint."""
     errors: dict[str, str] = {}
-    title: str = None
     settings: FreeAtHomeSettings = FreeAtHomeSettings(host=host)
-    serial_number: str = None
 
     try:
         await settings.load()
-
-        serial_number = settings.serial_number
-        if settings.name and settings.serial_number:
-            title = f"{settings.name} ({settings.serial_number})"
-        else:
-            title = settings.serial_number
     except InvalidHostException:
         errors["base"] = "cannot_connect"
 
-    return title, serial_number, errors
+    return settings.name, settings.serial_number, errors
 
 
 async def validate_api(host: str, username: str, password: str) -> dict[str, Any]:
@@ -91,10 +83,12 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
     CONNECTION_CLASS = CONN_CLASS_LOCAL_PUSH
 
-    _host: str
-    _username: str
-    _password: str
-    _title: str
+    _host: str = None
+    _name: str = None
+    _password: str = None
+    _serial_number: str = None
+    _title: str = None
+    _username: str = None
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -103,7 +97,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is None:
             return self._async_show_setup_form(step_id="user")
 
-        title, serial_number, settings_errors = await validate_settings(
+        name, serial_number, settings_errors = await validate_settings(
             host=user_input[CONF_HOST]
         )
         api_errors = await validate_api(
@@ -119,10 +113,13 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         await self.async_set_unique_id(serial_number)
         self._abort_if_unique_id_configured()
 
+        self._serial_number = serial_number
+        self._name = name
+        self._title = f"{name} ({serial_number})"
+
         self._host = user_input[CONF_HOST]
         self._username = user_input[CONF_USERNAME]
         self._password = user_input[CONF_PASSWORD]
-        self._title = title
 
         return self._async_create_entry()
 
@@ -134,19 +131,18 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="not_ipv4address")
 
         self._host = f"http://{discovery_info.ip_address.exploded}"
-        title, serial_number, errors = await validate_settings(host=self._host)
-        self._title = title
+        name, serial_number, errors = await validate_settings(host=self._host)
+
+        self._serial_number = serial_number
+        self._name = name
+        self._title = f"{name} ({serial_number})"
 
         if errors:
             return self.async_abort(reason="invalid_settings")
 
         await self.async_set_unique_id(serial_number)
         self._abort_if_unique_id_configured(updates={CONF_HOST: self._host})
-
-        self.context["title_placeholders"] = {
-            CONF_NAME: self._title,
-            CONF_HOST: self._host,
-        }
+        self.context["title_placeholders"] = {CONF_NAME: self._title}
 
         return self._async_show_setup_form(
             step_id="zeroconf_confirm",
@@ -182,10 +178,12 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         """Show the setup form to the user."""
         description_placeholders: Mapping[str, str | None] = {}
 
-        if self._title:
-            description_placeholders[CONF_NAME] = self._title
         if self._host:
             description_placeholders[CONF_HOST] = self._host
+        if self._serial_number:
+            description_placeholders[CONF_SERIAL] = self._serial_number
+        if self._name:
+            description_placeholders[CONF_NAME] = self._name
 
         return self.async_show_form(
             step_id=step_id,
@@ -199,6 +197,8 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_create_entry(
             title=self._title,
             data={
+                CONF_SERIAL: self._serial_number,
+                CONF_NAME: self._name,
                 CONF_HOST: self._host,
                 CONF_USERNAME: self._username,
                 CONF_PASSWORD: self._password,
