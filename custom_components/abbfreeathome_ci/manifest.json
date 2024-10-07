@@ -1,5 +1,5 @@
 {
-    "domain": "abbfreeathome-ci",
+    "domain": "abbfreeathome_ci",
     "name": "Busch Jaeger/ABB Free@Home (Local API)",
     "codeowners": [
         "@kingsleyadam"
