@@ -16,11 +16,15 @@ Once this is feature and code complete it should provide a solid base as to whic
 
 > **If you need support for additional devices I'd strongly reccomend you check out the repo [here](https://github.com/jheling/freeathome). That repo has been around for a long time and provides support for a number of devices.**
 
+### Additional Devices
+
+If you would like your device supported in this integration, please start by opening a GitHub issue with the device configuration.
+
 ## Installation
 
 ### HACS
 
-This repo has been setup to integrate with HACS. To do that you'll need to add it as a [custom repository](https://www.hacs.xyz/docs/faq/custom_repositories/) within your Home Assistant installation.
+The easiest way to add this custom integration is via HACS which the repo has been setup to support. With HACS setup on your Home Assistant installation you'll need to add this repo it as a [custom repository](https://www.hacs.xyz/docs/faq/custom_repositories/).
 
 Once added you'll be able to find it by searching for "Busch Jaeger/ABB Free@Home (Local API)".
 
@@ -43,12 +47,24 @@ Copy the username listed within that window (usually `installer`) to be used whe
 
 ### Add Integration
 
-When adding the integration you'll be prompted for the `Hostname`, `Username`, and `Password`. The hostname must be the fully resolvable hostname with protocol (e.g. http).
+#### SysAP Discovery
 
-#### Example
+In most installations the integration will find your Free@Home SysAP automatically on the network. After you've installed the integration and restarted Home Assistant you should see your SysAP as a new device to be setup. You just need to enter your **api** username and password to confirm the setup.
+
+#### Manual (User) Setup
+
+If the SysAP is not found automatically you can add it manually. Add this integration by searching for and clicking on `Busch Jaeger/ABB Free@Home (Local API)`.
+
+When adding the integration manually you'll be prompted for the `Hostname`, `Username`, and `Password`. The hostname must be the fully resolvable hostname with protocol (e.g. http). Adding the integration will fail if you just provide the IP address or hostname.
+
+##### Example
 
 - **Hostname**: `http://192.168.1.100`
 - **Username**: `installer`
 - **Password**: `<password>`
 
 > Note: Support for SSL is not provided yet. For a valid SSL connection a cert pulled from the SysAP must be provided, research to be done to know if Home Assistant supports such a scenario.
+
+### Automatic Area Discovery
+
+When adding the integration it'll automatically add devices to different `Areas` in Home Assistant. The areas will be pulled from your ABB Free@Home Configuration/Floorplan. When prompted to add the devices double check the area for each.
