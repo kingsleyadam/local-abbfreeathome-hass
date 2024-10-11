@@ -37,7 +37,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             username=entry.data[CONF_USERNAME],
             password=entry.data[CONF_PASSWORD],
         ),
-        interfaces=[Interface.UNDEFINED, Interface.WIRED_BUS, Interface.VIRTUAL_DEVICE],
+        interfaces=[
+            Interface.UNDEFINED,
+            Interface.WIRED_BUS,
+            Interface.WIRELESS_RF,
+            Interface.VIRTUAL_DEVICE,
+        ],
     )
 
     # Verify we can fetch the config from the api
@@ -70,8 +75,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_create_background_task(hass, _free_at_home.ws_listen(), f"{DOMAIN}_ws")
 
     # Setup services
-    if not hass.services.has_service(DOMAIN, DEVICE_DUMP):
-        await async_setup_service(hass, entry)
+    await async_setup_service(hass, entry)
 
     return True
 
