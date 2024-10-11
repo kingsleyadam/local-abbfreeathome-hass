@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abbfreeathome.api import FreeAtHomeApi, FreeAtHomeSettings
+from abbfreeathome.bin.interface import Interface
 from abbfreeathome.freeathome import FreeAtHome
 
 from homeassistant.config_entries import ConfigEntry
@@ -28,7 +29,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             host=entry.data[CONF_HOST],
             username=entry.data[CONF_USERNAME],
             password=entry.data[CONF_PASSWORD],
-        )
+        ),
+        interfaces=[Interface.UNDEFINED, Interface.WIRED_BUS, Interface.VIRTUAL_DEVICE],
     )
 
     # Verify we can fetch the config from the api
