@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from abbfreeathome.devices.switch import Switch as FahSwitch
+from abbfreeathome.devices.switch_actuator import SwitchActuator
 from abbfreeathome.freeathome import FreeAtHome
 
 from homeassistant.components.switch import SwitchEntity
@@ -24,7 +24,7 @@ async def async_setup_entry(
 
     async_add_entities(
         FreeAtHomeSwitchEntity(switch)
-        for switch in free_at_home.get_device_by_class(device_class=FahSwitch)
+        for switch in free_at_home.get_device_by_class(device_class=SwitchActuator)
     )
 
 
@@ -33,10 +33,7 @@ class FreeAtHomeSwitchEntity(SwitchEntity):
 
     _attr_should_poll: bool = False
 
-    def __init__(
-        self,
-        switch: FahSwitch,
-    ) -> None:
+    def __init__(self, switch: SwitchActuator) -> None:
         """Initialize the switch."""
         super().__init__()
         self._switch = switch
