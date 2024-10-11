@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import CONF_SERIAL, DOMAIN
 
 
 async def async_setup_entry(
@@ -23,7 +23,7 @@ async def async_setup_entry(
     free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
 
     async_add_entities(
-        FreeAtHomeSwitchEntity(switch)
+        FreeAtHomeSwitchEntity(switch, sysap_serial_number=entry.data[CONF_SERIAL])
         for switch in free_at_home.get_device_by_class(device_class=SwitchActuator)
     )
 
@@ -33,12 +33,13 @@ class FreeAtHomeSwitchEntity(SwitchEntity):
 
     _attr_should_poll: bool = False
 
-    def __init__(self, switch: SwitchActuator) -> None:
+    def __init__(self, switch: SwitchActuator, sysap_serial_number: str) -> None:
         """Initialize the switch."""
         super().__init__()
         self._switch = switch
         self._attr_unique_id = f"{switch.device_id}_{switch.channel_id}_switch"
         self._attr_name = switch.channel_name
+        self._sysap_serial_number = sysap_serial_number
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
@@ -58,6 +59,7 @@ class FreeAtHomeSwitchEntity(SwitchEntity):
             "model": "SwitchingActuator",
             "serial_number": self._switch.device_id,
             "suggested_area": self._switch.room_name,
+            "via_device": (DOMAIN, self._sysap_serial_number),
         }
 
     @property
