@@ -2,23 +2,16 @@
 
 from __future__ import annotations
 
-import json
-
 from abbfreeathome.api import FreeAtHomeApi, FreeAtHomeSettings
 from abbfreeathome.bin.interface import Interface
 from abbfreeathome.freeathome import FreeAtHome
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME, Platform
-from homeassistant.core import (
-    HomeAssistant,
-    ServiceCall,
-    ServiceResponse,
-    SupportsResponse,
-)
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
-from .const import CONF_SERIAL, DEVICE_DUMP, DOMAIN
+from .const import CONF_SERIAL, DOMAIN
 
 PLATFORMS: list[Platform] = [Platform.SWITCH]
 
@@ -74,9 +67,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Create a websocket connection for listen for changes in device entities.
     entry.async_create_background_task(hass, _free_at_home.ws_listen(), f"{DOMAIN}_ws")
 
-    # Setup services
-    await async_setup_service(hass, entry)
-
     return True
 
 
@@ -91,21 +81,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
-
-
-async def async_setup_service(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Set up services for Free@Home integration."""
-
-    async def device_dump(call: ServiceCall) -> ServiceResponse:
-        """Service call to dump all devices into json file."""
-
-        # Fetch the list of devices
-        _fah = hass.data[DOMAIN][entry.entry_id]
-        _devices = (await _fah.get_config()).get("devices")
-
-        # Return the device list in JSON format.
-        return {"devices": json.dumps(_devices, indent=2)}
-
-    hass.services.async_register(
-        DOMAIN, DEVICE_DUMP, device_dump, supports_response=SupportsResponse.ONLY
-    )
