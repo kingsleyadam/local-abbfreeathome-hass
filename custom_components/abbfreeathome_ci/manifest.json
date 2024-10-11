@@ -1,23 +1,19 @@
 {
-    "domain": "abbfreeathome_ci",
-    "name": "Busch Jaeger/ABB Free@Home (Local API)",
-    "codeowners": [
-        "@kingsleyadam"
-    ],
-    "config_flow": true,
-    "dependencies": [],
-    "documentation": "https://github.com/kingsleyadam/local-abbfreeathome-hass",
-    "homekit": {},
-    "iot_class": "local_push",
-    "requirements": [
-        "local-abbfreeathome==1.2.1"
-    ],
-    "ssdp": [],
-    "version": "0.4.1",
-    "zeroconf": [
-        {
-            "type": "_http._tcp.local.",
-            "name": "free@home*"
-        }
-    ]
+  "domain": "abbfreeathome_ci",
+  "name": "Busch Jaeger/ABB Free@Home (Local API)",
+  "codeowners": ["@kingsleyadam"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/kingsleyadam/local-abbfreeathome-hass",
+  "homekit": {},
+  "iot_class": "local_push",
+  "requirements": ["local-abbfreeathome==1.3.0"],
+  "ssdp": [],
+  "version": "0.4.1",
+  "zeroconf": [
+    {
+      "type": "_http._tcp.local.",
+      "name": "free@home*"
+    }
+  ]
 }
