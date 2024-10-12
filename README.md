@@ -68,3 +68,32 @@ When adding the integration manually you'll be prompted for the `Hostname`, `Use
 ### Automatic Area Discovery
 
 When adding the integration it'll automatically add devices to different `Areas` in Home Assistant. The areas will be pulled from your ABB Free@Home Configuration/Floorplan. When prompted to add the devices double check the area for each.
+
+## Debugging
+
+If you're having issues with the integration, maybe not all devices are showing up, or entities are not responding as you'd expect, you can do two things to help debug.
+
+### Enable Verbose Logging
+
+You can enable more verbose logging within your Home Assistant installation just for this integration by adding the following to your Home Assistant `configuration.yaml` file.
+
+By default the Home Assistant default logger is `warning`, this configuration won't change that. But it'll create additional logs for both this integration and the PyPi module running a number of calls to the SysAP.
+
+
+```yaml
+logger:
+  default: warning
+  logs:
+    abbfreeathome: debug
+    custom_components.abbfreeathome_ci: debug
+```
+
+### Download Diagnostics
+
+If you request help via GitHub [Discussions](https://github.com/kingsleyadam/local-abbfreeathome-hass/discussions) you will likely be asked to share the integration diagnostics.
+
+The [diagnostics](https://www.home-assistant.io/docs/configuration/troubleshooting/#download-diagnostics) will share some information about your Home Assistant installation and this integration's installation.
+
+To pull the diagnostics about this integration navigate to the integration under `Settings` --> `Devices & Services` --> `Busch Jaeger/ABB Free@Home (Local API)`. Click the 3 dots next to the integration entity and click `Download Diagnostics`. Private information should be redacted from the download, but it's always good to double check the output before sending.
+
+Along with the `home_assistant` and `integration_manifest` you should also see `data` which includes your SysAP configuration and devices.
