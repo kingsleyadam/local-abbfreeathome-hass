@@ -28,11 +28,5 @@
                 "title": "Free@Home - Confirm"
             }
         }
-    },
-    "services": {
-      "device_dump": {
-        "name": "Device Dump",
-        "description": "Dump the list of devices to service response."
-      }
     }
 }
