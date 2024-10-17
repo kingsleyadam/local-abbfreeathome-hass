@@ -56,7 +56,6 @@ class FreeAtHomeSwitchEntity(SwitchEntity):
             "identifiers": {(DOMAIN, self._switch.device_id)},
             "name": self._switch.device_name,
             "manufacturer": "ABB busch-jaeger",
-            "model": "SwitchingActuator",
             "serial_number": self._switch.device_id,
             "suggested_area": self._switch.room_name,
             "via_device": (DOMAIN, self._sysap_serial_number),
