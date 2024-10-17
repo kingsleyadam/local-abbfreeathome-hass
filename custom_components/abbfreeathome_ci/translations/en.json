@@ -28,5 +28,20 @@
                 "title": "Free@Home - Confirm"
             }
         }
+    },
+    "entity": {
+        "binary_sensor": {
+            "movement_detector_motion": {
+                "name": "Motion"
+            },
+            "switch_sensor": {
+                "name": "Switch Sensor"
+            }
+        },
+        "sensor": {
+            "movement_detector_brightness": {
+                "name": "Illuminance"
+            }
+        }
     }
 }
