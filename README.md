@@ -93,13 +93,13 @@ description: This will turn off/on a light based on the Switch Sensor event.
 triggers:
   - trigger: state
     entity_id:
-      - event.study_area_rocker_button
+      - event.study_area_rocker_switch_event
     to: "Off"
     attribute: event_type
     id: study_area_event_off
   - trigger: state
     entity_id:
-      - event.study_area_rocker_button
+      - event.study_area_rocker_switch_event
     attribute: event_type
     to: "On"
     id: study_area_event_on
@@ -111,19 +111,18 @@ actions:
             id:
               - study_area_event_off
         sequence:
-          - type: turn_off
-            device_id: dc9b05f0561e4416a77d9e6ed0b0aa09
-            entity_id: 06d3400a5308a23a711d77974c8c2ac7
-            domain: switch
+          - action: switch.turn_off
+            target:
+              device_id:
+                - 615bdcd2980a3a2a341488f50b7d8aea
       - conditions:
           - condition: trigger
             id:
               - study_area_event_on
         sequence:
-          - type: turn_on
-            device_id: dc9b05f0561e4416a77d9e6ed0b0aa09
-            entity_id: 06d3400a5308a23a711d77974c8c2ac7
-            domain: switch
+          - action: switch.turn_on
+            target:
+              device_id: 615bdcd2980a3a2a341488f50b7d8aea
 mode: single
 ```
 
