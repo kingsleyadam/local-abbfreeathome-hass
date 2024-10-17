@@ -73,19 +73,19 @@ When adding the integration it'll automatically add devices to different `Areas`
 
 ### Switch Sensor
 
-The Switch Sensor's can be deceiving. These are additional On/Off sensors that are associated with a switching device. If you physically hit the switch sensor (On or Off) the Switch sensor status will be updated in Home Assistant accordingly.
+The Switch Sensors can be deceiving. These are additional On/Off sensors associated with a switching device. If you physically toggle the switch sensor (On or Off), the status of the switch sensor will be updated in Home Assistant accordingly.
 
-If you turn off the light either via Home Assistant, Free@Home App, or any other non-physical method, the Switch sensor will NOT be updated to match the lights status.
+However, if you turn off the light using Home Assistant, the Free@Home app, or any other non-physical method, the switch sensor will not be updated to reflect the light's status.
 
-This can cause issues if you attempt to automate a light. If the light is already turned off via Home Assisant, and the Switch sensor is still in the `On` state, you won't be able to turn on the light by using the switch sensor.
+This discrepancy can cause issues when automating a light. If the light is already turned off via Home Assistant, but the switch sensor still indicates an `On` state, you won't be able to turn the light on using the switch sensor.
 
->**It is best to associated a Switch directly with a Light in the Free@Home configuration if at all possible. E.g., if you have a Philips Hue Bulb, it's best to setup Philip Hue lights within Free@Home and associated a switch with it directly, avoiding Home Assistant completely, it'll be much more straight forward and responsive.**
+>**It is best to associate a switch directly with a light in the Free@Home configuration whenever possible. For example, if you have a Philips Hue bulb, it's advisable to set up Philips Hue lights within Free@Home and associate a switch with it directly. This approach avoids using Home Assistant entirely, making the setup much more straightforward and responsive.**
 
-If you want to control a device, or set of devices using the Switch Sensor in Home Assistant, it's best to use emmited events. The `SwitchSensor` class will emit an event when pressed.
+If you want to control a device or a set of devices using the switch sensor in Home Assistant, it's best to use emitted events. The `SwitchSensor` class will emit an event when pressed.
 
-The `event_type` will be `abbfreeathome_ci_event` and the `data.type` for a Switch Sensor will be `switch_sensor_triggered`. The `state` will be whether the sensor was triggered `On` (true) or `Off` (false).
+The `event_type` will be `abbfreeathome_ci_event`, and the `data.type` for a switch sensor will be `switch_sensor_triggered`. The `state` will indicate whether the sensor was triggered On (true) or Off (false).
 
-With this, you can create an automation to control devices accordgingly.
+With this setup, you can create automations to control devices accordingly.
 
 #### Example Automation
 
