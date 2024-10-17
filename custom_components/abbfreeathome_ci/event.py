@@ -68,10 +68,7 @@ class FreeAtHomeEventEntity(EventEntity):
     def _async_handle_event(self) -> None:
         """Handle the demo button event."""
         event_type = "On" if self._device.state else "Off"
-        self._trigger_event(
-            event_type,
-            {"unique_id": f"{self._device.device_id}_{self._device.channel_id}"},
-        )
+        self._trigger_event(event_type)
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
