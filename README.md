@@ -69,6 +69,71 @@ When adding the integration manually you'll be prompted for the `Hostname`, `Use
 
 When adding the integration it'll automatically add devices to different `Areas` in Home Assistant. The areas will be pulled from your ABB Free@Home Configuration/Floorplan. When prompted to add the devices double check the area for each.
 
+## Events
+
+### Switch Sensor
+
+The Switch Sensor's can be deceiving. These are additional On/Off sensors that are associated with a switching device. If you physically hit the switch sensor (On or Off) the Switch sensor status will be updated in Home Assistant accordingly.
+
+If you turn off the light either via Home Assistant, Free@Home App, or any other non-physical method, the Switch sensor will NOT be updated to match the lights status.
+
+This can cause issues if you attempt to automate a light. If the light is already turned off via Home Assisant, and the Switch sensor is still in the `On` state, you won't be able to turn on the light by using the switch sensor.
+
+>**It is best to associated a Switch directly with a Light in the Free@Home configuration if at all possible. E.g., if you have a Philips Hue Bulb, it's best to setup Philip Hue lights within Free@Home and associated a switch with it directly, avoiding Home Assistant completely, it'll be much more straight forward and responsive.**
+
+If you want to control a device, or set of devices using the Switch Sensor in Home Assistant, it's best to use emmited events. The `SwitchSensor` class will emit an event when pressed.
+
+The `event_type` will be `abbfreeathome_ci_event` and the `data.type` for a Switch Sensor will be `switch_sensor_triggered`. The `state` will be whether the sensor was triggered `On` (true) or `Off` (false).
+
+With this, you can create an automation to control devices accordgingly.
+
+#### Example Automation
+
+```yaml
+alias: Test Trigger Sensor Event
+description: This will turn off/on a light based on the Switch Sensor event.
+triggers:
+  - trigger: event
+    event_type: abbfreeathome_ci_event
+    event_data:
+      entity_id: binary_sensor.office_rocker_switch_sensor
+      type: switch_sensor_triggered
+conditions: []
+actions:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.event.data.state == True }}"
+        sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.3rd_floor_landing_light
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.event.data.state == False }}"
+        sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.3rd_floor_landing_light
+mode: single
+```
+
+#### Example Event
+
+```yaml
+event_type: abbfreeathome_ci_event
+data:
+  entity_id: binary_sensor.office_rocker_switch_sensor
+  type: switch_sensor_triggered
+  state: true
+origin: LOCAL
+time_fired: "2024-10-17T13:54:19.215731+00:00"
+context:
+  id: 01JADC40YFB37NS336PWZVJ1R2
+  parent_id: null
+  user_id: null
+```
+
 ## Debugging
 
 If you're having issues with the integration, maybe not all devices are showing up, or entities are not responding as you'd expect, you can do two things to help debug.
