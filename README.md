@@ -69,6 +69,63 @@ When adding the integration manually you'll be prompted for the `Hostname`, `Use
 
 When adding the integration it'll automatically add devices to different `Areas` in Home Assistant. The areas will be pulled from your ABB Free@Home Configuration/Floorplan. When prompted to add the devices double check the area for each.
 
+## Events
+
+### Switch Sensor
+
+The Switch Sensors can be deceiving. These are additional On/Off sensors associated with a switching device. If you physically toggle the switch sensor (On or Off), the status of the switch sensor will be updated in Home Assistant accordingly.
+
+However, if you turn off the light using Home Assistant, the Free@Home app, or any other non-physical method, the switch sensor will not be updated to reflect the light's status.
+
+This discrepancy can cause issues when automating a light. If the light is already turned off via Home Assistant, but the switch sensor still indicates an `On` state, you won't be able to turn the light on using the switch sensor.
+
+>**It is best to associate a switch directly with a light in the Free@Home configuration whenever possible. For example, if you have a Philips Hue bulb, it's advisable to set up Philips Hue lights within Free@Home and associate a switch with it directly. This approach avoids using Home Assistant entirely, making the setup much more straightforward and responsive.**
+
+If you want to control a device or a set of devices using the switch sensor in Home Assistant, it's best to use emitted events. The `SwitchSensor` class will emit an event when pressed.
+
+These will be visible as events within the devices that support it. Using these events you can create automations to control devices accordingly.
+
+#### Example Automation
+
+```yaml
+alias: Test Trigger Sensor Event
+description: This will turn off/on a light based on the Switch Sensor event.
+triggers:
+  - trigger: state
+    entity_id:
+      - event.study_area_rocker_switch_event
+    to: "Off"
+    attribute: event_type
+    id: study_area_event_off
+  - trigger: state
+    entity_id:
+      - event.study_area_rocker_switch_event
+    attribute: event_type
+    to: "On"
+    id: study_area_event_on
+conditions: []
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id:
+              - study_area_event_off
+        sequence:
+          - action: switch.turn_off
+            target:
+              device_id:
+                - 615bdcd2980a3a2a341488f50b7d8aea
+      - conditions:
+          - condition: trigger
+            id:
+              - study_area_event_on
+        sequence:
+          - action: switch.turn_on
+            target:
+              device_id: 615bdcd2980a3a2a341488f50b7d8aea
+mode: single
+```
+
 ## Debugging
 
 If you're having issues with the integration, maybe not all devices are showing up, or entities are not responding as you'd expect, you can do two things to help debug.
