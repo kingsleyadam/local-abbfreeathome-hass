@@ -10,7 +10,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -100,26 +100,13 @@ class FreeAtHomeBinarySensorEntity(BinarySensorEntity):
         )
         self._attr_translation_placeholders = {"channel_name": device.channel_name}
 
-    @callback
-    def async_update_received(self) -> None:
-        """Trigger an event if switch sensor, otherwise just update HA state."""
-        if isinstance(self._device, SwitchSensor):
-            event_data = {
-                "entity_id": self.entity_id,
-                "type": "switch_sensor_triggered",
-                "state": self.is_on,
-            }
-            self.hass.bus.async_fire(f"{DOMAIN}_event", event_data)
-
-        self.async_write_ha_state()
-
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
-        self._device.register_callback(self.async_update_received)
+        self._device.register_callback(self.async_write_ha_state)
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
-        self._device.remove_callback(self.async_update_received)
+        self._device.remove_callback(self.async_write_ha_state)
 
     @property
     def device_info(self) -> DeviceInfo:

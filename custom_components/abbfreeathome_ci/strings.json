@@ -38,6 +38,11 @@
         "name": "Switch Sensor"
       }
     },
+    "event": {
+      "switch_sensor": {
+        "name": "Switch Event"
+      }
+    },
     "sensor": {
       "movement_detector_brightness": {
         "name": "Illuminance"

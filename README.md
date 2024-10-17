@@ -83,9 +83,7 @@ This discrepancy can cause issues when automating a light. If the light is alrea
 
 If you want to control a device or a set of devices using the switch sensor in Home Assistant, it's best to use emitted events. The `SwitchSensor` class will emit an event when pressed.
 
-The `event_type` will be `abbfreeathome_ci_event`, and the `data.type` for a switch sensor will be `switch_sensor_triggered`. The `state` will indicate whether the sensor was triggered On (true) or Off (false).
-
-With this setup, you can create automations to control devices accordingly.
+These will be visible as events within the devices that support it. Using these events you can create automations to control devices accordingly.
 
 #### Example Automation
 
@@ -93,45 +91,40 @@ With this setup, you can create automations to control devices accordingly.
 alias: Test Trigger Sensor Event
 description: This will turn off/on a light based on the Switch Sensor event.
 triggers:
-  - trigger: event
-    event_type: abbfreeathome_ci_event
-    event_data:
-      entity_id: binary_sensor.office_rocker_switch_sensor
-      type: switch_sensor_triggered
+  - trigger: state
+    entity_id:
+      - event.study_area_rocker_button
+    to: "Off"
+    attribute: event_type
+    id: study_area_event_off
+  - trigger: state
+    entity_id:
+      - event.study_area_rocker_button
+    attribute: event_type
+    to: "On"
+    id: study_area_event_on
 conditions: []
 actions:
   - choose:
       - conditions:
-          - condition: template
-            value_template: "{{ trigger.event.data.state == True }}"
+          - condition: trigger
+            id:
+              - study_area_event_off
         sequence:
-          - action: switch.turn_on
-            target:
-              entity_id: switch.3rd_floor_landing_light
+          - type: turn_off
+            device_id: dc9b05f0561e4416a77d9e6ed0b0aa09
+            entity_id: 06d3400a5308a23a711d77974c8c2ac7
+            domain: switch
       - conditions:
-          - condition: template
-            value_template: "{{ trigger.event.data.state == False }}"
+          - condition: trigger
+            id:
+              - study_area_event_on
         sequence:
-          - action: switch.turn_off
-            target:
-              entity_id: switch.3rd_floor_landing_light
+          - type: turn_on
+            device_id: dc9b05f0561e4416a77d9e6ed0b0aa09
+            entity_id: 06d3400a5308a23a711d77974c8c2ac7
+            domain: switch
 mode: single
-```
-
-#### Example Event
-
-```yaml
-event_type: abbfreeathome_ci_event
-data:
-  entity_id: binary_sensor.office_rocker_switch_sensor
-  type: switch_sensor_triggered
-  state: true
-origin: LOCAL
-time_fired: "2024-10-17T13:54:19.215731+00:00"
-context:
-  id: 01JADC40YFB37NS336PWZVJ1R2
-  parent_id: null
-  user_id: null
 ```
 
 ## Debugging
