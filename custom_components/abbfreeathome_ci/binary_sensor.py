@@ -72,6 +72,7 @@ async def async_setup_entry(
             for device in free_at_home.get_device_by_class(
                 device_class=description.device_class
             )
+            if getattr(device, description.value_attribute) is not None
         )
 
 
