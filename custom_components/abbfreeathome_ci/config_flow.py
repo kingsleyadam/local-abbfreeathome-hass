@@ -177,7 +177,10 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle user initiated reconfigure flow."""
-        entry = self._get_reconfigure_entry()
+        try:
+            entry = self._get_reconfigure_entry()
+        except AttributeError:
+            return self.async_abort(reason="reconfigure_not_supported")
 
         self._host = entry.data[CONF_HOST]
         self._name = entry.data[CONF_NAME]
