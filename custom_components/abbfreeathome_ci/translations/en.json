@@ -35,12 +35,12 @@
                 "name": "Motion"
             },
             "switch_sensor": {
-                "name": "Switch Sensor"
+                "name": "Switch Sensor ({channel_id})"
             }
         },
         "event": {
             "switch_sensor": {
-                "name": "Switch Event"
+                "name": "Switch Event ({channel_id})"
             }
         },
         "sensor": {

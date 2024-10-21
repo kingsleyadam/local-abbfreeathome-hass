@@ -62,7 +62,7 @@ class FreeAtHomeEventEntity(EventEntity):
         self._attr_unique_id = (
             f"{device.device_id}_{device.channel_id}_{entity_description.key}"
         )
-        self._attr_translation_placeholders = {"channel_name": device.channel_name}
+        self._attr_translation_placeholders = {"channel_id": device.channel_id}
 
     @callback
     def _async_handle_event(self) -> None:
