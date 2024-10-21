@@ -1,5 +1,7 @@
 """Create ABB Free@Home binary sensor entities."""
 
+from typing import Any
+
 from abbfreeathome.devices.movement_detector import MovementDetector
 from abbfreeathome.devices.switch_sensor import SwitchSensor
 from abbfreeathome.freeathome import FreeAtHome
@@ -24,31 +26,31 @@ class FreeAtHomeBinarySensorDescription:
         self,
         device_class: MovementDetector | SwitchSensor,
         value_attribute: str,
-        entity_description: BinarySensorEntityDescription,
+        entity_description_kwargs: dict[str:Any],
     ) -> None:
         """Initialize the FreeAtHomeSensorDescription class."""
         self.device_class: MovementDetector | SwitchSensor = device_class
         self.value_attribute: str = value_attribute
-        self.entity_description = entity_description
+        self.entity_description_kwargs = entity_description_kwargs
 
 
-SENSOR_TYPES: tuple[FreeAtHomeBinarySensorDescription, ...] = (
+SENSOR_DESCRIPTIONS: tuple[FreeAtHomeBinarySensorDescription, ...] = (
     FreeAtHomeBinarySensorDescription(
         device_class=MovementDetector,
         value_attribute="state",
-        entity_description=BinarySensorEntityDescription(
-            key="MovementDetectorMotion",
-            device_class=BinarySensorDeviceClass.MOTION,
-            translation_key="movement_detector_motion",
-        ),
+        entity_description_kwargs={
+            "device_class": BinarySensorDeviceClass.MOTION,
+            "key": "MovementDetectorMotion",
+            "translation_key": "movement_detector_motion",
+        },
     ),
     FreeAtHomeBinarySensorDescription(
         device_class=SwitchSensor,
         value_attribute="state",
-        entity_description=BinarySensorEntityDescription(
-            key="SwitchSensorOnOff",
-            translation_key="switch_sensor",
-        ),
+        entity_description_kwargs={
+            "key": "SwitchSensorOnOff",
+            "translation_key": "switch_sensor",
+        },
     ),
 )
 
@@ -61,12 +63,12 @@ async def async_setup_entry(
     """Set up binary sensor entities."""
     free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
 
-    for description in SENSOR_TYPES:
+    for description in SENSOR_DESCRIPTIONS:
         async_add_entities(
             FreeAtHomeBinarySensorEntity(
                 device,
                 value_attribute=description.value_attribute,
-                entity_description=description.entity_description,
+                entity_description_kwargs=description.entity_description_kwargs,
                 sysap_serial_number=entry.data[CONF_SERIAL],
             )
             for device in free_at_home.get_device_by_class(
@@ -86,7 +88,7 @@ class FreeAtHomeBinarySensorEntity(BinarySensorEntity):
         self,
         device: MovementDetector | SwitchSensor,
         value_attribute: str,
-        entity_description: BinarySensorEntityDescription,
+        entity_description_kwargs: dict[str:Any],
         sysap_serial_number: str,
     ) -> None:
         """Initialize the sensor."""
@@ -95,11 +97,15 @@ class FreeAtHomeBinarySensorEntity(BinarySensorEntity):
         self._value_attribute = value_attribute
         self._sysap_serial_number = sysap_serial_number
 
-        self.entity_description = entity_description
-        self._attr_unique_id = (
-            f"{device.device_id}_{device.channel_id}_{entity_description.key}"
+        self.entity_description = BinarySensorEntityDescription(
+            name=device.channel_name,
+            translation_placeholders={"channel_id": device.channel_id},
+            **entity_description_kwargs,
         )
-        self._attr_translation_placeholders = {"channel_id": device.channel_id}
+
+        self._attr_unique_id = (
+            f"{device.device_id}_{device.channel_id}_{self.entity_description.key}"
+        )
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
