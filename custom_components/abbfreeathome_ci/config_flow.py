@@ -30,7 +30,9 @@ from .const import CONF_SERIAL, DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 
-def _schema_with_defaults(host: str | None = None, step_id: str = "user") -> vol.Schema:
+def _schema_with_defaults(
+    host: str | None = None, username: str | None = None, step_id: str = "user"
+) -> vol.Schema:
     schema = vol.Schema({})
 
     if step_id == "user":
@@ -38,7 +40,7 @@ def _schema_with_defaults(host: str | None = None, step_id: str = "user") -> vol
 
     return schema.extend(
         {
-            vol.Required(CONF_USERNAME, default="installer"): str,
+            vol.Required(CONF_USERNAME, default=username or "installer"): str,
             vol.Required(CONF_PASSWORD): str,
         }
     )
@@ -171,9 +173,46 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return self._async_create_entry()
 
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Handle user initiated reconfigure flow."""
+        try:
+            entry = self._get_reconfigure_entry()
+        except AttributeError:
+            return self.async_abort(reason="reconfigure_not_supported")
+
+        self._host = entry.data[CONF_HOST]
+        self._name = entry.data[CONF_NAME]
+        self._username = entry.data[CONF_USERNAME]
+        self._serial_number = entry.data[CONF_SERIAL]
+
+        if user_input is None:
+            return self._async_show_setup_form(
+                step_id="reconfigure", username=self._username
+            )
+
+        errors = await validate_api(
+            host=self._host,
+            username=user_input[CONF_USERNAME],
+            password=user_input[CONF_PASSWORD],
+        )
+
+        if errors:
+            return self._async_show_setup_form(step_id="reconfigure", errors=errors)
+
+        self._username = user_input[CONF_USERNAME]
+        self._password = user_input[CONF_PASSWORD]
+
+        return self._async_update_reload_and_abort()
+
     @callback
     def _async_show_setup_form(
-        self, step_id: str, errors: dict[str, str] | None = None
+        self,
+        step_id: str,
+        errors: dict[str, str] | None = None,
+        host: str | None = None,
+        username: str | None = None,
     ) -> ConfigFlowResult:
         """Show the setup form to the user."""
         description_placeholders: Mapping[str, str | None] = {}
@@ -187,7 +226,9 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id=step_id,
-            data_schema=_schema_with_defaults(step_id=step_id),
+            data_schema=_schema_with_defaults(
+                step_id=step_id, host=host, username=username
+            ),
             errors=errors or {},
             description_placeholders=description_placeholders,
         )
@@ -200,6 +241,16 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_SERIAL: self._serial_number,
                 CONF_NAME: self._name,
                 CONF_HOST: self._host,
+                CONF_USERNAME: self._username,
+                CONF_PASSWORD: self._password,
+            },
+        )
+
+    @callback
+    def _async_update_reload_and_abort(self) -> ConfigFlowResult:
+        return self.async_update_reload_and_abort(
+            self._get_reconfigure_entry(),
+            data_updates={
                 CONF_USERNAME: self._username,
                 CONF_PASSWORD: self._password,
             },

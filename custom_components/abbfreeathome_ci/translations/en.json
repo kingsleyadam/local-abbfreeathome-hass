@@ -1,7 +1,10 @@
 {
     "config": {
         "abort": {
-            "already_configured": "Device is already configured"
+            "already_configured": "Device is already configured",
+            "reauth_successful": "Re-authentication was successful",
+            "reconfigure_not_supported": "Reconfigure for this integration is only supported on Home Assistant version 2024.11.0 or newer.",
+            "reconfigure_successful": "Re-configuration was successful"
         },
         "error": {
             "cannot_connect": "Failed to connect",
@@ -9,6 +12,14 @@
             "unknown": "Unexpected error"
         },
         "step": {
+            "reconfigure": {
+                "data": {
+                    "password": "Password",
+                    "username": "Username"
+                },
+                "description": "Do you want reconfigure {name} ({serial}) at {host}?",
+                "title": "Free@Home - Reconfigure"
+            },
             "user": {
                 "data": {
                     "host": "Host",
