@@ -1,5 +1,7 @@
 """Create ABB Free@Home event entities."""
 
+from typing import Any
+
 from abbfreeathome.devices.switch_sensor import SwitchSensor
 from abbfreeathome.freeathome import FreeAtHome
 
@@ -16,6 +18,32 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import CONF_SERIAL, DOMAIN
 
 
+class FreeAtHomeEventDescription:
+    """Class describing FreeAtHome sensor entities."""
+
+    def __init__(
+        self,
+        device_class: SwitchSensor,
+        entity_description_kwargs: dict[str:Any],
+    ) -> None:
+        """Initialize the FreeAtHomeSensorDescription class."""
+        self.device_class: SwitchSensor = device_class
+        self.entity_description_kwargs = entity_description_kwargs
+
+
+EVENT_DESCRIPTIONS: tuple[FreeAtHomeEventDescription, ...] = (
+    FreeAtHomeEventDescription(
+        device_class=SwitchSensor,
+        entity_description_kwargs={
+            "device_class": EventDeviceClass.BUTTON,
+            "event_types": ["On", "Off"],
+            "key": "EventSwitchSensorOnOff",
+            "translation_key": "switch_sensor",
+        },
+    ),
+)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -24,20 +52,17 @@ async def async_setup_entry(
     """Set up binary sensor entities."""
     free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
 
-    async_add_entities(
-        FreeAtHomeEventEntity(
-            device,
-            value_attribute="state",
-            entity_description=EventEntityDescription(
-                key="EventSwitchSensorOnOff",
-                device_class=EventDeviceClass.BUTTON,
-                event_types=["On", "Off"],
-                translation_key="switch_sensor",
-            ),
-            sysap_serial_number=entry.data[CONF_SERIAL],
+    for description in EVENT_DESCRIPTIONS:
+        async_add_entities(
+            FreeAtHomeEventEntity(
+                device,
+                entity_description_kwargs=description.entity_description_kwargs,
+                sysap_serial_number=entry.data[CONF_SERIAL],
+            )
+            for device in free_at_home.get_device_by_class(
+                device_class=description.device_class
+            )
         )
-        for device in free_at_home.get_device_by_class(device_class=SwitchSensor)
-    )
 
 
 class FreeAtHomeEventEntity(EventEntity):
@@ -48,27 +73,34 @@ class FreeAtHomeEventEntity(EventEntity):
     def __init__(
         self,
         device: SwitchSensor,
-        value_attribute: str,
-        entity_description: EventEntityDescription,
+        entity_description_kwargs: dict[str:Any],
         sysap_serial_number: str,
     ) -> None:
         """Initialize the sensor."""
         super().__init__()
         self._device = device
-        self._value_attribute = value_attribute
         self._sysap_serial_number = sysap_serial_number
 
-        self.entity_description = entity_description
-        self._attr_unique_id = (
-            f"{device.device_id}_{device.channel_id}_{entity_description.key}"
+        self.entity_description = EventEntityDescription(
+            name=device.channel_name,
+            translation_placeholders={"channel_id": device.channel_id},
+            **entity_description_kwargs,
         )
-        self._attr_translation_placeholders = {"channel_name": device.channel_name}
+
+        self._attr_unique_id = (
+            f"{device.device_id}_{device.channel_id}_{self.entity_description.key}"
+        )
 
     @callback
     def _async_handle_event(self) -> None:
         """Handle the demo button event."""
+
+        # TODO: Make this logic dynamic per Free@Home Device,
+        # Lambda function or callback within Free@Home object?
         event_type = "On" if self._device.state else "Off"
+
         self._trigger_event(event_type)
+
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
