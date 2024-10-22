@@ -61,6 +61,7 @@ SENSOR_DESCRIPTIONS: tuple[FreeAtHomeBinarySensorDescription, ...] = (
         entity_description_kwargs={
             "device_class": BinarySensorDeviceClass.WINDOW,
             "key": "WindowDoorSensorOnOff",
+            "translation_key": "window_door",
         },
     ),
 )
@@ -107,6 +108,11 @@ class FreeAtHomeBinarySensorEntity(BinarySensorEntity):
         self._device = device
         self._value_attribute = value_attribute
         self._sysap_serial_number = sysap_serial_number
+
+        # If the channel name is different from the device name, it's likely
+        # a dedicated sensor with it's own naming convention. Use it's channel name instead.
+        if device.channel_name != device.device_name:
+            entity_description_kwargs.pop("translation_key")
 
         self.entity_description = BinarySensorEntityDescription(
             name=device.channel_name,
