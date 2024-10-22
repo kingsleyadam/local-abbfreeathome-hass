@@ -47,23 +47,35 @@ Copy the username listed within that window (usually `installer`) to be used whe
 
 ### Add Integration
 
+#### Configuration Options
+
+The config setup will include some options to help configure the integration.
+
+| Configuration | Description |
+| ----------- | ----------- |
+| Hostname | **Only available in Manual (User) Setup.** The full hostname including schema of the ABB Free@Home SysAP endpoint. |
+| Username | The **api** username, likely different from your normal login username. |
+| Password | The password for logging into the SysAP. |
+| Include channels NOT on the Free@Home floorplan? | Whether to include channels that are not located on the Free@Home floorplan. |
+
+###### Example
+
+- **Hostname**: `http://192.168.1.100`
+- **Username**: `installer`
+- **Password**: `<password>`
+- **Include channels NOT on the Free@Home floorplan?**: False
+
+> Note: Support for SSL is not provided yet. For a valid SSL connection a cert pulled from the SysAP must be provided, research to be done to know if Home Assistant supports such a scenario.
+
 #### SysAP Discovery
 
-In most installations the integration will find your Free@Home SysAP automatically on the network. After you've installed the integration and restarted Home Assistant you should see your SysAP as a new device to be setup. You just need to enter your **api** username and password to confirm the setup.
+In most installations the integration will find your Free@Home SysAP automatically on the network. After you've installed the integration and restarted Home Assistant you should see your SysAP as a new device to be setup. The hostname will automatically be discovered, you just need to enter your **api** username, password, and whether to include channels not in the floorplan to confirm the setup.
 
 #### Manual (User) Setup
 
 If the SysAP is not found automatically you can add it manually. Add this integration by searching for and clicking on `Busch Jaeger/ABB Free@Home (Local API)`.
 
-When adding the integration manually you'll be prompted for the `Hostname`, `Username`, and `Password`. The hostname must be the fully resolvable hostname with protocol (e.g. http). Adding the integration will fail if you just provide the IP address or hostname.
-
-##### Example
-
-- **Hostname**: `http://192.168.1.100`
-- **Username**: `installer`
-- **Password**: `<password>`
-
-> Note: Support for SSL is not provided yet. For a valid SSL connection a cert pulled from the SysAP must be provided, research to be done to know if Home Assistant supports such a scenario.
+When adding the integration manually you'll be prompted with all fields. The hostname must be the fully resolvable hostname with protocol (e.g. http). Adding the integration will fail if you just provide the IP address or hostname.
 
 ### Automatic Area Discovery
 
