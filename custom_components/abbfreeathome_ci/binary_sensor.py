@@ -4,6 +4,7 @@ from typing import Any
 
 from abbfreeathome.devices.movement_detector import MovementDetector
 from abbfreeathome.devices.switch_sensor import SwitchSensor
+from abbfreeathome.devices.window_door_sensor import WindowDoorSensor
 from abbfreeathome.freeathome import FreeAtHome
 
 from homeassistant.components.binary_sensor import (
@@ -24,12 +25,14 @@ class FreeAtHomeBinarySensorDescription:
 
     def __init__(
         self,
-        device_class: MovementDetector | SwitchSensor,
+        device_class: MovementDetector | SwitchSensor | WindowDoorSensor,
         value_attribute: str,
         entity_description_kwargs: dict[str:Any],
     ) -> None:
         """Initialize the FreeAtHomeSensorDescription class."""
-        self.device_class: MovementDetector | SwitchSensor = device_class
+        self.device_class: MovementDetector | SwitchSensor | WindowDoorSensor = (
+            device_class
+        )
         self.value_attribute: str = value_attribute
         self.entity_description_kwargs = entity_description_kwargs
 
@@ -50,6 +53,14 @@ SENSOR_DESCRIPTIONS: tuple[FreeAtHomeBinarySensorDescription, ...] = (
         entity_description_kwargs={
             "key": "SwitchSensorOnOff",
             "translation_key": "switch_sensor",
+        },
+    ),
+    FreeAtHomeBinarySensorDescription(
+        device_class=WindowDoorSensor,
+        value_attribute="state",
+        entity_description_kwargs={
+            "device_class": BinarySensorDeviceClass.WINDOW,
+            "key": "WindowDoorSensorOnOff",
         },
     ),
 )
@@ -86,7 +97,7 @@ class FreeAtHomeBinarySensorEntity(BinarySensorEntity):
 
     def __init__(
         self,
-        device: MovementDetector | SwitchSensor,
+        device: MovementDetector | SwitchSensor | WindowDoorSensor,
         value_attribute: str,
         entity_description_kwargs: dict[str:Any],
         sysap_serial_number: str,
