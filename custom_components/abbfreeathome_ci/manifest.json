@@ -9,7 +9,7 @@
   "iot_class": "local_push",
   "requirements": ["local-abbfreeathome==1.8.1"],
   "ssdp": [],
-  "version": "0.8.1",
+  "version": "0.8.2",
   "zeroconf": [
     {
       "type": "_http._tcp.local.",
