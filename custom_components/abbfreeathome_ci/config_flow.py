@@ -25,23 +25,29 @@ from homeassistant.config_entries import (
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import callback
 
-from .const import CONF_SERIAL, DOMAIN
+from .const import CONF_INCLUDE_ORPHAN_CHANNELS, CONF_SERIAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
 
 def _schema_with_defaults(
-    host: str | None = None, username: str | None = None, step_id: str = "user"
+    host: str | None = None,
+    username: str | None = None,
+    include_orphan_channels: bool = False,
+    step_id: str = "user",
 ) -> vol.Schema:
     schema = vol.Schema({})
 
-    if step_id == "user":
+    if step_id in ["user"]:
         schema = schema.extend({vol.Required(CONF_HOST, default=host): str})
 
     return schema.extend(
         {
             vol.Required(CONF_USERNAME, default=username or "installer"): str,
             vol.Required(CONF_PASSWORD): str,
+            vol.Optional(
+                CONF_INCLUDE_ORPHAN_CHANNELS, default=include_orphan_channels
+            ): bool,
         }
     )
 
@@ -79,18 +85,22 @@ async def validate_api(host: str, username: str, password: str) -> dict[str, Any
     return errors
 
 
-class ConfigFlow(ConfigFlow, domain=DOMAIN):
+class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for ABB free@home."""
 
     VERSION = 1
+    MINOR_VERSION = 2
     CONNECTION_CLASS = CONN_CLASS_LOCAL_PUSH
 
-    _host: str = None
-    _name: str = None
-    _password: str = None
-    _serial_number: str = None
-    _title: str = None
-    _username: str = None
+    def __init__(self) -> None:
+        """Initialize."""
+        self._host: str | None = None
+        self._name: str | None = None
+        self._password: str | None = None
+        self._serial_number: str | None = None
+        self._title: str | None = None
+        self._username: str | None = None
+        self._include_orphan_channels: bool = False
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -122,6 +132,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         self._host = user_input[CONF_HOST]
         self._username = user_input[CONF_USERNAME]
         self._password = user_input[CONF_PASSWORD]
+        self._include_orphan_channels = user_input[CONF_INCLUDE_ORPHAN_CHANNELS]
 
         return self._async_create_entry()
 
@@ -170,6 +181,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
 
         self._username = user_input[CONF_USERNAME]
         self._password = user_input[CONF_PASSWORD]
+        self._include_orphan_channels = user_input[CONF_INCLUDE_ORPHAN_CHANNELS]
 
         return self._async_create_entry()
 
@@ -186,10 +198,13 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         self._name = entry.data[CONF_NAME]
         self._username = entry.data[CONF_USERNAME]
         self._serial_number = entry.data[CONF_SERIAL]
+        self._include_orphan_channels = entry.data[CONF_INCLUDE_ORPHAN_CHANNELS]
 
         if user_input is None:
             return self._async_show_setup_form(
-                step_id="reconfigure", username=self._username
+                step_id="reconfigure",
+                username=self._username,
+                include_orphan_channels=self._include_orphan_channels,
             )
 
         errors = await validate_api(
@@ -203,6 +218,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
 
         self._username = user_input[CONF_USERNAME]
         self._password = user_input[CONF_PASSWORD]
+        self._include_orphan_channels = user_input[CONF_INCLUDE_ORPHAN_CHANNELS]
 
         return self._async_update_reload_and_abort()
 
@@ -213,6 +229,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] | None = None,
         host: str | None = None,
         username: str | None = None,
+        include_orphan_channels: bool = False,
     ) -> ConfigFlowResult:
         """Show the setup form to the user."""
         description_placeholders: Mapping[str, str | None] = {}
@@ -227,7 +244,10 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id=step_id,
             data_schema=_schema_with_defaults(
-                step_id=step_id, host=host, username=username
+                step_id=step_id,
+                host=host,
+                username=username,
+                include_orphan_channels=include_orphan_channels,
             ),
             errors=errors or {},
             description_placeholders=description_placeholders,
@@ -243,6 +263,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_HOST: self._host,
                 CONF_USERNAME: self._username,
                 CONF_PASSWORD: self._password,
+                CONF_INCLUDE_ORPHAN_CHANNELS: self._include_orphan_channels,
             },
         )
 
@@ -253,5 +274,6 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
             data_updates={
                 CONF_USERNAME: self._username,
                 CONF_PASSWORD: self._password,
+                CONF_INCLUDE_ORPHAN_CHANNELS: self._include_orphan_channels,
             },
         )

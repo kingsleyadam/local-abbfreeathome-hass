@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from abbfreeathome.api import FreeAtHomeApi, FreeAtHomeSettings
 from abbfreeathome.bin.interface import Interface
 from abbfreeathome.freeathome import FreeAtHome
@@ -10,8 +12,11 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.device_registry import DeviceEntry
 
-from .const import CONF_SERIAL, DOMAIN
+from .const import CONF_INCLUDE_ORPHAN_CHANNELS, CONF_SERIAL, DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
@@ -28,6 +33,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _free_at_home_settings = FreeAtHomeSettings(host=entry.data[CONF_HOST])
     await _free_at_home_settings.load()
 
+    # Attempt to fetch orphan channels config entry, if not found fallback to True
+    try:
+        _include_orphan_channels = entry.data[CONF_INCLUDE_ORPHAN_CHANNELS]
+    except KeyError:
+        _include_orphan_channels = True
+
     # Create the FreeAtHome Object
     _free_at_home = FreeAtHome(
         api=FreeAtHomeApi(
@@ -41,6 +52,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             Interface.WIRELESS_RF,
             Interface.VIRTUAL_DEVICE,
         ],
+        include_orphan_channels=_include_orphan_channels,
     )
 
     # Verify we can fetch the config from the api
@@ -86,3 +98,51 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, entry: ConfigEntry, device_entry: DeviceEntry
+) -> bool:
+    """Remove a config entry from a device."""
+
+    # Fetch the device serial.
+    device_serial = next(
+        iter(value for key, value in device_entry.identifiers if key == DOMAIN)
+    )
+
+    # Unload the device from the FreeAtHome class
+    free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
+    free_at_home.unload_device_by_device_serial(device_serial)
+
+    return True
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate old entry."""
+    _LOGGER.debug(
+        "Migrating configuration from version %s.%s",
+        entry.version,
+        entry.minor_version,
+    )
+
+    if entry.version > 1:
+        # This means the user has downgraded from a future version
+        return False
+
+    if entry.version == 1:
+        new_data = {**entry.data}
+
+        if entry.minor_version < 2:
+            new_data[CONF_INCLUDE_ORPHAN_CHANNELS] = True
+
+        hass.config_entries.async_update_entry(
+            entry, data=new_data, version=1, minor_version=2
+        )
+
+    _LOGGER.debug(
+        "Migration to configuration version %s.%s successful",
+        entry.version,
+        entry.minor_version,
+    )
+
+    return True
