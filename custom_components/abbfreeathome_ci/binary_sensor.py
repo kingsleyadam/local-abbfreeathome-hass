@@ -2,7 +2,9 @@
 
 from typing import Any
 
+from abbfreeathome.devices.carbon_monoxide_sensor import CarbonMonoxideSensor
 from abbfreeathome.devices.movement_detector import MovementDetector
+from abbfreeathome.devices.smoke_detector import SmokeDetector
 from abbfreeathome.devices.switch_sensor import SwitchSensor
 from abbfreeathome.devices.window_door_sensor import WindowDoorSensor
 from abbfreeathome.freeathome import FreeAtHome
@@ -20,12 +22,28 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import CONF_SERIAL, DOMAIN
 
 SENSOR_DESCRIPTIONS = {
+    "CarbonMonoxideSensorOnOff": {
+        "device_class": CarbonMonoxideSensor,
+        "value_attribute": "state",
+        "entity_description_kwargs": {
+            "device_class": BinarySensorDeviceClass.CO,
+            "translation_key": "carbon_monoxide_sensor",
+        },
+    },
     "MovementDetectorMotion": {
         "device_class": MovementDetector,
         "value_attribute": "state",
         "entity_description_kwargs": {
             "device_class": BinarySensorDeviceClass.MOTION,
             "translation_key": "movement_detector_motion",
+        },
+    },
+    "SmokeDetectorOnOff": {
+        "device_class": SmokeDetector,
+        "value_attribute": "state",
+        "entity_description_kwargs": {
+            "device_class": BinarySensorDeviceClass.SMOKE,
+            "translation_key": "smoke_detector",
         },
     },
     "SwitchSensorOnOff": {
@@ -78,7 +96,11 @@ class FreeAtHomeBinarySensorEntity(BinarySensorEntity):
 
     def __init__(
         self,
-        device: MovementDetector | SwitchSensor | WindowDoorSensor,
+        device: CarbonMonoxideSensor
+        | MovementDetector
+        | SmokeDetector
+        | SwitchSensor
+        | WindowDoorSensor,
         value_attribute: str,
         entity_description_kwargs: dict[str:Any],
         sysap_serial_number: str,
