@@ -8,17 +8,25 @@ Because of this, the integration will adhere to the strict [styling and code gui
 
 ## Device Support
 
-This is a new repo written from the ground up in tandem with the PyPi Package [local-abbfreeathome](https://pypi.org/project/local-abbfreeathome/#description) in order to communicate with the ABB Free@Home System over the **local** api. **The initial list of supported devices is 1 (Switch/Actuator).**
+The current list of supported devices by function are:
 
-The initial goal is to thoroughly test the integration (and by proxy the PyPi package) to ensure there are no bugs within the code. It's also to ensure it's feature and code complete (e.g. ZeroConf, UnitTests).
+| Function | Platform(s) |
+|--|--|
+| FID_SWITCH_ACTUATOR | `Switch` |
+| FID_SWITCH_SENSOR | `Binary Sensor`, `Event` |
+| FID_MOVEMENT_DETECTOR | `Binary Sensor`, `Sensor` |
+| FID_DIMMING_ACTUATOR | `Light` |
+| FID_WINDOW_DOOR_SENSOR | `Binary Sensor` |
+| FID_WINDOW_DOOR_POSITION_SENSOR | `Binary Sensor`, `Sensor` |
+| FID_SMOKE_DETECTOR | `Binary Sensor` |
+| FID_CARBON_MONOXIDE_SENSOR | `Binary Sensor` |
 
-Once this is feature and code complete it should provide a solid base as to which new devices can be integrated into. I (kingsleyadam) don't have access to the number of different ABB devices and would rely on others to either provide configurations, or contribute code directly in order to add additional device support. It'll be much easier long-term if the core code is stable.
-
-> **If you need support for additional devices I'd strongly reccomend you check out the repo [here](https://github.com/jheling/freeathome). That repo has been around for a long time and provides support for a number of devices.**
 
 ### Additional Devices
 
-If you would like your device supported in this integration, please start by opening a GitHub issue with the device configuration.
+This is a new repo written from the ground up in tandem with the PyPi Package [local-abbfreeathome](https://pypi.org/project/local-abbfreeathome/#description) in order to communicate with the ABB Free@Home System over the **local** api. **The list of supported functions may not include your device.** If you expect a device to appear and don't, please open a new issues and include the device configuration. To fetch your device configuration download the integration [diagnostics](#download-diagnostics).
+
+I (kingsleyadam) don't have access to the number of different ABB devices and would rely on others to either provide configurations, or contribute code directly in order to add additional device support.
 
 ## Installation
 
