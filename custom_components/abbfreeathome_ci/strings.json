@@ -74,10 +74,10 @@
       "window_position": {
         "name": "Window Position",
         "state": {
-          "UNKNOWN": "Unknown",
-          "CLOSED": "Closed",
-          "TILTED": "Tilted",
-          "OPEN": "Open"
+          "unknown": "Unknown",
+          "closed": "Closed",
+          "tilted": "Tilted",
+          "open": "Open"
         }
       }
     }
