@@ -5,7 +5,11 @@ from typing import Any
 from abbfreeathome.devices.switch_actuator import SwitchActuator
 from abbfreeathome.freeathome import FreeAtHome
 
-from homeassistant.components.switch import SwitchEntity
+from homeassistant.components.switch import (
+    SwitchDeviceClass,
+    SwitchEntity,
+    SwitchEntityDescription,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -37,9 +41,13 @@ class FreeAtHomeSwitchEntity(SwitchEntity):
         """Initialize the switch."""
         super().__init__()
         self._switch = switch
-        self._attr_unique_id = f"{switch.device_id}_{switch.channel_id}_switch"
-        self._attr_name = switch.channel_name
         self._sysap_serial_number = sysap_serial_number
+
+        self.entity_description = SwitchEntityDescription(
+            key="switch",
+            device_class=SwitchDeviceClass.SWITCH,
+            name=switch.channel_name,
+        )
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
@@ -65,6 +73,11 @@ class FreeAtHomeSwitchEntity(SwitchEntity):
     def is_on(self) -> bool | None:
         """Return state of the switch."""
         return self._switch.state
+
+    @property
+    def unique_id(self) -> str | None:
+        """Return a unique ID."""
+        return f"{self._switch.device_id}_{self._switch.channel_id}_switch"
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
