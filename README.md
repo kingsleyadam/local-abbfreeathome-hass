@@ -10,7 +10,7 @@ Because of this, the integration will adhere to the strict [styling and code gui
 
 The current list of supported devices by function are:
 
-| Function | Platform(s)
+| Function | Platform(s) |
 |--|--|
 | FID_SWITCH_ACTUATOR | `Switch` |
 | FID_SWITCH_SENSOR | `Binary Sensor`, `Event` |
