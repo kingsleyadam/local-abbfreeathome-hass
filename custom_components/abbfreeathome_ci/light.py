@@ -51,7 +51,6 @@ class FreeAtHomeLightEntity(LightEntity):
             key="light",
             name=light.channel_name,
         )
-        self._attr_unique_id = f"{light.device_id}_{light.channel_id}_light"
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
@@ -92,6 +91,11 @@ class FreeAtHomeLightEntity(LightEntity):
     def supported_color_modes(self) -> set[str] | None:
         """Flag supported color modes."""
         return {ColorMode.BRIGHTNESS}
+
+    @property
+    def unique_id(self) -> str | None:
+        """Return a unique ID."""
+        return f"{self._light.device_id}_{self._light.channel_id}_light"
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the light on."""
