@@ -19,35 +19,18 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_SERIAL, DOMAIN
 
-
-class FreeAtHomeSensorDescription:
-    """Class describing FreeAtHome sensor entities."""
-
-    def __init__(
-        self,
-        device_class: MovementDetector,
-        value_attribute: str,
-        entity_description_kwargs: dict[str:Any],
-    ) -> None:
-        """Initialize the FreeAtHomeSensorDescription class."""
-        self.device_class: MovementDetector = device_class
-        self.value_attribute: str = value_attribute
-        self.entity_description_kwargs = entity_description_kwargs
-
-
-SENSOR_DESCRIPTIONS: tuple[FreeAtHomeSensorDescription, ...] = (
-    FreeAtHomeSensorDescription(
-        device_class=MovementDetector,
-        value_attribute="brightness",
-        entity_description_kwargs={
-            "key": "MovementDetectorBrightness",
+SENSOR_DESCRIPTIONS = {
+    "MovementDetectorBrightness": {
+        "device_class": MovementDetector,
+        "value_attribute": "brightness",
+        "entity_description_kwargs": {
             "device_class": SensorDeviceClass.ILLUMINANCE,
             "native_unit_of_measurement": LIGHT_LUX,
             "state_class": SensorStateClass.MEASUREMENT,
             "translation_key": "movement_detector_brightness",
         },
-    ),
-)
+    }
+}
 
 
 async def async_setup_entry(
@@ -58,18 +41,19 @@ async def async_setup_entry(
     """Set up sensors."""
     free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
 
-    for description in SENSOR_DESCRIPTIONS:
+    for key, description in SENSOR_DESCRIPTIONS.items():
         async_add_entities(
             FreeAtHomeSensorEntity(
                 device,
-                value_attribute=description.value_attribute,
-                entity_description_kwargs=description.entity_description_kwargs,
+                value_attribute=description.get("value_attribute"),
+                entity_description_kwargs={"key": key}
+                | description.get("entity_description_kwargs"),
                 sysap_serial_number=entry.data[CONF_SERIAL],
             )
             for device in free_at_home.get_device_by_class(
-                device_class=description.device_class
+                device_class=description.get("device_class")
             )
-            if getattr(device, description.value_attribute) is not None
+            if getattr(device, description.get("value_attribute")) is not None
         )
 
 
@@ -98,10 +82,6 @@ class FreeAtHomeSensorEntity(SensorEntity):
             **entity_description_kwargs,
         )
 
-        self._attr_unique_id = (
-            f"{device.device_id}_{device.channel_id}_{self.entity_description.key}"
-        )
-
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
         self._device.register_callback(self.async_write_ha_state)
@@ -126,3 +106,8 @@ class FreeAtHomeSensorEntity(SensorEntity):
     def native_value(self) -> float | None:
         """Return state of the sensor."""
         return getattr(self._device, self._value_attribute)
+
+    @property
+    def unique_id(self) -> str | None:
+        """Return a unique ID."""
+        return f"{self._device.device_id}_{self._device.channel_id}_{self.entity_description.key}"

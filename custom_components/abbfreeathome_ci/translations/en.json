@@ -2,6 +2,7 @@
     "config": {
         "abort": {
             "already_configured": "Device is already configured",
+            "already_in_progress": "Configuration flow is already in progress",
             "reauth_successful": "Re-authentication was successful",
             "reconfigure_not_supported": "Reconfigure for this integration is only supported on Home Assistant version 2024.11.0 or newer.",
             "reconfigure_successful": "Re-configuration was successful"
@@ -50,6 +51,9 @@
             },
             "switch_sensor": {
                 "name": "Switch Sensor ({channel_id})"
+            },
+            "window_door": {
+                "name": "Window/Door"
             }
         },
         "event": {
