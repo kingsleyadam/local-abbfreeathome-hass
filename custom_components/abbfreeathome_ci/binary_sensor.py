@@ -19,52 +19,31 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_SERIAL, DOMAIN
 
-
-class FreeAtHomeBinarySensorDescription:
-    """Class describing FreeAtHome sensor entities."""
-
-    def __init__(
-        self,
-        device_class: MovementDetector | SwitchSensor | WindowDoorSensor,
-        value_attribute: str,
-        entity_description_kwargs: dict[str:Any],
-    ) -> None:
-        """Initialize the FreeAtHomeSensorDescription class."""
-        self.device_class: MovementDetector | SwitchSensor | WindowDoorSensor = (
-            device_class
-        )
-        self.value_attribute: str = value_attribute
-        self.entity_description_kwargs = entity_description_kwargs
-
-
-SENSOR_DESCRIPTIONS: tuple[FreeAtHomeBinarySensorDescription, ...] = (
-    FreeAtHomeBinarySensorDescription(
-        device_class=MovementDetector,
-        value_attribute="state",
-        entity_description_kwargs={
+SENSOR_DESCRIPTIONS = {
+    "MovementDetectorMotion": {
+        "device_class": MovementDetector,
+        "value_attribute": "state",
+        "entity_description_kwargs": {
             "device_class": BinarySensorDeviceClass.MOTION,
-            "key": "MovementDetectorMotion",
             "translation_key": "movement_detector_motion",
         },
-    ),
-    FreeAtHomeBinarySensorDescription(
-        device_class=SwitchSensor,
-        value_attribute="state",
-        entity_description_kwargs={
-            "key": "SwitchSensorOnOff",
+    },
+    "SwitchSensorOnOff": {
+        "device_class": SwitchSensor,
+        "value_attribute": "state",
+        "entity_description_kwargs": {
             "translation_key": "switch_sensor",
         },
-    ),
-    FreeAtHomeBinarySensorDescription(
-        device_class=WindowDoorSensor,
-        value_attribute="state",
-        entity_description_kwargs={
+    },
+    "WindowDoorSensorOnOff": {
+        "device_class": WindowDoorSensor,
+        "value_attribute": "state",
+        "entity_description_kwargs": {
             "device_class": BinarySensorDeviceClass.WINDOW,
-            "key": "WindowDoorSensorOnOff",
             "translation_key": "window_door",
         },
-    ),
-)
+    },
+}
 
 
 async def async_setup_entry(
@@ -75,18 +54,19 @@ async def async_setup_entry(
     """Set up binary sensor entities."""
     free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
 
-    for description in SENSOR_DESCRIPTIONS:
+    for key, description in SENSOR_DESCRIPTIONS.items():
         async_add_entities(
             FreeAtHomeBinarySensorEntity(
                 device,
-                value_attribute=description.value_attribute,
-                entity_description_kwargs=description.entity_description_kwargs,
+                value_attribute=description.get("value_attribute"),
+                entity_description_kwargs={"key": key}
+                | description.get("entity_description_kwargs"),
                 sysap_serial_number=entry.data[CONF_SERIAL],
             )
             for device in free_at_home.get_device_by_class(
-                device_class=description.device_class
+                device_class=description.get("device_class")
             )
-            if getattr(device, description.value_attribute) is not None
+            if getattr(device, description.get("value_attribute")) is not None
         )
 
 
@@ -111,17 +91,16 @@ class FreeAtHomeBinarySensorEntity(BinarySensorEntity):
 
         # If the channel name is different from the device name, it's likely
         # a dedicated sensor with it's own naming convention. Use it's channel name instead.
-        if device.channel_name != device.device_name:
+        if (
+            device.channel_name != device.device_name
+            and "translation_key" in entity_description_kwargs
+        ):
             entity_description_kwargs.pop("translation_key")
 
         self.entity_description = BinarySensorEntityDescription(
             name=device.channel_name,
             translation_placeholders={"channel_id": device.channel_id},
             **entity_description_kwargs,
-        )
-
-        self._attr_unique_id = (
-            f"{device.device_id}_{device.channel_id}_{self.entity_description.key}"
         )
 
     async def async_added_to_hass(self) -> None:
@@ -148,3 +127,8 @@ class FreeAtHomeBinarySensorEntity(BinarySensorEntity):
     def is_on(self) -> bool | None:
         """Return state of the binary sensor."""
         return getattr(self._device, self._value_attribute)
+
+    @property
+    def unique_id(self) -> str | None:
+        """Return a unique ID."""
+        return f"{self._device.device_id}_{self._device.channel_id}_{self.entity_description.key}"
