@@ -70,6 +70,15 @@
     "sensor": {
       "movement_detector_brightness": {
         "name": "Illuminance"
+      },
+      "window_position": {
+        "name": "Window Position",
+        "state": {
+          "unknown": "Unknown",
+          "closed": "[%key:common::state::closed%]",
+          "tilted": "Tilted",
+          "open": "[%key:common::state::open%]"
+        }
       }
     }
   }

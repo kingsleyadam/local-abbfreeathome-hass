@@ -3,6 +3,10 @@
 from typing import Any
 
 from abbfreeathome.devices.movement_detector import MovementDetector
+from abbfreeathome.devices.window_door_sensor import (
+    WindowDoorSensor,
+    WindowDoorSensorPosition,
+)
 from abbfreeathome.freeathome import FreeAtHome
 
 from homeassistant.components.sensor import (
@@ -29,7 +33,16 @@ SENSOR_DESCRIPTIONS = {
             "state_class": SensorStateClass.MEASUREMENT,
             "translation_key": "movement_detector_brightness",
         },
-    }
+    },
+    "WindowDoorSensorPosition": {
+        "device_class": WindowDoorSensor,
+        "value_attribute": "position",
+        "entity_description_kwargs": {
+            "device_class": SensorDeviceClass.ENUM,
+            "options": [position.name for position in WindowDoorSensorPosition],
+            "translation_key": "window_position",
+        },
+    },
 }
 
 
