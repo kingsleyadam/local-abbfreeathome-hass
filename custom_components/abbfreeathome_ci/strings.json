@@ -75,9 +75,9 @@
         "name": "Window Position",
         "state": {
           "unknown": "Unknown",
-          "closed": "Closed",
+          "closed": "[%key:common::state::closed%]",
           "tilted": "Tilted",
-          "open": "Open"
+          "open": "[%key:common::state::open%]"
         }
       }
     }
