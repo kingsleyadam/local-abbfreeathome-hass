@@ -40,7 +40,6 @@ SENSOR_DESCRIPTIONS = {
         "entity_description_kwargs": {
             "device_class": SensorDeviceClass.ENUM,
             "options": [position.name for position in WindowDoorSensorPosition],
-            "state_class": SensorStateClass.MEASUREMENT,
             "translation_key": "window_position",
         },
     },
