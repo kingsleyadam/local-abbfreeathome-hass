@@ -46,8 +46,14 @@
   },
   "entity": {
     "binary_sensor": {
+      "carbon_monoxide_sensor": {
+        "name": "Carbon Monoxide"
+      },
       "movement_detector_motion": {
         "name": "Motion"
+      },
+      "smoke_detector": {
+        "name": "Smoke Detector"
       },
       "switch_sensor": {
         "name": "Switch Sensor ({channel_id})"
