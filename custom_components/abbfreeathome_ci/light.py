@@ -32,7 +32,7 @@ async def async_setup_entry(
 
     async_add_entities(
         FreeAtHomeLightEntity(light, sysap_serial_number=entry.data[CONF_SERIAL])
-        for light in free_at_home.get_device_by_class(device_class=DimmingActuator)
+        for light in free_at_home.get_devices_by_class(device_class=DimmingActuator)
     )
 
 
