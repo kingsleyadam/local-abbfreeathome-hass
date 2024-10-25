@@ -22,7 +22,7 @@ async def async_setup_entry(
 
     async_add_entities(
         FreeAtHomeButtonEntity(button, sysap_serial_number=entry.data[CONF_SERIAL])
-        for button in free_at_home.get_device_by_class(device_class=Trigger)
+        for button in free_at_home.get_devices_by_class(device_class=Trigger)
     )
 
 

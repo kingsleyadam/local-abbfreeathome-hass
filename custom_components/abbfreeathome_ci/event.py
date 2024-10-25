@@ -57,7 +57,7 @@ async def async_setup_entry(
                 sysap_serial_number=entry.data[CONF_SERIAL],
                 event_type_callback=description.get("event_type_callback"),
             )
-            for device in free_at_home.get_device_by_class(
+            for device in free_at_home.get_devices_by_class(
                 device_class=description.get("device_class")
             )
         )

@@ -28,7 +28,7 @@ async def async_setup_entry(
 
     async_add_entities(
         FreeAtHomeSwitchEntity(switch, sysap_serial_number=entry.data[CONF_SERIAL])
-        for switch in free_at_home.get_device_by_class(device_class=SwitchActuator)
+        for switch in free_at_home.get_devices_by_class(device_class=SwitchActuator)
     )
 
 

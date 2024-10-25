@@ -81,7 +81,7 @@ async def async_setup_entry(
                 | description.get("entity_description_kwargs"),
                 sysap_serial_number=entry.data[CONF_SERIAL],
             )
-            for device in free_at_home.get_device_by_class(
+            for device in free_at_home.get_devices_by_class(
                 device_class=description.get("device_class")
             )
             if getattr(device, description.get("value_attribute")) is not None
