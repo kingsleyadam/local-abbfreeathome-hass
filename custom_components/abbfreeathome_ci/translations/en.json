@@ -63,8 +63,25 @@
             }
         },
         "event": {
+            "des_door_ringing_sensor": {
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "activated": "Activated"
+                        }
+                    }
+                }
+            },
             "switch_sensor": {
-                "name": "Switch Event ({channel_id})"
+                "name": "Switch Event ({channel_id})",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "off": "Off",
+                            "on": "On"
+                        }
+                    }
+                }
             }
         },
         "sensor": {
