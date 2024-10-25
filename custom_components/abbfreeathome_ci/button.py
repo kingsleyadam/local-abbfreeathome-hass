@@ -42,14 +42,6 @@ class FreeAtHomeButtonEntity(ButtonEntity):
             name=button.channel_name,
         )
 
-    async def async_added_to_hass(self) -> None:
-        """Run when this Entity has been added to HA."""
-        self._button.register_callback(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Entity being removed from hass."""
-        self._button.remove_callback(self.async_write_ha_state)
-
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
