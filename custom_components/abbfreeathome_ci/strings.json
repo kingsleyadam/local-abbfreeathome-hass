@@ -64,7 +64,24 @@
     },
     "event": {
       "switch_sensor": {
-        "name": "Switch Event ({channel_id})"
+        "name": "Switch Event ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "on": "[%key:common::state::on%]",
+              "off": "[%key:common::state::off%]"
+            }
+          }
+        }
+      },
+      "des_door_ringing_sensor": {
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "activated": "Activated"
+            }
+          }
+        }
       }
     },
     "sensor": {
