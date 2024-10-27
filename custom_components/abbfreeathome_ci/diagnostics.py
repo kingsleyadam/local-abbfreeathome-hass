@@ -21,35 +21,22 @@ TO_REDACT = {"latitude", "longitude", "sysapName", "uartSerialNumber"}
 
 def inject_function_pairing_parameter_names(device_list: list[dict]):
     """Inject the function, pairaing and parameter names into the list of devices."""
-    device_dict = {}
-    channel_dict = {}
 
     for _device_value in device_list.values():
-        device_dict.clear()
-        for _param_key, _param_value in _device_value.get("parameters").items():
+        _device_value["parameterNames"] = {}
+        for _device_param_key, _device_param_value in _device_value.get(
+            "parameters"
+        ).items():
             try:
-                device_dict[
-                    f"{Parameter(int(_param_key.lstrip("par"), 16)).name} - {_param_key}"
-                ] = _param_value
+                _device_value["parameterNames"][
+                    f"{Parameter(int(_device_param_key.lstrip("par"), 16)).name} ({_device_param_key})"
+                ] = _device_param_value
             except ValueError:
-                device_dict[f"UNKNOWN - {_param_key}"] = _param_value
-
-        _device_value["parameterNames"] = device_dict.copy()
+                _device_value["parameterNames"][f"UNKNOWN ({_device_param_key})"] = (
+                    _device_param_value
+                )
 
         for _channel_key, _channel_value in _device_value.get("channels").items():
-            channel_dict.clear()
-
-            try:
-                _channel_value["function"] = Function(
-                    int(_channel_value.get("functionID"), 16)
-                ).name
-            except ValueError:
-                _channel_value["function"] = "UNKNOWN"
-
-            _device_value["channels"][_channel_key] = OrderedDict(
-                sorted(_channel_value.items())
-            )
-
             for _input_key, _input_value in _channel_value.get("inputs").items():
                 try:
                     _input_value["pairing"] = Pairing(
@@ -74,15 +61,29 @@ def inject_function_pairing_parameter_names(device_list: list[dict]):
                     sorted(_output_value.items())
                 )
 
-            for _param_key, _param_value in _channel_value.get("parameters").items():
+            _channel_value["parameterNames"] = {}
+            for _channel_param_key, _channel_param_value in _channel_value.get(
+                "parameters"
+            ).items():
                 try:
-                    channel_dict[
-                        f"{Parameter(int(_param_key.lstrip("par"), 16)).name} - {_param_key}"
-                    ] = _param_value
+                    _channel_value["parameterNames"][
+                        f"{Parameter(int(_channel_param_key.lstrip("par"), 16)).name} ({_channel_param_key}="
+                    ] = _channel_param_value
                 except ValueError:
-                    channel_dict[f"UNKNOWN - {_param_key}"] = _param_value
+                    _channel_value["parameterNames"][
+                        f"UNKNOWN ({_channel_param_key})"
+                    ] = _channel_param_value
 
-            _channel_value["parameterNames"] = channel_dict.copy()
+            try:
+                _channel_value["function"] = Function(
+                    int(_channel_value.get("functionID"), 16)
+                ).name
+            except ValueError:
+                _channel_value["function"] = "UNKNOWN"
+
+            _device_value["channels"][_channel_key] = OrderedDict(
+                sorted(_channel_value.items())
+            )
 
 
 async def async_get_config_entry_diagnostics(
