@@ -67,7 +67,7 @@ def inject_function_pairing_parameter_names(device_list: list[dict]):
             ).items():
                 try:
                     _channel_value["parameterNames"][
-                        f"{Parameter(int(_channel_param_key.lstrip("par"), 16)).name} ({_channel_param_key}="
+                        f"{Parameter(int(_channel_param_key.lstrip("par"), 16)).name} ({_channel_param_key})"
                     ] = _channel_param_value
                 except ValueError:
                     _channel_value["parameterNames"][
