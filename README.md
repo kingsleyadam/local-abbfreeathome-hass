@@ -21,6 +21,10 @@ The current list of supported devices by function are:
 | FID_SMOKE_DETECTOR | `Binary Sensor` |
 | FID_CARBON_MONOXIDE_SENSOR | `Binary Sensor` |
 | FID_TRIGGER | `Button` |
+| FID_BRIGHTNESS_SENSOR | `Binary Sensor`, `Sensor` |
+| FID_RAIN_SENSOR | `Binary Sensor` |
+| FID_TEMPERATURE_SENSOR | `Binary Sensor`, `Sensor` |
+| FID_WIND_SENSOR | `Binary Sensor`, `Sensor` |
 
 
 ### Additional Devices

@@ -2,7 +2,10 @@
 
 from typing import Any
 
+from abbfreeathome.devices.brightness_sensor import BrightnessSensor
 from abbfreeathome.devices.movement_detector import MovementDetector
+from abbfreeathome.devices.temperature_sensor import TemperatureSensor
+from abbfreeathome.devices.wind_sensor import WindSensor
 from abbfreeathome.devices.window_door_sensor import (
     WindowDoorSensor,
     WindowDoorSensorPosition,
@@ -16,7 +19,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import LIGHT_LUX
+from homeassistant.const import LIGHT_LUX, UnitOfSpeed, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -24,6 +27,16 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import CONF_SERIAL, DOMAIN
 
 SENSOR_DESCRIPTIONS = {
+    "BrightnessSensor": {
+        "device_class": BrightnessSensor,
+        "value_attribute": "state",
+        "entity_description_kwargs": {
+            "device_class": SensorDeviceClass.ILLUMINANCE,
+            "native_unit_of_measurement": LIGHT_LUX,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "translation_key": "brightness_sensor",
+        },
+    },
     "MovementDetectorBrightness": {
         "device_class": MovementDetector,
         "value_attribute": "brightness",
@@ -41,6 +54,37 @@ SENSOR_DESCRIPTIONS = {
             "device_class": SensorDeviceClass.ENUM,
             "options": [position.name for position in WindowDoorSensorPosition],
             "translation_key": "window_position",
+        },
+    },
+    "TemperatureSensor": {
+        "device_class": TemperatureSensor,
+        "value_attribute": "state",
+        "entity_description_kwargs": {
+            "device_class": SensorDeviceClass.TEMPERATURE,
+            "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "translation_key": "temperature_sensor",
+        },
+    },
+    "WindSensorSpeed": {
+        "device_class": WindSensor,
+        "value_attribute": "state",
+        "entity_description_kwargs": {
+            "device_class": SensorDeviceClass.WIND_SPEED,
+            "native_unit_of_measurement": UnitOfSpeed.METERS_PER_SECOND,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "translation_key": "wind_sensor_speed",
+        },
+    },
+    "WindSensorForce": {
+        "device_class": WindSensor,
+        "value_attribute": "force",
+        "entity_description_kwargs": {
+            "device_class": SensorDeviceClass.WIND_SPEED,
+            "native_unit_of_measurement": UnitOfSpeed.BEAUFORT,
+            "suggested_unit_of_measurement": UnitOfSpeed.BEAUFORT,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "translation_key": "wind_sensor_force",
         },
     },
 }
@@ -78,7 +122,7 @@ class FreeAtHomeSensorEntity(SensorEntity):
 
     def __init__(
         self,
-        device: MovementDetector,
+        device: BrightnessSensor | MovementDetector | TemperatureSensor | WindSensor,
         value_attribute: str,
         entity_description_kwargs: dict[str:Any],
         sysap_serial_number: str,
