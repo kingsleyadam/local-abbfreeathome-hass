@@ -2,10 +2,14 @@
 
 from typing import Any
 
+from abbfreeathome.devices.brightness_sensor import BrightnessSensor
 from abbfreeathome.devices.carbon_monoxide_sensor import CarbonMonoxideSensor
 from abbfreeathome.devices.movement_detector import MovementDetector
+from abbfreeathome.devices.rain_sensor import RainSensor
 from abbfreeathome.devices.smoke_detector import SmokeDetector
 from abbfreeathome.devices.switch_sensor import SwitchSensor
+from abbfreeathome.devices.temperature_sensor import TemperatureSensor
+from abbfreeathome.devices.wind_sensor import WindSensor
 from abbfreeathome.devices.window_door_sensor import WindowDoorSensor
 from abbfreeathome.freeathome import FreeAtHome
 
@@ -61,6 +65,38 @@ SENSOR_DESCRIPTIONS = {
             "translation_key": "window_door",
         },
     },
+    "RainSensorOnOff": {
+        "device_class": RainSensor,
+        "value_attribute": "state",
+        "entity_description_kwargs": {
+            "device_class": BinarySensorDeviceClass.MOISTURE,
+            "translation_key": "rain_sensor",
+        },
+    },
+    "BrightnessSensorOnOff": {
+        "device_class": BrightnessSensor,
+        "value_attribute": "alarm",
+        "entity_description_kwargs": {
+            "device_class": BinarySensorDeviceClass.LIGHT,
+            "translation_key": "brightness_sensor",
+        },
+    },
+    "TemperatureSensorOnOff": {
+        "device_class": TemperatureSensor,
+        "value_attribute": "alarm",
+        "entity_description_kwargs": {
+            "device_class": BinarySensorDeviceClass.COLD,
+            "translation_key": "temperature_sensor",
+        },
+    },
+    "WindSensorOnOff": {
+        "device_class": WindSensor,
+        "value_attribute": "alarm",
+        "entity_description_kwargs": {
+            "device_class": BinarySensorDeviceClass.MOVING,
+            "translation_key": "wind_sensor",
+        },
+    },
 }
 
 
@@ -96,11 +132,15 @@ class FreeAtHomeBinarySensorEntity(BinarySensorEntity):
 
     def __init__(
         self,
-        device: CarbonMonoxideSensor
+        device: BrightnessSensor
+        | CarbonMonoxideSensor
         | MovementDetector
+        | RainSensor
         | SmokeDetector
         | SwitchSensor
-        | WindowDoorSensor,
+        | TemperatureSensor
+        | WindowDoorSensor
+        | WindSensor,
         value_attribute: str,
         entity_description_kwargs: dict[str:Any],
         sysap_serial_number: str,

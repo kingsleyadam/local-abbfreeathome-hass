@@ -46,17 +46,29 @@
   },
   "entity": {
     "binary_sensor": {
+      "brightness_sensor": {
+        "name": "Brightness Alarm"
+      },
       "carbon_monoxide_sensor": {
         "name": "Carbon Monoxide"
       },
       "movement_detector_motion": {
         "name": "Motion"
       },
+      "rain_sensor": {
+        "name": "Rain Alarm"
+      },
       "smoke_detector": {
         "name": "Smoke Detector"
       },
       "switch_sensor": {
         "name": "Switch Sensor ({channel_id})"
+      },
+      "temperature_sensor": {
+        "name": "Frost Alarm"
+      },
+      "wind_sensor": {
+        "name": "Wind Alarm"
       },
       "window_door": {
         "name": "Window/Door"
@@ -85,8 +97,20 @@
       }
     },
     "sensor": {
+      "brightness_sensor": {
+        "name": "Illuminance"
+      },
       "movement_detector_brightness": {
         "name": "Illuminance"
+      },
+      "temperature_sensor": {
+        "name": "Temperature"
+      },
+      "wind_sensor_speed": {
+        "name": "Wind Speed"
+      },
+      "wind_sensor_force": {
+        "name": "Wind Force"
       },
       "window_position": {
         "name": "Window Position",
