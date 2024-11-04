@@ -60,11 +60,11 @@ async def validate_settings(host: str) -> tuple[FreeAtHomeSettings, dict[str, An
 
     try:
         await settings.load()
+
+        if Version(settings.version) < Version("2.6.0"):
+            errors["base"] = "unsupported_sysap_version"
     except InvalidHostException:
         errors["base"] = "cannot_connect"
-
-    if Version(settings.version) < Version("2.6.0"):
-        errors["base"] = "unsupported_sysap_version"
 
     return settings, errors
 
@@ -116,7 +116,8 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
 
         # Check/Get Settings
         settings, settings_errors = await validate_settings(host=user_input[CONF_HOST])
-        self._sysap_version = settings.version
+        if settings_errors["base"] != "cannot_connect":
+            self._sysap_version = settings.version
         if settings_errors:
             return self._async_show_setup_form(step_id="user", errors=settings_errors)
 
@@ -153,12 +154,12 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._host = f"http://{discovery_info.ip_address.exploded}"
         settings, errors = await validate_settings(host=self._host)
 
+        if errors:
+            return self.async_abort(reason="invalid_settings")
+
         self._serial_number = settings.serial_number
         self._name = settings.name
         self._title = f"{settings.name} ({settings.serial_number})"
-
-        if errors:
-            return self.async_abort(reason="invalid_settings")
 
         await self.async_set_unique_id(settings.serial_number)
         self._abort_if_unique_id_configured(updates={CONF_HOST: self._host})
