@@ -10,7 +10,8 @@
         "error": {
             "cannot_connect": "Failed to connect",
             "invalid_auth": "Invalid authentication",
-            "unknown": "Unexpected error"
+            "unknown": "Unexpected error",
+            "unsupported_sysap_version": "The current version {sysap_version} of the SysAP is not supported. Only version 2.6.0 or newer is supported."
         },
         "step": {
             "reconfigure": {
@@ -106,11 +107,11 @@
             "temperature_sensor": {
                 "name": "Temperature"
             },
-            "wind_sensor_speed": {
-                "name": "Wind Speed"
-            },
             "wind_sensor_force": {
                 "name": "Wind Force"
+            },
+            "wind_sensor_speed": {
+                "name": "Wind Speed"
             },
             "window_position": {
                 "name": "Window Position",

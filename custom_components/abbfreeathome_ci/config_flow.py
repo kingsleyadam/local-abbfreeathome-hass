@@ -14,6 +14,7 @@ from abbfreeathome.api import (
     InvalidCredentialsException,
     InvalidHostException,
 )
+from packaging.version import Version
 import voluptuous as vol
 
 from homeassistant.components import zeroconf
@@ -25,7 +26,7 @@ from homeassistant.config_entries import (
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import callback
 
-from .const import CONF_INCLUDE_ORPHAN_CHANNELS, CONF_SERIAL, DOMAIN
+from .const import CONF_INCLUDE_ORPHAN_CHANNELS, CONF_SERIAL, DOMAIN, SYSAP_VERSION
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ def _schema_with_defaults(
     )
 
 
-async def validate_settings(host: str) -> dict[str, Any]:
+async def validate_settings(host: str) -> tuple[FreeAtHomeSettings, dict[str, Any]]:
     """Validate the settings endpoint."""
     errors: dict[str, str] = {}
     settings: FreeAtHomeSettings = FreeAtHomeSettings(host=host)
@@ -62,7 +63,10 @@ async def validate_settings(host: str) -> dict[str, Any]:
     except InvalidHostException:
         errors["base"] = "cannot_connect"
 
-    return settings.name, settings.serial_number, errors
+    if Version(settings.version) < Version("2.6.0"):
+        errors["base"] = "unsupported_sysap_version"
+
+    return settings, errors
 
 
 async def validate_api(host: str, username: str, password: str) -> dict[str, Any]:
@@ -98,6 +102,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._name: str | None = None
         self._password: str | None = None
         self._serial_number: str | None = None
+        self._sysap_version: str | None = None
         self._title: str | None = None
         self._username: str | None = None
         self._include_orphan_channels: bool = False
@@ -109,25 +114,27 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is None:
             return self._async_show_setup_form(step_id="user")
 
-        name, serial_number, settings_errors = await validate_settings(
-            host=user_input[CONF_HOST]
-        )
+        # Check/Get Settings
+        settings, settings_errors = await validate_settings(host=user_input[CONF_HOST])
+        self._sysap_version = settings.version
+        if settings_errors:
+            return self._async_show_setup_form(step_id="user", errors=settings_errors)
+
+        # Check for API Errors
         api_errors = await validate_api(
             host=user_input[CONF_HOST],
             username=user_input[CONF_USERNAME],
             password=user_input[CONF_PASSWORD],
         )
-        errors = settings_errors | api_errors
+        if api_errors:
+            return self._async_show_setup_form(step_id="user", errors=api_errors)
 
-        if errors:
-            return self._async_show_setup_form(step_id="user", errors=errors)
-
-        await self.async_set_unique_id(serial_number)
+        await self.async_set_unique_id(settings.serial_number)
         self._abort_if_unique_id_configured()
 
-        self._serial_number = serial_number
-        self._name = name
-        self._title = f"{name} ({serial_number})"
+        self._serial_number = settings.serial_number
+        self._name = settings.name
+        self._title = f"{settings.name} ({settings.serial_number})"
 
         self._host = user_input[CONF_HOST]
         self._username = user_input[CONF_USERNAME]
@@ -144,16 +151,16 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="not_ipv4address")
 
         self._host = f"http://{discovery_info.ip_address.exploded}"
-        name, serial_number, errors = await validate_settings(host=self._host)
+        settings, errors = await validate_settings(host=self._host)
 
-        self._serial_number = serial_number
-        self._name = name
-        self._title = f"{name} ({serial_number})"
+        self._serial_number = settings.serial_number
+        self._name = settings.name
+        self._title = f"{settings.name} ({settings.serial_number})"
 
         if errors:
             return self.async_abort(reason="invalid_settings")
 
-        await self.async_set_unique_id(serial_number)
+        await self.async_set_unique_id(settings.serial_number)
         self._abort_if_unique_id_configured(updates={CONF_HOST: self._host})
         self.context["title_placeholders"] = {CONF_NAME: self._title}
 
@@ -240,6 +247,8 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             description_placeholders[CONF_SERIAL] = self._serial_number
         if self._name:
             description_placeholders[CONF_NAME] = self._name
+        if self._sysap_version:
+            description_placeholders[SYSAP_VERSION] = self._sysap_version
 
         return self.async_show_form(
             step_id=step_id,
