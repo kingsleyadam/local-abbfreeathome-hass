@@ -1,6 +1,6 @@
 {
   "domain": "abbfreeathome_ci",
-  "name": "Busch/ABB-free@home",
+  "name": "ABB-free@home",
   "codeowners": ["@kingsleyadam"],
   "config_flow": true,
   "dependencies": [],
