@@ -1,6 +1,6 @@
 # Home Assistant Integration - ABB-free@home
 
-This is a custom component to integrate with [Home Assistant](https://www.home-assistant.io/) for the Busch Jaeger/ABB-free@home system over the **local api server**.
+This is a custom component to integrate with [Home Assistant](https://www.home-assistant.io/) for the Busch/ABB-free@home system over the **local api server**.
 
 The primary goal of this repository is to provide initial testing for the integration into Home Assistant. The ultimate goal of this integration is to be merged into the Home Assistant code as a built-in integration.
 
