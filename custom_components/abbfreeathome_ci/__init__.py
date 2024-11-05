@@ -1,4 +1,4 @@
-"""The ABB free@home integration."""
+"""The ABB-free@home integration."""
 
 from __future__ import annotations
 
@@ -28,9 +28,9 @@ PLATFORMS: list[Platform] = [
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up ABB free@home from a config entry."""
+    """Set up ABB-free@home from a config entry."""
 
-    # Get settings from Free@Home SysAP
+    # Get settings from free@home SysAP
     _free_at_home_settings = FreeAtHomeSettings(host=entry.data[CONF_HOST])
     await _free_at_home_settings.load()
 

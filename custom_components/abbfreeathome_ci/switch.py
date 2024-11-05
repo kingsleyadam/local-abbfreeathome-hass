@@ -1,4 +1,4 @@
-"""Create ABB Free@Home switch entities."""
+"""Create ABB-free@home switch entities."""
 
 from typing import Any
 
@@ -33,7 +33,7 @@ async def async_setup_entry(
 
 
 class FreeAtHomeSwitchEntity(SwitchEntity):
-    """Defines a Free@Home switch entity."""
+    """Defines a free@home switch entity."""
 
     _attr_should_poll: bool = False
 

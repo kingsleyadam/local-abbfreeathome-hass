@@ -1,4 +1,4 @@
-"""Create ABB Free@Home sensor entities."""
+"""Create ABB-free@home sensor entities."""
 
 from typing import Any
 
@@ -115,7 +115,7 @@ async def async_setup_entry(
 
 
 class FreeAtHomeSensorEntity(SensorEntity):
-    """Defines a Free@Home sensor entity."""
+    """Defines a free@home sensor entity."""
 
     _attr_should_poll: bool = False
     _attr_has_entity_name: bool = True

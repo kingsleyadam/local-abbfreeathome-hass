@@ -1,4 +1,4 @@
-"""Diagnostics support for ABB Free@Home."""
+"""Diagnostics support for ABB-free@home."""
 
 from __future__ import annotations
 

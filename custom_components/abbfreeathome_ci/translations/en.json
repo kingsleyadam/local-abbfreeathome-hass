@@ -1,127 +1,127 @@
 {
-    "config": {
-        "abort": {
-            "already_configured": "Device is already configured",
-            "already_in_progress": "Configuration flow is already in progress",
-            "reauth_successful": "Re-authentication was successful",
-            "reconfigure_not_supported": "Reconfigure for this integration is only supported on Home Assistant version 2024.11.0 or newer.",
-            "reconfigure_successful": "Re-configuration was successful"
-        },
-        "error": {
-            "cannot_connect": "Failed to connect",
-            "invalid_auth": "Invalid authentication",
-            "unknown": "Unexpected error",
-            "unsupported_sysap_version": "The current version {sysap_version} of the SysAP is not supported. Only version 2.6.0 or newer is supported."
-        },
-        "step": {
-            "reconfigure": {
-                "data": {
-                    "include_orphan_channels": "Include channels NOT on the Free@Home floorplan?",
-                    "password": "Password",
-                    "username": "Username"
-                },
-                "description": "Do you want reconfigure {name} ({serial}) at {host}?",
-                "title": "Free@Home - Reconfigure"
-            },
-            "user": {
-                "data": {
-                    "host": "Host",
-                    "include_orphan_channels": "Include channels NOT on the Free@Home floorplan?",
-                    "password": "Password",
-                    "username": "Username"
-                },
-                "description": "Enter the hostname/ip address (with schema, e.g. http://), username, and password of your Free@Home SysAP to integrate with Home Assistant.",
-                "title": "Free@Home - Configure"
-            },
-            "zeroconf_confirm": {
-                "data": {
-                    "host": "Host",
-                    "include_orphan_channels": "Include channels NOT on the Free@Home floorplan?",
-                    "password": "Password",
-                    "username": "Username"
-                },
-                "description": "Do you want to set up {name} ({serial}) at {host}?",
-                "title": "Free@Home - Confirm"
-            }
-        }
+  "config": {
+    "abort": {
+      "already_configured": "Device is already configured",
+      "already_in_progress": "Configuration flow is already in progress",
+      "reauth_successful": "Re-authentication was successful",
+      "reconfigure_not_supported": "Reconfigure for this integration is only supported on Home Assistant version 2024.11.0 or newer.",
+      "reconfigure_successful": "Re-configuration was successful"
     },
-    "entity": {
-        "binary_sensor": {
-            "brightness_sensor": {
-                "name": "Brightness Alarm"
-            },
-            "carbon_monoxide_sensor": {
-                "name": "Carbon Monoxide"
-            },
-            "movement_detector_motion": {
-                "name": "Motion"
-            },
-            "rain_sensor": {
-                "name": "Rain Alarm"
-            },
-            "smoke_detector": {
-                "name": "Smoke Detector"
-            },
-            "switch_sensor": {
-                "name": "Switch Sensor ({channel_id})"
-            },
-            "temperature_sensor": {
-                "name": "Frost Alarm"
-            },
-            "wind_sensor": {
-                "name": "Wind Alarm"
-            },
-            "window_door": {
-                "name": "Window/Door"
-            }
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_auth": "Invalid authentication",
+      "unknown": "Unexpected error",
+      "unsupported_sysap_version": "The current version {sysap_version} of the SysAP is not supported. Only version 2.6.0 or newer is supported."
+    },
+    "step": {
+      "reconfigure": {
+        "data": {
+          "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
+          "password": "Password",
+          "username": "Username"
         },
-        "event": {
-            "des_door_ringing_sensor": {
-                "state_attributes": {
-                    "event_type": {
-                        "state": {
-                            "activated": "Activated"
-                        }
-                    }
-                }
-            },
-            "switch_sensor": {
-                "name": "Switch Event ({channel_id})",
-                "state_attributes": {
-                    "event_type": {
-                        "state": {
-                            "off": "Off",
-                            "on": "On"
-                        }
-                    }
-                }
-            }
+        "description": "Do you want reconfigure {name} ({serial}) at {host}?",
+        "title": "ABB-free@home - Reconfigure"
+      },
+      "user": {
+        "data": {
+          "host": "Host",
+          "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
+          "password": "Password",
+          "username": "Username"
         },
-        "sensor": {
-            "brightness_sensor": {
-                "name": "Illuminance"
-            },
-            "movement_detector_brightness": {
-                "name": "Illuminance"
-            },
-            "temperature_sensor": {
-                "name": "Temperature"
-            },
-            "wind_sensor_force": {
-                "name": "Wind Force"
-            },
-            "wind_sensor_speed": {
-                "name": "Wind Speed"
-            },
-            "window_position": {
-                "name": "Window Position",
-                "state": {
-                    "closed": "Closed",
-                    "open": "Open",
-                    "tilted": "Tilted",
-                    "unknown": "Unknown"
-                }
-            }
-        }
+        "description": "Enter the hostname/ip address (with schema, e.g. http://), username, and password of your ABB-free@home SysAP to integrate with Home Assistant.",
+        "title": "ABB-free@home - Configure"
+      },
+      "zeroconf_confirm": {
+        "data": {
+          "host": "Host",
+          "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
+          "password": "Password",
+          "username": "Username"
+        },
+        "description": "Do you want to set up {name} ({serial}) at {host}?",
+        "title": "ABB-free@home - Confirm"
+      }
     }
+  },
+  "entity": {
+    "binary_sensor": {
+      "brightness_sensor": {
+        "name": "Brightness Alarm"
+      },
+      "carbon_monoxide_sensor": {
+        "name": "Carbon Monoxide"
+      },
+      "movement_detector_motion": {
+        "name": "Motion"
+      },
+      "rain_sensor": {
+        "name": "Rain Alarm"
+      },
+      "smoke_detector": {
+        "name": "Smoke Detector"
+      },
+      "switch_sensor": {
+        "name": "Switch Sensor ({channel_id})"
+      },
+      "temperature_sensor": {
+        "name": "Frost Alarm"
+      },
+      "wind_sensor": {
+        "name": "Wind Alarm"
+      },
+      "window_door": {
+        "name": "Window/Door"
+      }
+    },
+    "event": {
+      "des_door_ringing_sensor": {
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "activated": "Activated"
+            }
+          }
+        }
+      },
+      "switch_sensor": {
+        "name": "Switch Event ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "off": "Off",
+              "on": "On"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "brightness_sensor": {
+        "name": "Illuminance"
+      },
+      "movement_detector_brightness": {
+        "name": "Illuminance"
+      },
+      "temperature_sensor": {
+        "name": "Temperature"
+      },
+      "wind_sensor_force": {
+        "name": "Wind Force"
+      },
+      "wind_sensor_speed": {
+        "name": "Wind Speed"
+      },
+      "window_position": {
+        "name": "Window Position",
+        "state": {
+          "closed": "Closed",
+          "open": "Open",
+          "tilted": "Tilted",
+          "unknown": "Unknown"
+        }
+      }
+    }
+  }
 }

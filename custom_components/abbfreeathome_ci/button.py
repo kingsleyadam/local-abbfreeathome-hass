@@ -1,4 +1,4 @@
-"""Create ABB Free@Home button entities."""
+"""Create ABB-free@home button entities."""
 
 from abbfreeathome.devices.trigger import Trigger
 from abbfreeathome.freeathome import FreeAtHome
@@ -27,7 +27,7 @@ async def async_setup_entry(
 
 
 class FreeAtHomeButtonEntity(ButtonEntity):
-    """Defines a Free@Home button entity."""
+    """Defines a free@home button entity."""
 
     _attr_should_poll: bool = False
 

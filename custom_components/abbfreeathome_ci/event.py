@@ -1,4 +1,4 @@
-"""Create ABB Free@Home event entities."""
+"""Create ABB-free@home event entities."""
 
 from typing import Any
 
@@ -64,7 +64,7 @@ async def async_setup_entry(
 
 
 class FreeAtHomeEventEntity(EventEntity):
-    """Free@Home Event Entity."""
+    """free@home Event Entity."""
 
     _attr_has_entity_name: bool = True
 
