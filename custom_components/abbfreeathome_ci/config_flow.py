@@ -123,7 +123,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
 
         # Check/Get Settings
         settings, settings_errors = await validate_settings(host=user_input[CONF_HOST])
-        if settings_errors["base"] != "cannot_connect":
+        if settings_errors.get("base") != "cannot_connect":
             self._sysap_version = settings.version
         if settings_errors:
             return self._async_show_setup_form(step_id="user", errors=settings_errors)
