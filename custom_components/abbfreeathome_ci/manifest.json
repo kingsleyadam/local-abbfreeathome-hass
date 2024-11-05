@@ -1,6 +1,6 @@
 {
   "domain": "abbfreeathome_ci",
-  "name": "Busch Jaeger/ABB Free@Home (Local API)",
+  "name": "ABB-free@home",
   "codeowners": ["@kingsleyadam"],
   "config_flow": true,
   "dependencies": [],

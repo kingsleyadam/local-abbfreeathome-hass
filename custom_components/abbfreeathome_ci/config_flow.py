@@ -1,4 +1,4 @@
-"""Config flow for ABB free@home integration."""
+"""Config flow for ABB-free@home integration."""
 
 from __future__ import annotations
 
@@ -97,7 +97,7 @@ async def validate_api(host: str, username: str, password: str) -> dict[str, Any
 
 
 class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for ABB free@home."""
+    """Handle a config flow for ABB-free@home."""
 
     VERSION = 1
     MINOR_VERSION = 2

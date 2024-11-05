@@ -1,4 +1,4 @@
-"""Constants for the ABB free@home integration."""
+"""Constants for the ABB-free@home integration."""
 
 DOMAIN = "abbfreeathome_ci"
 

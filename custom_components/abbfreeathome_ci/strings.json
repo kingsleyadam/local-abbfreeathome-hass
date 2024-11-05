@@ -2,32 +2,32 @@
   "config": {
     "step": {
       "user": {
-        "title": "Free@Home - Configure",
-        "description": "Enter the hostname/ip address (with schema, e.g. http://), username, and password of your Free@Home SysAP to integrate with Home Assistant.",
+        "title": "ABB-free@home - Configure",
+        "description": "Enter the hostname/ip address (with schema, e.g. http://), username, and password of your ABB-free@home SysAP to integrate with Home Assistant.",
         "data": {
           "host": "[%key:common::config_flow::data::host%]",
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]",
-          "include_orphan_channels": "Include channels NOT on the Free@Home floorplan?"
+          "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?"
         }
       },
       "zeroconf_confirm": {
-        "title": "Free@Home - Confirm",
+        "title": "ABB-free@home - Confirm",
         "description": "Do you want to set up {name} ({serial}) at {host}?",
         "data": {
           "host": "[%key:common::config_flow::data::host%]",
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]",
-          "include_orphan_channels": "Include channels NOT on the Free@Home floorplan?"
+          "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?"
         }
       },
       "reconfigure": {
-        "title": "Free@Home - Reconfigure",
+        "title": "ABB-free@home - Reconfigure",
         "description": "Do you want reconfigure {name} ({serial}) at {host}?",
         "data": {
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]",
-          "include_orphan_channels": "Include channels NOT on the Free@Home floorplan?"
+          "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?"
         }
       }
     },
