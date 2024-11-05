@@ -6,6 +6,15 @@ The primary goal of this repository is to provide initial testing for the integr
 
 Because of this, the integration will adhere to the strict [styling and code guidelines](https://developers.home-assistant.io/docs/development_guidelines/) provided by Home Assistant.
 
+## Prerequisites
+
+There are two main prerequisites before being able to use this integration.
+
+- ABB-free@home System Access Point 2.0
+- System Access Point running version 2.6.0 or newer
+
+[ABB-free@home Local API Prerequisites](https://developer.eu.mybuildings.abb.com/fah_local/prerequisites)
+
 ## Device Support
 
 The current list of supported devices by function are:
