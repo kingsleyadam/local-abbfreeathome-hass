@@ -8,6 +8,7 @@ import logging
 from typing import Any
 
 from abbfreeathome.api import (
+    ClientConnectionError,
     ForbiddenAuthException,
     FreeAtHomeApi,
     FreeAtHomeSettings,
@@ -65,6 +66,9 @@ async def validate_settings(host: str) -> tuple[FreeAtHomeSettings, dict[str, An
             errors["base"] = "unsupported_sysap_version"
     except InvalidHostException:
         errors["base"] = "cannot_connect"
+    except ClientConnectionError:
+        errors["base"] = "cannot_connect"
+        _LOGGER.exception("Client Connection Error")
 
     return settings, errors
 
@@ -82,6 +86,9 @@ async def validate_api(host: str, username: str, password: str) -> dict[str, Any
         errors["base"] = "invalid_auth"
     except InvalidHostException:
         errors["base"] = "cannot_connect"
+    except ClientConnectionError:
+        errors["base"] = "cannot_connect"
+        _LOGGER.exception("Client Connection Error")
     except Exception:
         _LOGGER.exception("Unexpected exception")
         errors["base"] = "unknown"
