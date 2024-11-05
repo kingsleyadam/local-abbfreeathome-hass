@@ -1,4 +1,4 @@
-# Home Assistant Integration - ABB-free@home
+# Home Assistant Integration - Busch/ABB-free@home
 
 This is a custom component to integrate with [Home Assistant](https://www.home-assistant.io/) for the Busch/ABB-free@home system over the **local api server**.
 
