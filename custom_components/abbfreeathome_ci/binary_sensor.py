@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from abbfreeathome.devices.blind_sensor import BlindSensor
 from abbfreeathome.devices.brightness_sensor import BrightnessSensor
 from abbfreeathome.devices.carbon_monoxide_sensor import CarbonMonoxideSensor
 from abbfreeathome.devices.movement_detector import MovementDetector
@@ -55,6 +56,20 @@ SENSOR_DESCRIPTIONS = {
         "value_attribute": "state",
         "entity_description_kwargs": {
             "translation_key": "switch_sensor",
+        },
+    },
+    "BlindSensorShort": {
+        "device_class": BlindSensor,
+        "value_attribute": "state",
+        "entity_description_kwargs": {
+            "translation_key": "blind_sensor_short",
+        },
+    },
+    "BlindSensorLong": {
+        "device_class": BlindSensor,
+        "value_attribute": "longpress",
+        "entity_description_kwargs": {
+            "translation_key": "blind_sensor_long",
         },
     },
     "WindowDoorSensorOnOff": {

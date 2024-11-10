@@ -65,6 +65,12 @@
       "switch_sensor": {
         "name": "Switch Sensor ({channel_id})"
       },
+      "blind_sensor_short": {
+        "name": "Blind Sensor Short ({channel_id})"
+      },
+      "blind_sensor_long": {
+        "name": "Blind Sensor Long ({channel_id})"
+      },
       "temperature_sensor": {
         "name": "Frost Alarm"
       },
@@ -87,6 +93,28 @@
       },
       "switch_sensor": {
         "name": "Switch Event ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "off": "Off",
+              "on": "On"
+            }
+          }
+        }
+      },
+      "blind_sensor_short": {
+        "name": "Blind Event Short ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "off": "Off",
+              "on": "On"
+            }
+          }
+        }
+      },
+      "blind_sensor_long": {
+        "name": "Blind Event Long ({channel_id})",
         "state_attributes": {
           "event_type": {
             "state": {

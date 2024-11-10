@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from abbfreeathome.devices.blind_sensor import BlindSensor
 from abbfreeathome.devices.des_door_ringing_sensor import DesDoorRingingSensor
 from abbfreeathome.devices.switch_sensor import SwitchSensor
 from abbfreeathome.freeathome import FreeAtHome
@@ -26,6 +27,24 @@ EVENT_DESCRIPTIONS = {
             "device_class": EventDeviceClass.BUTTON,
             "event_types": ["on", "off"],
             "translation_key": "switch_sensor",
+        },
+    },
+    "EventBlindSensorShort": {
+        "device_class": BlindSensor,
+        "event_type_callback": lambda state: "on" if state else "off",
+        "entity_description_kwargs": {
+            "device_class": EventDeviceClass.BUTTON,
+            "event_types": ["on", "off"],
+            "translation_key": "blind_sensor_short",
+        },
+    },
+    "EventBlindSensorLong": {
+        "device_class": BlindSensor,
+        "event_type_callback": lambda longpress: "on" if longpress else "off",
+        "entity_description_kwargs": {
+            "device_class": EventDeviceClass.BUTTON,
+            "event_types": ["on", "off"],
+            "translation_key": "blind_sensor_long",
         },
     },
     "DesDoorRingingSensorActivated": {
