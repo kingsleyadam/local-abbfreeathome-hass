@@ -1,8 +1,10 @@
 # Home Assistant Integration - ABB-free@home
 
+![GitHub Release](https://img.shields.io/github/v/release/kingsleyadam/local-abbfreeathome-hass) ![hassfest](https://github.com/kingsleyadam/local-abbfreeathome-hass/actions/workflows/hassfest.yaml/badge.svg) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 This is a custom component to integrate with [Home Assistant](https://www.home-assistant.io/) for the ABB-free@home system over the **local api server**.
 
-The primary goal of this repository is to provide initial testing for the integration into Home Assistant. The ultimate goal of this integration is to be merged into the Home Assistant code as a built-in integration.
+The primary goal of this repository is to provide initial development for the integration into Home Assistant. The ultimate goal of this integration is to be merged into the Home Assistant code as a built-in integration.
 
 Because of this, the integration will adhere to the strict [styling and code guidelines](https://developers.home-assistant.io/docs/development_guidelines/) provided by Home Assistant.
 
@@ -45,13 +47,13 @@ I (kingsleyadam) don't have access to the number of different ABB devices and wo
 
 ### HACS
 
-The easiest way to add this custom integration is via HACS which the repo has been setup to support. With HACS setup on your Home Assistant installation you'll need to add this repo it as a [custom repository](https://www.hacs.xyz/docs/faq/custom_repositories/).
+The easiest way to add this custom integration is via [HACS](https://www.hacs.xyz/) which the repo has been setup to support. With HACS setup on your Home Assistant installation you'll need to add this repo it as a [custom repository](https://www.hacs.xyz/docs/faq/custom_repositories/).
 
 Once added you'll be able to find it by searching for "ABB-free@home".
 
 ### Manually
 
-1. Clone the code locally and copy all the files in `custom_components/abbfreeathome_ci` to your Home Assistant directory `./config/custom_components/abbfreeathome_ci`
+1. Clone the code locally and copy all the files in `custom_components/abbfreeathome` to your Home Assistant directory `./config/custom_components/abbfreeathome`
 2. Restart Home Assistant
 3. You should be able to add a new integration "ABB-free@home".
 4. Follow the UI configuration to add the integration to your instance.
@@ -127,14 +129,14 @@ triggers:
   - trigger: state
     entity_id:
       - event.study_area_rocker_switch_event
-    to: "Off"
+    to: 'Off'
     attribute: event_type
     id: study_area_event_off
   - trigger: state
     entity_id:
       - event.study_area_rocker_switch_event
     attribute: event_type
-    to: "On"
+    to: 'On'
     id: study_area_event_on
 conditions: []
 actions:
@@ -174,7 +176,7 @@ logger:
   default: warning
   logs:
     abbfreeathome: debug
-    custom_components.abbfreeathome_ci: debug
+    custom_components.abbfreeathome: debug
 ```
 
 ### Download Diagnostics

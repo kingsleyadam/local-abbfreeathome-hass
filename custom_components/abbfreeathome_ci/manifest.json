@@ -1,5 +1,5 @@
 {
-  "domain": "abbfreeathome_ci",
+  "domain": "abbfreeathome",
   "name": "ABB-free@home",
   "codeowners": ["@kingsleyadam"],
   "config_flow": true,
