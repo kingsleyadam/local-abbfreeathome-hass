@@ -47,6 +47,7 @@ class FreeAtHomeValveEntity(ValveEntity):
         self.entity_description = ValveEntityDescription(
             key="HeatingActuatorValve",
             device_class=ValveDeviceClass.WATER,
+            entity_registry_enabled_default=False,
             name=valve.channel_name,
             reports_position=True,
         )
@@ -85,11 +86,6 @@ class FreeAtHomeValveEntity(ValveEntity):
     def supported_features(self) -> int | None:
         """Return supported features."""
         return ValveEntityFeature.SET_POSITION
-
-    @property
-    def entity_registry_enabled_default(self) -> bool | None:
-        """Return if the device should be enabled by default."""
-        return False
 
     async def async_set_valve_position(self, position: int) -> None:
         """Move the valve to a specific position."""
