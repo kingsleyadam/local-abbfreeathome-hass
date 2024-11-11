@@ -84,7 +84,7 @@ class FreeAtHomeValveEntity(ValveEntity):
     @property
     def supported_features(self) -> int | None:
         """Return supported features."""
-        return ValveEntityFeature.SET_POSITION | ValveEntityFeature.CLOSE
+        return ValveEntityFeature.SET_POSITION
 
     @property
     def entity_registry_enabled_default(self) -> bool | None:
