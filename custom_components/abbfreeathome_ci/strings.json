@@ -65,6 +65,9 @@
       "switch_sensor": {
         "name": "Switch Sensor ({channel_id})"
       },
+      "force_on_off_sensor": {
+        "name": "Force Sensor ({channel_id})"
+      },
       "temperature_sensor": {
         "name": "Frost Alarm"
       },
@@ -78,6 +81,17 @@
     "event": {
       "switch_sensor": {
         "name": "Switch Event ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "on": "[%key:common::state::on%]",
+              "off": "[%key:common::state::off%]"
+            }
+          }
+        }
+      },
+      "force_on_off_sensor": {
+        "name": "Force Event ({channel_id})",
         "state_attributes": {
           "event_type": {
             "state": {

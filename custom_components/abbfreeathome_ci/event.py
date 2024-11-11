@@ -3,6 +3,7 @@
 from typing import Any
 
 from abbfreeathome.devices.des_door_ringing_sensor import DesDoorRingingSensor
+from abbfreeathome.devices.force_on_off_sensor import ForceOnOffSensor
 from abbfreeathome.devices.switch_sensor import SwitchSensor
 from abbfreeathome.freeathome import FreeAtHome
 
@@ -26,6 +27,15 @@ EVENT_DESCRIPTIONS = {
             "device_class": EventDeviceClass.BUTTON,
             "event_types": ["on", "off"],
             "translation_key": "switch_sensor",
+        },
+    },
+    "EventForceOnOffSensorOnOff": {
+        "device_class": ForceOnOffSensor,
+        "event_type_callback": lambda state: "on" if state else "off",
+        "entity_description_kwargs": {
+            "device_class": EventDeviceClass.BUTTON,
+            "event_types": ["on", "off"],
+            "translation_key": "force_on_off_sensor",
         },
     },
     "DesDoorRingingSensorActivated": {
