@@ -7,7 +7,7 @@
   "documentation": "https://github.com/kingsleyadam/local-abbfreeathome-hass",
   "homekit": {},
   "iot_class": "local_push",
-  "requirements": ["local-abbfreeathome==1.12.0"],
+  "requirements": ["local-abbfreeathome==1.13.1"],
   "ssdp": [],
   "version": "0.12.2",
   "zeroconf": [
