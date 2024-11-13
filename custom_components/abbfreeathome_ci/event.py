@@ -2,9 +2,18 @@
 
 from typing import Any
 
+from abbfreeathome.devices.blind_sensor import BlindSensor, BlindSensorState
 from abbfreeathome.devices.des_door_ringing_sensor import DesDoorRingingSensor
-from abbfreeathome.devices.force_on_off_sensor import ForceOnOffSensor
-from abbfreeathome.devices.switch_sensor import SwitchSensor
+from abbfreeathome.devices.force_on_off_sensor import (
+    ForceOnOffSensor,
+    ForceOnOffSensorState,
+)
+from abbfreeathome.devices.switch_sensor import (
+    DimmingSensor,
+    DimmingSensorState,
+    SwitchSensor,
+    SwitchSensorState,
+)
 from abbfreeathome.freeathome import FreeAtHome
 
 from homeassistant.components.event import (
@@ -20,31 +29,54 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import CONF_SERIAL, DOMAIN
 
 EVENT_DESCRIPTIONS = {
-    "EventSwitchSensorOnOff": {
-        "device_class": SwitchSensor,
-        "event_type_callback": lambda state: "on" if state else "off",
+    "EventBlindSensorState": {
+        "device_class": BlindSensor,
+        "event_type_callback": lambda state: state,
         "entity_description_kwargs": {
             "device_class": EventDeviceClass.BUTTON,
-            "event_types": ["on", "off"],
-            "translation_key": "switch_sensor",
+            "event_types": [state.name for state in BlindSensorState],
+            "translation_key": "blind_sensor",
         },
     },
-    "EventForceOnOffSensorOnOff": {
-        "device_class": ForceOnOffSensor,
-        "event_type_callback": lambda state: "on" if state else "off",
-        "entity_description_kwargs": {
-            "device_class": EventDeviceClass.BUTTON,
-            "event_types": ["on", "off"],
-            "translation_key": "force_on_off_sensor",
-        },
-    },
-    "DesDoorRingingSensorActivated": {
+    "EventDesDoorRingingSensorActivated": {
         "device_class": DesDoorRingingSensor,
         "event_type_callback": lambda: "activated",
         "entity_description_kwargs": {
             "device_class": EventDeviceClass.BUTTON,
             "event_types": ["activated"],
             "translation_key": "des_door_ringing_sensor",
+        },
+    },
+    "EventDimmingSensorState": {
+        "device_class": DimmingSensor,
+        "event_type_callback": lambda state: state,
+        "entity_description_kwargs": {
+            "device_class": EventDeviceClass.BUTTON,
+            "event_types": list(
+                set(
+                    [state.name for state in SwitchSensorState]
+                    + [state.name for state in DimmingSensorState]
+                )
+            ),
+            "translation_key": "dimming_sensor",
+        },
+    },
+    "EventForceOnOffSensorOnOff": {
+        "device_class": ForceOnOffSensor,
+        "event_type_callback": lambda state: state,
+        "entity_description_kwargs": {
+            "device_class": EventDeviceClass.BUTTON,
+            "event_types": [state.name for state in ForceOnOffSensorState],
+            "translation_key": "force_on_off_sensor",
+        },
+    },
+    "EventSwitchSensorOnOff": {
+        "device_class": SwitchSensor,
+        "event_type_callback": lambda state: state,
+        "entity_description_kwargs": {
+            "device_class": EventDeviceClass.BUTTON,
+            "event_types": [state.name for state in SwitchSensorState],
+            "translation_key": "switch_sensor",
         },
     },
 }

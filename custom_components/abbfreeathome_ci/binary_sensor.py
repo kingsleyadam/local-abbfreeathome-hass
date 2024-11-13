@@ -4,11 +4,9 @@ from typing import Any
 
 from abbfreeathome.devices.brightness_sensor import BrightnessSensor
 from abbfreeathome.devices.carbon_monoxide_sensor import CarbonMonoxideSensor
-from abbfreeathome.devices.force_on_off_sensor import ForceOnOffSensor
 from abbfreeathome.devices.movement_detector import MovementDetector
 from abbfreeathome.devices.rain_sensor import RainSensor
 from abbfreeathome.devices.smoke_detector import SmokeDetector
-from abbfreeathome.devices.switch_sensor import SwitchSensor
 from abbfreeathome.devices.temperature_sensor import TemperatureSensor
 from abbfreeathome.devices.wind_sensor import WindSensor
 from abbfreeathome.devices.window_door_sensor import WindowDoorSensor
@@ -49,20 +47,6 @@ SENSOR_DESCRIPTIONS = {
         "entity_description_kwargs": {
             "device_class": BinarySensorDeviceClass.SMOKE,
             "translation_key": "smoke_detector",
-        },
-    },
-    "SwitchSensorOnOff": {
-        "device_class": SwitchSensor,
-        "value_attribute": "state",
-        "entity_description_kwargs": {
-            "translation_key": "switch_sensor",
-        },
-    },
-    "ForceOnOffSensorOnOff": {
-        "device_class": ForceOnOffSensor,
-        "value_attribute": "state",
-        "entity_description_kwargs": {
-            "translation_key": "force_on_off_sensor",
         },
     },
     "WindowDoorSensorOnOff": {
@@ -145,7 +129,6 @@ class FreeAtHomeBinarySensorEntity(BinarySensorEntity):
         | MovementDetector
         | RainSensor
         | SmokeDetector
-        | SwitchSensor
         | TemperatureSensor
         | WindowDoorSensor
         | WindSensor,
