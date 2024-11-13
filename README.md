@@ -1,8 +1,10 @@
 # Home Assistant Integration - ABB-free@home
 
+![GitHub Release](https://img.shields.io/github/v/release/kingsleyadam/local-abbfreeathome-hass) ![hassfest](https://github.com/kingsleyadam/local-abbfreeathome-hass/actions/workflows/hassfest.yaml/badge.svg) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 This is a custom component to integrate with [Home Assistant](https://www.home-assistant.io/) for the ABB-free@home system over the **local api server**.
 
-The primary goal of this repository is to provide initial testing for the integration into Home Assistant. The ultimate goal of this integration is to be merged into the Home Assistant code as a built-in integration.
+The primary goal of this repository is to provide initial development for the integration into Home Assistant. The ultimate goal of this integration is to be merged into the Home Assistant code as a built-in integration.
 
 Because of this, the integration will adhere to the strict [styling and code guidelines](https://developers.home-assistant.io/docs/development_guidelines/) provided by Home Assistant.
 
@@ -21,19 +23,23 @@ The current list of supported devices by function are:
 
 | Function                        | Platform(s)               |
 | ------------------------------- | ------------------------- |
-| FID_SWITCH_ACTUATOR             | `Switch`                  |
-| FID_SWITCH_SENSOR               | `Binary Sensor`, `Event`  |
-| FID_MOVEMENT_DETECTOR           | `Binary Sensor`, `Sensor` |
+| FID_BLIND_SENSOR                | `Event`                   |
+| FID_BRIGHTNESS_SENSOR           | `Binary Sensor`, `Sensor` |
+| FID_CARBON_MONOXIDE_SENSOR      | `Binary Sensor`           |
 | FID_DIMMING_ACTUATOR            | `Light`                   |
+| FID_DIMMING_SENSOR              | `Event`                   |
+| FID_FORCE_ON_OFF_SENSOR         | `Event`                   |
+| FID_HEATING_ACTUATOR            | `Valve`                   |
+| FID_RAIN_SENSOR                 | `Binary Sensor`           |
+| FID_SMOKE_DETECTOR              | `Binary Sensor`           |
+| FID_SWITCH_ACTUATOR             | `Switch`                  |
+| FID_SWITCH_SENSOR               | `Event`                   |
+| FID_TEMPERATURE_SENSOR          | `Binary Sensor`, `Sensor` |
+| FID_TRIGGER                     | `Button`                  |
+| FID_MOVEMENT_DETECTOR           | `Binary Sensor`, `Sensor` |
+| FID_WIND_SENSOR                 | `Binary Sensor`, `Sensor` |
 | FID_WINDOW_DOOR_SENSOR          | `Binary Sensor`           |
 | FID_WINDOW_DOOR_POSITION_SENSOR | `Binary Sensor`, `Sensor` |
-| FID_SMOKE_DETECTOR              | `Binary Sensor`           |
-| FID_CARBON_MONOXIDE_SENSOR      | `Binary Sensor`           |
-| FID_TRIGGER                     | `Button`                  |
-| FID_BRIGHTNESS_SENSOR           | `Binary Sensor`, `Sensor` |
-| FID_RAIN_SENSOR                 | `Binary Sensor`           |
-| FID_TEMPERATURE_SENSOR          | `Binary Sensor`, `Sensor` |
-| FID_WIND_SENSOR                 | `Binary Sensor`, `Sensor` |
 
 ### Additional Devices
 
@@ -45,7 +51,7 @@ I (kingsleyadam) don't have access to the number of different ABB devices and wo
 
 ### HACS
 
-The easiest way to add this custom integration is via HACS which the repo has been setup to support. With HACS setup on your Home Assistant installation you'll need to add this repo it as a [custom repository](https://www.hacs.xyz/docs/faq/custom_repositories/).
+The easiest way to add this custom integration is via [HACS](https://www.hacs.xyz/) which the repo has been setup to support. With HACS setup on your Home Assistant installation you'll need to add this repo it as a [custom repository](https://www.hacs.xyz/docs/faq/custom_repositories/).
 
 Once added you'll be able to find it by searching for "ABB-free@home".
 
@@ -127,14 +133,14 @@ triggers:
   - trigger: state
     entity_id:
       - event.study_area_rocker_switch_event
-    to: "Off"
+    to: 'Off'
     attribute: event_type
     id: study_area_event_off
   - trigger: state
     entity_id:
       - event.study_area_rocker_switch_event
     attribute: event_type
-    to: "On"
+    to: 'On'
     id: study_area_event_on
 conditions: []
 actions:
