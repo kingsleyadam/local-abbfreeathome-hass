@@ -62,12 +62,6 @@
       "smoke_detector": {
         "name": "Smoke Detector"
       },
-      "switch_sensor": {
-        "name": "Switch Sensor ({channel_id})"
-      },
-      "force_on_off_sensor": {
-        "name": "Force Sensor ({channel_id})"
-      },
       "temperature_sensor": {
         "name": "Frost Alarm"
       },
@@ -79,24 +73,16 @@
       }
     },
     "event": {
-      "switch_sensor": {
-        "name": "Switch Event ({channel_id})",
+      "blind_sensor": {
+        "name": "Blind Event ({channel_id})",
         "state_attributes": {
           "event_type": {
             "state": {
-              "on": "[%key:common::state::on%]",
-              "off": "[%key:common::state::off%]"
-            }
-          }
-        }
-      },
-      "force_on_off_sensor": {
-        "name": "Force Event ({channel_id})",
-        "state_attributes": {
-          "event_type": {
-            "state": {
-              "on": "[%key:common::state::on%]",
-              "off": "[%key:common::state::off%]"
+              "unknown": "Unknown",
+              "step_up": "Step Up/Stop",
+              "step_down": "Step Down/Stop",
+              "move_up": "Move Up",
+              "move_down": "Move Down"
             }
           }
         }
@@ -106,6 +92,46 @@
           "event_type": {
             "state": {
               "activated": "Activated"
+            }
+          }
+        }
+      },
+      "dimming_sensor": {
+        "name": "Dimming Event ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "unknown": "Unknown",
+              "on": "[%key:common::state::on%]",
+              "off": "[%key:common::state::off%]",
+              "longpress_up": "Dimming Up",
+              "longpress_up_release": "Dimming Up Release",
+              "longpress_down": "Dimming Down",
+              "longpress_down_release": "Dimming Down Release"
+            }
+          }
+        }
+      },
+      "force_on_off_sensor": {
+        "name": "Force Event ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "unknown": "Unknown",
+              "on": "[%key:common::state::on%]",
+              "off": "[%key:common::state::off%]"
+            }
+          }
+        }
+      },
+      "switch_sensor": {
+        "name": "Switch Event ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "unknown": "Unknown",
+              "on": "[%key:common::state::on%]",
+              "off": "[%key:common::state::off%]"
             }
           }
         }

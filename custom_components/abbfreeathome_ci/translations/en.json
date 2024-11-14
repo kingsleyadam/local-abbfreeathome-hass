@@ -62,12 +62,6 @@
       "smoke_detector": {
         "name": "Smoke Detector"
       },
-      "switch_sensor": {
-        "name": "Switch Sensor ({channel_id})"
-      },
-      "force_on_off_sensor": {
-        "name": "Force Sensor ({channel_id})"
-      },
       "temperature_sensor": {
         "name": "Frost Alarm"
       },
@@ -79,6 +73,20 @@
       }
     },
     "event": {
+      "blind_sensor": {
+        "name": "Blind Event ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "move_down": "Move Down",
+              "move_up": "Move Up",
+              "step_down": "Step Down/Stop",
+              "step_up": "Step Up/Stop",
+              "unknown": "Unknown"
+            }
+          }
+        }
+      },
       "des_door_ringing_sensor": {
         "state_attributes": {
           "event_type": {
@@ -88,12 +96,30 @@
           }
         }
       },
+      "dimming_sensor": {
+        "name": "Dimming Event ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "longpress_down": "Dimming Down",
+              "longpress_down_release": "Dimming Down Release",
+              "longpress_up": "Dimming Up",
+              "longpress_up_release": "Dimming Up Release",
+              "off": "Off",
+              "on": "On",
+              "unknown": "Unknown"
+            }
+          }
+        }
+      },
       "force_on_off_sensor": {
+        "name": "Force Event ({channel_id})",
         "state_attributes": {
           "event_type": {
             "state": {
               "off": "Off",
-              "on": "On"
+              "on": "On",
+              "unknown": "Unknown"
             }
           }
         }
@@ -104,7 +130,8 @@
           "event_type": {
             "state": {
               "off": "Off",
-              "on": "On"
+              "on": "On",
+              "unknown": "Unknown"
             }
           }
         }
