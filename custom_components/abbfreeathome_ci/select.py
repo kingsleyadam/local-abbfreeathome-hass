@@ -98,7 +98,7 @@ class FreeAtHomeSelectEntity(SelectEntity):
 
     def __init__(
         self,
-        device: SwitchActuator,
+        device: CoverActuator | DimmingActuator | SwitchActuator,
         entity_description_kwargs: dict[str:Any],
         current_option_attribute: str,
         select_option_method: str,
