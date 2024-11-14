@@ -137,6 +137,32 @@
         }
       }
     },
+    "select": {
+      "cover_actuator": {
+        "name": "Forced Position",
+        "state": {
+          "deactivated": "Deactivated",
+          "forced_off": "Closed",
+          "forced_on": "Open"
+        }
+      },
+      "dimming_actuator": {
+        "name": "Forced Position",
+        "state": {
+          "deactivated": "Deactivated",
+          "forced_off": "Off",
+          "forced_on": "On"
+        }
+      },
+      "switch_actuator": {
+        "name": "Forced Position",
+        "state": {
+          "deactivated": "Deactivated",
+          "forced_off": "Off",
+          "forced_on": "On"
+        }
+      }
+    },
     "sensor": {
       "brightness_sensor": {
         "name": "Illuminance"
