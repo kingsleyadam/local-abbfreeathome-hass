@@ -118,7 +118,6 @@ class FreeAtHomeSensorEntity(SensorEntity):
     """Defines a free@home sensor entity."""
 
     _attr_should_poll: bool = False
-    _attr_has_entity_name: bool = True
 
     def __init__(
         self,
@@ -134,6 +133,7 @@ class FreeAtHomeSensorEntity(SensorEntity):
         self._sysap_serial_number = sysap_serial_number
 
         self.entity_description = SensorEntityDescription(
+            has_entity_name=True,
             name=device.channel_name,
             translation_placeholders={"channel_id": device.channel_id},
             **entity_description_kwargs,

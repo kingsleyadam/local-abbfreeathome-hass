@@ -38,6 +38,7 @@ class FreeAtHomeButtonEntity(ButtonEntity):
         self._sysap_serial_number = sysap_serial_number
 
         self.entity_description = ButtonEntityDescription(
+            has_entity_name=True,
             key="button",
             name=button.channel_name,
         )

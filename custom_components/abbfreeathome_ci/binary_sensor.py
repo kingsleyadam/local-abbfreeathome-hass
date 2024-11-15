@@ -120,7 +120,6 @@ class FreeAtHomeBinarySensorEntity(BinarySensorEntity):
     """Defines a free@home binary sensor entity."""
 
     _attr_should_poll: bool = False
-    _attr_has_entity_name: bool = True
 
     def __init__(
         self,
@@ -142,15 +141,8 @@ class FreeAtHomeBinarySensorEntity(BinarySensorEntity):
         self._value_attribute = value_attribute
         self._sysap_serial_number = sysap_serial_number
 
-        # If the channel name is different from the device name, it's likely
-        # a dedicated sensor with it's own naming convention. Use it's channel name instead.
-        if (
-            device.channel_name != device.device_name
-            and "translation_key" in entity_description_kwargs
-        ):
-            entity_description_kwargs.pop("translation_key")
-
         self.entity_description = BinarySensorEntityDescription(
+            has_entity_name=True,
             name=device.channel_name,
             translation_placeholders={"channel_id": device.channel_id},
             **entity_description_kwargs,
@@ -180,6 +172,23 @@ class FreeAtHomeBinarySensorEntity(BinarySensorEntity):
     def is_on(self) -> bool | None:
         """Return state of the binary sensor."""
         return getattr(self._device, self._value_attribute)
+
+    @property
+    def translation_key(self):
+        """Return the translation key to translate the entity's name and states.
+
+        If the device_name and channel_name are the same, then this sensor is not the
+        main feature of the device and should have it's name translated.
+        """
+        _translation_key = None
+        if hasattr(self, "_attr_translation_key"):
+            _translation_key = self._attr_translation_key
+        if hasattr(self, "entity_description"):
+            _translation_key = self.entity_description.translation_key
+
+        if self._device.channel_name == self._device.device_name:
+            return _translation_key
+        return None
 
     @property
     def unique_id(self) -> str | None:

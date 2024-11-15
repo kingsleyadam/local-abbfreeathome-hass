@@ -48,6 +48,7 @@ class FreeAtHomeLightEntity(LightEntity):
         self._sysap_serial_number = sysap_serial_number
 
         self.entity_description = LightEntityDescription(
+            has_entity_name=True,
             key="light",
             name=light.channel_name,
         )

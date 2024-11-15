@@ -44,6 +44,7 @@ class FreeAtHomeSwitchEntity(SwitchEntity):
         self._sysap_serial_number = sysap_serial_number
 
         self.entity_description = SwitchEntityDescription(
+            has_entity_name=True,
             key="switch",
             device_class=SwitchDeviceClass.SWITCH,
             name=switch.channel_name,
