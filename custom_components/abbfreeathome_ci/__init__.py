@@ -23,6 +23,7 @@ PLATFORMS: list[Platform] = [
     Platform.CLIMATE,
     Platform.EVENT,
     Platform.LIGHT,
+    Platform.LOCK,
     Platform.SENSOR,
     Platform.SWITCH,
     Platform.VALVE,
