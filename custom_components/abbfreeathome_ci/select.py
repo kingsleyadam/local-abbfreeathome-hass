@@ -3,16 +3,19 @@
 from typing import Any
 
 from abbfreeathome.devices.cover_actuator import (
-    CoverActuator,
-    CoverActuatorForcePosition,
+    AtticWindowActuator,
+    AwningActuator,
+    BlindActuator,
+    CoverActuatorForcedPosition,
+    ShutterActuator,
 )
 from abbfreeathome.devices.dimming_actuator import (
     DimmingActuator,
-    DimmingActuatorForceState,
+    DimmingActuatorForcedPosition,
 )
 from abbfreeathome.devices.switch_actuator import (
     SwitchActuator,
-    SwitchActuatorForceState,
+    SwitchActuatorForcedPosition,
 )
 from abbfreeathome.freeathome import FreeAtHome
 
@@ -25,40 +28,79 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import CONF_SERIAL, DOMAIN
 
 SELECT_DESCRIPTIONS = {
-    "CoverActuatorForcedPosition": {
-        "device_class": CoverActuator,
+    "AtticWindowActuatorForcedPosition": {
+        "device_class": AtticWindowActuator,
         "current_option_attribute": "forced_position",
-        "select_option_method": "set_force_position",
+        "select_option_method": "set_forced_position",
         "entity_description_kwargs": {
             "options": [
                 state.name
-                for state in CoverActuatorForcePosition
+                for state in CoverActuatorForcedPosition
                 if state.value is not None
             ],
             "translation_key": "cover_actuator",
         },
     },
-    "SelectSwitchActuatorForcedPosition": {
-        "device_class": SwitchActuator,
-        "current_option_attribute": "forced",
-        "select_option_method": "set_forced",
+    "AwningActuatorForcedPosition": {
+        "device_class": AwningActuator,
+        "current_option_attribute": "forced_position",
+        "select_option_method": "set_forced_position",
         "entity_description_kwargs": {
             "options": [
                 state.name
-                for state in SwitchActuatorForceState
+                for state in CoverActuatorForcedPosition
+                if state.value is not None
+            ],
+            "translation_key": "cover_actuator",
+        },
+    },
+    "BlindActuatorForcedPosition": {
+        "device_class": BlindActuator,
+        "current_option_attribute": "forced_position",
+        "select_option_method": "set_forced_position",
+        "entity_description_kwargs": {
+            "options": [
+                state.name
+                for state in CoverActuatorForcedPosition
+                if state.value is not None
+            ],
+            "translation_key": "cover_actuator",
+        },
+    },
+    "ShutterActuatorForcedPosition": {
+        "device_class": ShutterActuator,
+        "current_option_attribute": "forced_position",
+        "select_option_method": "set_forced_position",
+        "entity_description_kwargs": {
+            "options": [
+                state.name
+                for state in CoverActuatorForcedPosition
+                if state.value is not None
+            ],
+            "translation_key": "cover_actuator",
+        },
+    },
+    "SwitchActuatorForcedPosition": {
+        "device_class": SwitchActuator,
+        "current_option_attribute": "forced_position",
+        "select_option_method": "set_forced_position",
+        "entity_description_kwargs": {
+            "options": [
+                state.name
+                for state in SwitchActuatorForcedPosition
                 if state.value is not None
             ],
             "translation_key": "switch_actuator",
         },
     },
-    "SelectDimmingActuatorForcedPosition": {
+    "DimmingActuatorForcedPosition": {
         "device_class": DimmingActuator,
-        "current_option_attribute": "forced",
-        "select_option_method": "set_forced",
+        "current_option_attribute": "forced_position",
+        "select_option_method": "set_forced_position",
         "entity_description_kwargs": {
             "options": [
                 state.name
-                for state in DimmingActuatorForceState
+                for state in DimmingActuatorForcedPosition
                 if state.value is not None
             ],
             "translation_key": "dimming_actuator",
@@ -98,7 +140,12 @@ class FreeAtHomeSelectEntity(SelectEntity):
 
     def __init__(
         self,
-        device: CoverActuator | DimmingActuator | SwitchActuator,
+        device: AtticWindowActuator
+        | AwningActuator
+        | BlindActuator
+        | DimmingActuator
+        | ShutterActuator
+        | SwitchActuator,
         entity_description_kwargs: dict[str:Any],
         current_option_attribute: str,
         select_option_method: str,
@@ -127,11 +174,6 @@ class FreeAtHomeSelectEntity(SelectEntity):
         self._device.remove_callback(self.async_write_ha_state)
 
     @property
-    def available(self) -> bool:
-        """Return True if entity is available."""
-        return self._device.avaiable if hasattr(self._device, "available") else True
-
-    @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
         return {
@@ -151,7 +193,7 @@ class FreeAtHomeSelectEntity(SelectEntity):
     @property
     def unique_id(self) -> str | None:
         """Return a unique ID."""
-        return f"{self._device.device_id}_{self._device.channel_id}_select"
+        return f"{self._device.device_id}_{self._device.channel_id}_{self.entity_description.key}"
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
