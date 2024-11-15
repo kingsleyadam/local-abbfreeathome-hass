@@ -142,8 +142,8 @@
         "name": "Forced Position",
         "state": {
           "deactivated": "Deactivated",
-          "forced_off": "Closed",
-          "forced_on": "Open"
+          "forced_closed": "Closed",
+          "forced_open": "Open"
         }
       },
       "dimming_actuator": {
