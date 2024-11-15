@@ -50,6 +50,7 @@ class FreeAtHomeClimateEntity(ClimateEntity):
         self._sysap_serial_number = sysap_serial_number
 
         self.entity_description = ClimateEntityDescription(
+            has_entity_name=True,
             key="RoomTemperatureController",
             name=climate.channel_name,
         )

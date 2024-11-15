@@ -108,8 +108,6 @@ async def async_setup_entry(
 class FreeAtHomeEventEntity(EventEntity):
     """free@home Event Entity."""
 
-    _attr_has_entity_name: bool = True
-
     def __init__(
         self,
         device: SwitchSensor,
@@ -124,6 +122,7 @@ class FreeAtHomeEventEntity(EventEntity):
         self._event_type_callback = event_type_callback
 
         self.entity_description = EventEntityDescription(
+            has_entity_name=True,
             name=device.channel_name,
             translation_placeholders={"channel_id": device.channel_id},
             **entity_description_kwargs,
