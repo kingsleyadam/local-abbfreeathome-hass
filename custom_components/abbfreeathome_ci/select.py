@@ -161,7 +161,10 @@ class FreeAtHomeSelectEntity(SelectEntity):
         self.entity_description = SelectEntityDescription(
             has_entity_name=True,
             name=device.channel_name,
-            translation_placeholders={"channel_id": device.channel_id},
+            translation_placeholders={
+                "channel_id": device.channel_id,
+                "channel_name": device.channel_name,
+            },
             **entity_description_kwargs,
         )
 

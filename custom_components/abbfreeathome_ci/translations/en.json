@@ -139,7 +139,7 @@
     },
     "select": {
       "cover_actuator": {
-        "name": "Forced Position",
+        "name": "{channel_name} Forced Position",
         "state": {
           "deactivated": "Deactivated",
           "forced_closed": "Closed",
@@ -147,7 +147,7 @@
         }
       },
       "dimming_actuator": {
-        "name": "Forced Position",
+        "name": "{channel_name} Forced Position",
         "state": {
           "deactivated": "Deactivated",
           "forced_off": "Off",
@@ -155,7 +155,7 @@
         }
       },
       "switch_actuator": {
-        "name": "Forced Position",
+        "name": "{channel_name} Forced Position",
         "state": {
           "deactivated": "Deactivated",
           "forced_off": "Off",
