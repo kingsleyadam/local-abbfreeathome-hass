@@ -99,10 +99,10 @@ class FreeAtHomeCoverEntity(CoverEntity):
         self.entity_description = CoverEntityDescription(
             has_entity_name=True,
             name=device.channel_name,
-            translation_placeholders={
-                "channel_id": device.channel_id,
-                "channel_name": device.channel_name,
-            },
+            # translation_placeholders={
+            #    "channel_id": device.channel_id,
+            #    "channel_name": device.channel_name,
+            # },
             **entity_description_kwargs,
         )
 

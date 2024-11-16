@@ -72,20 +72,6 @@
         "name": "Window/Door"
       }
     },
-    "cover": {
-      "attic_window_actuator": {
-        "name": "{channel_name} Attic Window"
-      },
-      "awning_actuator": {
-        "name": "{channel_name} Awning"
-      },
-      "blind_actuator": {
-        "name": "{channel_name} Blind"
-      },
-      "shutter_actuator": {
-        "name": "{channel_name} Shutter"
-      }
-    },
     "event": {
       "blind_sensor": {
         "name": "Blind Event ({channel_id})",
