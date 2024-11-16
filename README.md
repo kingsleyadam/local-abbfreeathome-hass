@@ -21,25 +21,30 @@ There are two main prerequisites before being able to use this integration.
 
 The current list of supported devices by function are:
 
-| Function                        | Platform(s)               |
-| ------------------------------- | ------------------------- |
-| FID_BLIND_SENSOR                | `Event`                   |
-| FID_BRIGHTNESS_SENSOR           | `Binary Sensor`, `Sensor` |
-| FID_CARBON_MONOXIDE_SENSOR      | `Binary Sensor`           |
-| FID_DIMMING_ACTUATOR            | `Light`                   |
-| FID_DIMMING_SENSOR              | `Event`                   |
-| FID_FORCE_ON_OFF_SENSOR         | `Event`                   |
-| FID_HEATING_ACTUATOR            | `Valve`                   |
-| FID_RAIN_SENSOR                 | `Binary Sensor`           |
-| FID_SMOKE_DETECTOR              | `Binary Sensor`           |
-| FID_SWITCH_ACTUATOR             | `Switch`                  |
-| FID_SWITCH_SENSOR               | `Event`                   |
-| FID_TEMPERATURE_SENSOR          | `Binary Sensor`, `Sensor` |
-| FID_TRIGGER                     | `Button`                  |
-| FID_MOVEMENT_DETECTOR           | `Binary Sensor`, `Sensor` |
-| FID_WIND_SENSOR                 | `Binary Sensor`, `Sensor` |
-| FID_WINDOW_DOOR_SENSOR          | `Binary Sensor`           |
-| FID_WINDOW_DOOR_POSITION_SENSOR | `Binary Sensor`, `Sensor` |
+| Function                                           | Platform(s)               |
+| -------------------------------------------------- | ------------------------- |
+| FID_ATTIC_WINDOW_ACTUATOR                          | `Cover`                   |
+| FID_AWNING_ACTUATOR                                | `Cover`                   |
+| FID_BLIND_ACTUATOR                                 | `Cover`                   |
+| FID_BLIND_SENSOR                                   | `Event`                   |
+| FID_BRIGHTNESS_SENSOR                              | `Binary Sensor`, `Sensor` |
+| FID_CARBON_MONOXIDE_SENSOR                         | `Binary Sensor`           |
+| FID_DIMMING_ACTUATOR                               | `Light`                   |
+| FID_DIMMING_SENSOR                                 | `Event`                   |
+| FID_FORCE_ON_OFF_SENSOR                            | `Event`                   |
+| FID_HEATING_ACTUATOR                               | `Valve`                   |
+| FID_RAIN_SENSOR                                    | `Binary Sensor`           |
+| FID_ROOM_TEMPERATURE_CONTROLLER_MASTER_WITHOUT_FAN | `Climate`                 |
+| FID_SHUTTER_ACTUATOR                               | `Cover`                   |
+| FID_SMOKE_DETECTOR                                 | `Binary Sensor`           |
+| FID_SWITCH_ACTUATOR                                | `Switch`                  |
+| FID_SWITCH_SENSOR                                  | `Event`                   |
+| FID_TEMPERATURE_SENSOR                             | `Binary Sensor`, `Sensor` |
+| FID_TRIGGER                                        | `Button`                  |
+| FID_MOVEMENT_DETECTOR                              | `Binary Sensor`, `Sensor` |
+| FID_WIND_SENSOR                                    | `Binary Sensor`, `Sensor` |
+| FID_WINDOW_DOOR_SENSOR                             | `Binary Sensor`           |
+| FID_WINDOW_DOOR_POSITION_SENSOR                    | `Binary Sensor`, `Sensor` |
 
 ### Additional Devices
 
