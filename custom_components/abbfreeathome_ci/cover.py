@@ -31,28 +31,24 @@ SELECT_DESCRIPTIONS = {
         "device_class": AtticWindowActuator,
         "entity_description_kwargs": {
             "device_class": CoverDeviceClass.WINDOW,
-            "translation_key": "attic_window_actuator",
         },
     },
     "AwningActuator": {
         "device_class": AwningActuator,
         "entity_description_kwargs": {
             "device_class": CoverDeviceClass.AWNING,
-            "translation_key": "awning_actuator",
         },
     },
     "BlindActuator": {
         "device_class": BlindActuator,
         "entity_description_kwargs": {
             "device_class": CoverDeviceClass.SHUTTER,
-            "translation_key": "blind_actuator",
         },
     },
     "ShutterActuator": {
         "device_class": ShutterActuator,
         "entity_description_kwargs": {
             "device_class": CoverDeviceClass.BLIND,
-            "translation_key": "cover_actuator",
         },
     },
 }
@@ -99,10 +95,6 @@ class FreeAtHomeCoverEntity(CoverEntity):
         self.entity_description = CoverEntityDescription(
             has_entity_name=True,
             name=device.channel_name,
-            # translation_placeholders={
-            #    "channel_id": device.channel_id,
-            #    "channel_name": device.channel_name,
-            # },
             **entity_description_kwargs,
         )
 
