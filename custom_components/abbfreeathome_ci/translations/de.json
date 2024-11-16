@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "ABB-free@home - Configure",
+        "title": "ABB-free@home - Konfiguration",
         "description": "Trage den Hostnamen/IP-Adresse (mit Schema, z.B. http://), Benutzername und Passwort von Deinem ABB-free@home SysAP ein, den Du in Home Assistant integrieren möchtest.",
         "data": {
           "host": "Host",
