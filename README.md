@@ -29,6 +29,8 @@ The current list of supported devices by function are:
 | FID_BLIND_SENSOR                                   | `Event`                   |
 | FID_BRIGHTNESS_SENSOR                              | `Binary Sensor`, `Sensor` |
 | FID_CARBON_MONOXIDE_SENSOR                         | `Binary Sensor`           |
+| FID_DES_DOOR_OPENER_ACTUATOR                       | `Lock`                    |
+| FID_DES_DOOR_RINGING_SENSOR                        | `Event`                   |
 | FID_DIMMING_ACTUATOR                               | `Light`                   |
 | FID_DIMMING_SENSOR                                 | `Event`                   |
 | FID_FORCE_ON_OFF_SENSOR                            | `Event`                   |
