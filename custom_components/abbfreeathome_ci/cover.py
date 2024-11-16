@@ -44,14 +44,14 @@ SELECT_DESCRIPTIONS = {
     "BlindActuator": {
         "device_class": BlindActuator,
         "entity_description_kwargs": {
-            "device_class": CoverDeviceClass.BLIND,
+            "device_class": CoverDeviceClass.SHUTTER,
             "translation_key": "blind_actuator",
         },
     },
     "ShutterActuator": {
         "device_class": ShutterActuator,
         "entity_description_kwargs": {
-            "device_class": CoverDeviceClass.SHADE,
+            "device_class": CoverDeviceClass.BLIND,
             "translation_key": "cover_actuator",
         },
     },
