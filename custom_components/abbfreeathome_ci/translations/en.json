@@ -51,7 +51,7 @@
         "name": "Brightness Alarm"
       },
       "carbon_monoxide_sensor": {
-        "name": "Carbon Monoxide"
+        "name": "Carbon monoxide"
       },
       "movement_detector_motion": {
         "name": "Motion"
@@ -60,7 +60,7 @@
         "name": "Rain Alarm"
       },
       "smoke_detector": {
-        "name": "Smoke Detector"
+        "name": "Smoke"
       },
       "temperature_sensor": {
         "name": "Frost Alarm"
@@ -69,7 +69,7 @@
         "name": "Wind Alarm"
       },
       "window_door": {
-        "name": "Window/Door"
+        "name": "Window"
       }
     },
     "event": {
@@ -177,7 +177,7 @@
         "name": "Wind Force"
       },
       "wind_sensor_speed": {
-        "name": "Wind Speed"
+        "name": "Wind speed"
       },
       "window_position": {
         "name": "Window Position",
