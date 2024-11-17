@@ -45,7 +45,6 @@ class FreeAtHomeValveEntity(ValveEntity):
         self._sysap_serial_number = sysap_serial_number
 
         self.entity_description = ValveEntityDescription(
-            has_entity_name=True,
             key="HeatingActuatorValve",
             device_class=ValveDeviceClass.WATER,
             entity_registry_enabled_default=False,

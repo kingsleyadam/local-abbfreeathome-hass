@@ -42,7 +42,6 @@ class FreeAtHomeLockEntity(LockEntity):
         self._sysap_serial_number = sysap_serial_number
 
         self.entity_description = LockEntityDescription(
-            has_entity_name=True,
             key="DesDoorOpenerActuatorLock",
             name=lock.channel_name,
         )
