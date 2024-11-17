@@ -1,0 +1,193 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "ABB-free@home - Konfiguration",
+        "description": "Trage den Hostnamen/IP-Adresse (mit Schema, z.B. http://), Benutzername und Passwort von Deinem ABB-free@home SysAP ein, den Du in Home Assistant integrieren möchtest.",
+        "data": {
+          "host": "Host",
+          "username": "Benutzername",
+          "password": "Passwort",
+          "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?"
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "ABB-free@home - Bestätigung",
+        "description": "Möchten Sie {name} ({serial}) auf {host} einrichten?",
+        "data": {
+          "host": "Host",
+          "username": "Benutzername",
+          "password": "Passwort",
+          "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?"
+        }
+      },
+      "reconfigure": {
+        "title": "ABB-free@home - Neukonfiguration",
+        "description": "Möchten Sie {name} ({serial}) auf {host} neu konfigurieren?",
+        "data": {
+          "username": "Benutzername",
+          "password": "Passwort",
+          "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung fehlgeschlagen",
+      "invalid_auth": "Ungültige Authentifizierung",
+      "unknown": "Unerwarteter Fehler",
+      "unsupported_sysap_version": "Die aktuelle Version {sysap_version} des SysAP wird nicht unterstützt. Nur Version 2.6.0 oder neuer wird unterstützt."
+    },
+    "abort": {
+      "already_configured": "Gerät ist bereits konfiguriert",
+      "already_in_progress": "Konfigurationsablauf wird bereits ausgeführt",
+      "reauth_successful": "Die erneute Authentifizierung war erfolgreich",
+      "reconfigure_successful": "Die Neukonfiguration war erfolgreich",
+      "reconfigure_not_supported": "Die Neukonfiguration für diese Integration wird nur ab Home Assistant Version 2024.11.0 unterstützt."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "brightness_sensor": {
+        "name": "Helligkeitsalarm"
+      },
+      "carbon_monoxide_sensor": {
+        "name": "Kohlenmonoxid"
+      },
+      "movement_detector_motion": {
+        "name": "Bewegung"
+      },
+      "rain_sensor": {
+        "name": "Regenalarm"
+      },
+      "smoke_detector": {
+        "name": "Rauch"
+      },
+      "temperature_sensor": {
+        "name": "Frostalarm"
+      },
+      "wind_sensor": {
+        "name": "Windalarm"
+      },
+      "window_door": {
+        "name": "Fenster"
+      }
+    },
+    "event": {
+      "blind_sensor": {
+        "name": "Rollladen Ereignis ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "unknown": "Unbekannt",
+              "step_up": "Schritt nach oben/Stopp",
+              "step_down": "Schritt nach unten/Stopp",
+              "move_up": "Nach oben",
+              "move_down": "Nach unten"
+            }
+          }
+        }
+      },
+      "des_door_ringing_sensor": {
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "activated": "Aktiviert"
+            }
+          }
+        }
+      },
+      "dimming_sensor": {
+        "name": "Dimm Ereignis ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "unknown": "Unbekannt",
+              "on": "Ein",
+              "off": "Aus",
+              "longpress_up": "Aufdimmen",
+              "longpress_up_release": "Aufdimmen Loslassen",
+              "longpress_down": "Herunterdimmen",
+              "longpress_down_release": "Herunterdimmen Loslassen"
+            }
+          }
+        }
+      },
+      "force_on_off_sensor": {
+        "name": "Zwang Ereignis ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "unknown": "Unbekannt",
+              "on": "Ein",
+              "off": "Aus"
+            }
+          }
+        }
+      },
+      "switch_sensor": {
+        "name": "Schalt Ereignis ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "unknown": "Unbekannt",
+              "on": "Ein",
+              "off": "Aus"
+            }
+          }
+        }
+      }
+    },
+    "select": {
+      "cover_actuator": {
+        "name": "{channel_name} Zwangsstellung",
+        "state": {
+          "deactivated": "Deaktiviert",
+          "forced_open": "Offen",
+          "forced_closed": "Geschlossen"
+        }
+      },
+      "dimming_actuator": {
+        "name": "{channel_name} Zwangsstellung",
+        "state": {
+          "deactivated": "Deaktiviert",
+          "forced_on": "Ein",
+          "forced_off": "Aus"
+        }
+      },
+      "switch_actuator": {
+        "name": "{channel_name} Zwangsstellung",
+        "state": {
+          "deactivated": "Deaktiviert",
+          "forced_on": "Ein",
+          "forced_off": "Aus"
+        }
+      }
+    },
+    "sensor": {
+      "brightness_sensor": {
+        "name": "Beleuchtungsstärke"
+      },
+      "movement_detector_brightness": {
+        "name": "Beleuchtungsstärke"
+      },
+      "temperature_sensor": {
+        "name": "Temperatur"
+      },
+      "wind_sensor_speed": {
+        "name": "Windgeschwindigkeit"
+      },
+      "wind_sensor_force": {
+        "name": "Windstärke"
+      },
+      "window_position": {
+        "name": "Fensterposition",
+        "state": {
+          "unknown": "Unbekannt",
+          "closed": "Geschlossen",
+          "tilted": "Gekippt",
+          "open": "Offen"
+        }
+      }
+    }
+  }
+}
