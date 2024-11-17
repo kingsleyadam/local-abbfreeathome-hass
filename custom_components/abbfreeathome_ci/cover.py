@@ -119,7 +119,7 @@ class FreeAtHomeCoverEntity(CoverEntity):
         }
 
     @property
-    def current_cover_position(self) -> int | None:
+    def current_cover_position(self) -> int:
         """Get current position."""
         return abs(self._device.position - 100)
 
@@ -137,22 +137,22 @@ class FreeAtHomeCoverEntity(CoverEntity):
         return f"{self._device.device_id}_{self._device.channel_id}_{self.entity_description.key}"
 
     @property
-    def is_closed(self) -> bool | None:
+    def is_closed(self) -> bool:
         """If the cover is closed or not."""
         return self._device.position == 100
 
     @property
-    def is_closing(self) -> bool | None:
+    def is_closing(self) -> bool:
         """If the cover is closing or not."""
         return self._device.state == CoverActuatorState.closing.name
 
     @property
-    def is_opening(self) -> bool | None:
+    def is_opening(self) -> bool:
         """If the cover is opening or not."""
         return self._device.state == CoverActuatorState.opening.name
 
     @property
-    def supported_features(self) -> int | None:
+    def supported_features(self) -> CoverEntityFeature:
         """Return the list of supported features."""
 
         _features = (
@@ -167,25 +167,25 @@ class FreeAtHomeCoverEntity(CoverEntity):
 
         return _features
 
-    async def async_open_cover(self, **kwargs) -> None:
+    async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
         await self._device.open()
 
-    async def async_close_cover(self, **kwargs) -> None:
+    async def async_close_cover(self, **kwargs: Any) -> None:
         """Close cover."""
         await self._device.close()
 
-    async def async_set_cover_position(self, **kwargs) -> None:
+    async def async_set_cover_position(self, **kwargs: Any) -> None:
         """Move the cover to a specific position."""
 
         _position = abs(kwargs[ATTR_POSITION] - 100)
         await self._device.set_position(_position)
 
-    async def async_stop_cover(self, **kwarogs) -> None:
+    async def async_stop_cover(self, **kwargs: Any) -> None:
         """Stop the cover."""
         await self._device.stop()
 
-    async def async_set_cover_tilt_position(self, **kwargs) -> None:
+    async def async_set_cover_tilt_position(self, **kwargs: Any) -> None:
         """Move the cover tilt to a specific position."""
         _tilt_position = abs(kwargs[ATTR_TILT_POSITION] - 100)
         await self._device.set_tilt_position(_tilt_position)
