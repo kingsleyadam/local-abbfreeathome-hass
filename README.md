@@ -116,14 +116,14 @@ When adding the integration manually you'll be prompted with all fields. The hos
 The integration also allows you to setup and configure the integration via YAML. For this, add the following to your `configuration.yaml` file.
 
 ```yaml
-abbfreeathome:
+abbfreeathome_ci:
   host: http://<hostname or ip address>
   username: installer
   password: <password>
   include_orphan_channels: false
 ```
 
-Each time Home Assistant is loaded, the `configuration.yaml` entry for `abbfreeathome` will be checked, verified, and updated accordingly. This means that if you want to update your configuration, simply modify the `configuration.yaml` file and restart Home Assistant.
+Each time Home Assistant is loaded, the `configuration.yaml` entry for `abbfreeathome_ci` will be checked, verified, and updated accordingly. This means that if you want to update your configuration, simply modify the `configuration.yaml` file and restart Home Assistant.
 
 **Note:** If your configuration settings are invalid in the `configuration.yaml` file, you won’t see any changes in the Home Assistant interface. Instead, you’ll need to check the logs to identify any issues that occurred while adding the integration. For this reason, it’s recommended to set up the integration via the Home Assistant add integrations interface or through auto-discovery.
 
