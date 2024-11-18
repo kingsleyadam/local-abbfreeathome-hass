@@ -12,6 +12,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import CONF_INCLUDE_ORPHAN_CHANNELS, CONF_SERIAL, DOMAIN
 
@@ -35,8 +36,13 @@ PLATFORMS: list[Platform] = [
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up ABB-free@home from a config entry."""
 
+    # Get the Home Assistant ClientSession Object
+    _client_session = async_get_clientsession(hass)
+
     # Get settings from free@home SysAP
-    _free_at_home_settings = FreeAtHomeSettings(host=entry.data[CONF_HOST])
+    _free_at_home_settings = FreeAtHomeSettings(
+        host=entry.data[CONF_HOST], client_session=_client_session
+    )
     await _free_at_home_settings.load()
 
     # Attempt to fetch orphan channels config entry, if not found fallback to True
@@ -51,6 +57,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             host=entry.data[CONF_HOST],
             username=entry.data[CONF_USERNAME],
             password=entry.data[CONF_PASSWORD],
+            client_session=_client_session,
         ),
         interfaces=[
             Interface.UNDEFINED,

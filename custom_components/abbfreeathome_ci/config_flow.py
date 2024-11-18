@@ -15,6 +15,7 @@ from abbfreeathome.api import (
     InvalidCredentialsException,
     InvalidHostException,
 )
+from aiohttp import ClientSession
 from packaging.version import Version
 import voluptuous as vol
 
@@ -26,6 +27,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import callback
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import CONF_INCLUDE_ORPHAN_CHANNELS, CONF_SERIAL, DOMAIN, SYSAP_VERSION
 
@@ -54,10 +56,14 @@ def _schema_with_defaults(
     )
 
 
-async def validate_settings(host: str) -> tuple[FreeAtHomeSettings, dict[str, Any]]:
+async def validate_settings(
+    host: str, client_session: ClientSession
+) -> tuple[FreeAtHomeSettings, dict[str, Any]]:
     """Validate the settings endpoint."""
     errors: dict[str, str] = {}
-    settings: FreeAtHomeSettings = FreeAtHomeSettings(host=host)
+    settings: FreeAtHomeSettings = FreeAtHomeSettings(
+        host=host, client_session=client_session
+    )
 
     try:
         await settings.load()
@@ -73,10 +79,14 @@ async def validate_settings(host: str) -> tuple[FreeAtHomeSettings, dict[str, An
     return settings, errors
 
 
-async def validate_api(host: str, username: str, password: str) -> dict[str, Any]:
+async def validate_api(
+    host: str, username: str, password: str, client_session: ClientSession
+) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
     errors: dict[str, str] = {}
-    api = FreeAtHomeApi(host=host, username=username, password=password)
+    api = FreeAtHomeApi(
+        host=host, username=username, password=password, client_session=client_session
+    )
 
     try:
         await api.get_sysap()
@@ -122,7 +132,10 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             return self._async_show_setup_form(step_id="user")
 
         # Check/Get Settings
-        settings, settings_errors = await validate_settings(host=user_input[CONF_HOST])
+        settings, settings_errors = await validate_settings(
+            host=user_input[CONF_HOST],
+            client_session=async_get_clientsession(self.hass),
+        )
         if settings_errors.get("base") != "cannot_connect":
             self._sysap_version = settings.version
         if settings_errors:
@@ -133,6 +146,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             host=user_input[CONF_HOST],
             username=user_input[CONF_USERNAME],
             password=user_input[CONF_PASSWORD],
+            client_session=async_get_clientsession(self.hass),
         )
         if api_errors:
             return self._async_show_setup_form(step_id="user", errors=api_errors)
@@ -159,7 +173,9 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="not_ipv4address")
 
         self._host = f"http://{discovery_info.ip_address.exploded}"
-        settings, errors = await validate_settings(host=self._host)
+        settings, errors = await validate_settings(
+            host=self._host, client_session=async_get_clientsession(self.hass)
+        )
 
         if errors:
             return self.async_abort(reason="invalid_settings")
@@ -187,6 +203,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             host=self._host,
             username=user_input[CONF_USERNAME],
             password=user_input[CONF_PASSWORD],
+            client_session=async_get_clientsession(self.hass),
         )
 
         if errors:
@@ -226,6 +243,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             host=self._host,
             username=user_input[CONF_USERNAME],
             password=user_input[CONF_PASSWORD],
+            client_session=async_get_clientsession(self.hass),
         )
 
         if errors:
