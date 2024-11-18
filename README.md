@@ -190,11 +190,25 @@ mode: single
 
 ## Debugging
 
-If you're having issues with the integration, maybe not all devices are showing up, or entities are not responding as you'd expect, you can do two things to help debug.
+If you're having issues with the integration, maybe not all devices are showing up, or entities are not responding as you'd expect, you can do a few things to help debug.
+
+### Gather Debug Logs
+
+You can temporarily enable debug logs to be captured and downloaded, then shared. This is documented within the Home Assistant [documentation](https://www.home-assistant.io/docs/configuration/troubleshooting/#debug-logs-and-diagnostics). To do this navigate to the integration and click **Enable Debug Logging**.
+
+While this is enabled, all logging events from this integration and the corresponding python package will be available in the home assistant core logs at `Settings` -> `System` -> `Logs`. Ensure `Home Assistant Core` logs are select in the top right (default) and then click the three dot menu and `Show raw logs`.
+
+As log events come in you should see a mix of INFO (green) and DEBUG (blue) logs. You may have to trigger an event on the free@home system to view the logs (e.g. turn on a light switch).
+
+You can filter the logs as well. You may want to filter on `Websocket Response` to view all events happening on the websocket. These are ALL events, even those that are NOT associated with a device or entity in Home Assistant.
+
+**If you're requesting a new device added this this repository** we may ask you to run through the above steps and provide the logs for the specific device you want integrated. You'll want to trigger all of the different functions of the device (close and open curtain, tilt curtain, etc) to capture all events in the logs. You can filter the logs by the serial number (e.g. `ABB7F59C9F7C`) to reduce the amount of logs and easier sharing.
+
+Once finished go back to the integration page and `Disable debug logging`. Once disabled you'll be greeted with a download of all the logs captured during this time.
 
 ### Enable Verbose Logging
 
-You can enable more verbose logging within your Home Assistant installation just for this integration by adding the following to your Home Assistant `configuration.yaml` file.
+You can enable more verbose logging permanently within your Home Assistant installation just for this integration by adding the following to your Home Assistant `configuration.yaml` file.
 
 By default the Home Assistant default logger is `warning`, this configuration won't change that. But it'll create additional logs for both this integration and the PyPi module running a number of calls to the SysAP.
 
@@ -202,8 +216,8 @@ By default the Home Assistant default logger is `warning`, this configuration wo
 logger:
   default: warning
   logs:
-    abbfreeathome: debug
-    custom_components.abbfreeathome_ci: debug
+    abbfreeathome: info
+    custom_components.abbfreeathome_ci: info
 ```
 
 ### Download Diagnostics
