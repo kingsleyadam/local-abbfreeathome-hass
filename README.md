@@ -111,6 +111,22 @@ If the SysAP is not found automatically you can add it manually. Add this integr
 
 When adding the integration manually you'll be prompted with all fields. The hostname must be the fully resolvable hostname with protocol (e.g. http). Adding the integration will fail if you just provide the IP address or hostname.
 
+##### Configuration.yaml
+
+The integration also allows you to setup and configure the integration via YAML. For this, add the following to your `configuration.yaml` file.
+
+```yaml
+abbfreeathome:
+  host: http://<hostname or ip address>
+  username: installer
+  password: <password>
+  include_orphan_channels: false
+```
+
+Each time Home Assistant is loaded, the `configuration.yaml` entry for `abbfreeathome` will be checked, verified, and updated accordingly. This means that if you want to update your configuration, simply modify the `configuration.yaml` file and restart Home Assistant.
+
+**Note:** If your configuration settings are invalid in the `configuration.yaml` file, you won’t see any changes in the Home Assistant interface. Instead, you’ll need to check the logs to identify any issues that occurred while adding the integration. For this reason, it’s recommended to set up the integration via the Home Assistant add integrations interface or through auto-discovery.
+
 ### Automatic Area Discovery
 
 When adding the integration it'll automatically add devices to different `Areas` in Home Assistant. The areas will be pulled from your ABB-free@home Configuration/Floorplan. When prompted to add the devices double check the area for each.

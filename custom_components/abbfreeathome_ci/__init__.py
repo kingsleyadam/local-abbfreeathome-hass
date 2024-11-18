@@ -7,12 +7,15 @@ import logging
 from abbfreeathome.api import FreeAtHomeApi, FreeAtHomeSettings
 from abbfreeathome.bin.interface import Interface
 from abbfreeathome.freeathome import FreeAtHome
+import voluptuous as vol
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.typing import ConfigType
 
 from .const import CONF_INCLUDE_ORPHAN_CHANNELS, CONF_SERIAL, DOMAIN
 
@@ -31,6 +34,38 @@ PLATFORMS: list[Platform] = [
     Platform.SWITCH,
     Platform.VALVE,
 ]
+
+CONFIG_SCHEMA = vol.Schema(
+    {
+        DOMAIN: vol.Schema(
+            {
+                vol.Required(CONF_HOST): cv.string,
+                vol.Required(CONF_USERNAME): cv.string,
+                vol.Required(CONF_PASSWORD): cv.string,
+                vol.Optional(CONF_INCLUDE_ORPHAN_CHANNELS, default=False): cv.boolean,
+            }
+        )
+    },
+    extra=vol.ALLOW_EXTRA,
+)
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up abbfreeathome instance."""
+    # If no config entry found in yaml, return True
+    if DOMAIN not in config:
+        return True
+
+    conf = config[DOMAIN]
+    hass.async_create_task(
+        hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": SOURCE_IMPORT},
+            data=conf,
+        )
+    )
+
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
