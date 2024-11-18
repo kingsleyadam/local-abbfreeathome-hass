@@ -16,7 +16,6 @@ from abbfreeathome.api import (
     InvalidHostException,
 )
 from aiohttp import ClientSession
-from packaging.version import Version
 import voluptuous as vol
 
 from homeassistant.components import zeroconf
@@ -68,7 +67,7 @@ async def validate_settings(
     try:
         await settings.load()
 
-        if Version(settings.version) < Version("2.6.0"):
+        if not settings.has_api_support:
             errors["base"] = "unsupported_sysap_version"
     except InvalidHostException:
         errors["base"] = "cannot_connect"
