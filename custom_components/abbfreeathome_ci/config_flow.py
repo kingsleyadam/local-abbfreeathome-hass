@@ -124,6 +124,59 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._username: str | None = None
         self._include_orphan_channels: bool = False
 
+    async def async_step_import(self, import_data: dict[str, Any]) -> ConfigFlowResult:
+        """Handle import from yaml configuration."""
+        # Check/Get Settings
+        settings, settings_errors = await validate_settings(
+            host=import_data[CONF_HOST],
+            client_session=async_get_clientsession(self.hass),
+        )
+
+        if settings_errors:
+            _LOGGER.error(
+                "Could not fetch ABB-free@home settings from SysAp; %s",
+                settings_errors.get("base"),
+            )
+            return self.async_abort(reason="invalid_settings")
+
+        # Check API
+        api_errors = await validate_api(
+            host=import_data[CONF_HOST],
+            username=import_data[CONF_USERNAME],
+            password=import_data[CONF_PASSWORD],
+            client_session=async_get_clientsession(self.hass),
+        )
+
+        if api_errors:
+            _LOGGER.error(
+                "Could not fetch ABB-free@home settings from SysAp; %s",
+                api_errors.get("base"),
+            )
+            return self.async_abort(reason="invalid_api")
+
+        # Set all required variables for registration
+        self._serial_number = settings.serial_number
+        self._name = settings.name
+        self._title = f"{settings.name} ({settings.serial_number})"
+        self._host = import_data[CONF_HOST]
+        self._username = import_data[CONF_USERNAME]
+        self._password = import_data[CONF_PASSWORD]
+        self._include_orphan_channels = import_data[CONF_INCLUDE_ORPHAN_CHANNELS]
+
+        # If SysAP already exists, update configuration and abort.
+        await self.async_set_unique_id(settings.serial_number)
+        self._abort_if_unique_id_configured(
+            updates={
+                CONF_HOST: self._host,
+                CONF_USERNAME: self._username,
+                CONF_PASSWORD: self._password,
+                CONF_INCLUDE_ORPHAN_CHANNELS: self._include_orphan_channels,
+            }
+        )
+
+        # Create new config entry.
+        return self._async_create_entry()
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
