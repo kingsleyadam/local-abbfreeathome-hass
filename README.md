@@ -35,15 +35,17 @@ The current list of supported devices by function are:
 | FID_DIMMING_SENSOR                                 | `Event`                   |
 | FID_FORCE_ON_OFF_SENSOR                            | `Event`                   |
 | FID_HEATING_ACTUATOR                               | `Valve`                   |
+| FID_MOVEMENT_DETECTOR                              | `Binary Sensor`, `Sensor` |
+| FID_MOVEMENT_DETECTOR_PYCUSTOM0                    | `Binary Sensor`, `Sensor` |
 | FID_RAIN_SENSOR                                    | `Binary Sensor`           |
 | FID_ROOM_TEMPERATURE_CONTROLLER_MASTER_WITHOUT_FAN | `Climate`                 |
 | FID_SHUTTER_ACTUATOR                               | `Cover`                   |
 | FID_SMOKE_DETECTOR                                 | `Binary Sensor`           |
 | FID_SWITCH_ACTUATOR                                | `Switch`                  |
+| FID_SWITCH_ACTUATOR_PYCUSTOM0                      | `Switch`                  |
 | FID_SWITCH_SENSOR                                  | `Event`                   |
 | FID_TEMPERATURE_SENSOR                             | `Binary Sensor`, `Sensor` |
 | FID_TRIGGER                                        | `Button`                  |
-| FID_MOVEMENT_DETECTOR                              | `Binary Sensor`, `Sensor` |
 | FID_WIND_SENSOR                                    | `Binary Sensor`, `Sensor` |
 | FID_WINDOW_DOOR_SENSOR                             | `Binary Sensor`           |
 | FID_WINDOW_DOOR_POSITION_SENSOR                    | `Binary Sensor`, `Sensor` |
