@@ -98,7 +98,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             Interface.UNDEFINED,
             Interface.WIRED_BUS,
             Interface.WIRELESS_RF,
-            Interface.VIRTUAL_DEVICE,
         ],
         include_orphan_channels=_include_orphan_channels,
     )
