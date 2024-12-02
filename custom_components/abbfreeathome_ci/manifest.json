@@ -8,7 +8,7 @@
   "homekit": {},
   "iot_class": "local_push",
   "loggers": ["abbfreeathome"],
-  "requirements": ["local-abbfreeathome==1.17.2"],
+  "requirements": ["local-abbfreeathome==1.17.3"],
   "ssdp": [],
   "version": "1.0.0",
   "zeroconf": [
