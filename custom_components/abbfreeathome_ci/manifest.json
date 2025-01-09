@@ -10,7 +10,7 @@
   "loggers": ["abbfreeathome"],
   "requirements": ["local-abbfreeathome==1.18.0"],
   "ssdp": [],
-  "version": "1.0.0",
+  "version": "1.1.0",
   "zeroconf": [
     {
       "type": "_http._tcp.local.",
