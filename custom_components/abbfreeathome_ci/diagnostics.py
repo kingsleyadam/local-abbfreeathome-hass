@@ -29,7 +29,7 @@ def inject_function_pairing_parameter_names(device_list: list[dict]):
         ).items():
             try:
                 _device_value["parameterNames"][
-                    f"{Parameter(int(_device_param_key.lstrip("par"), 16)).name} ({_device_param_key})"
+                    f"{Parameter(int(_device_param_key.lstrip('par'), 16)).name} ({_device_param_key})"
                 ] = _device_param_value
             except ValueError:  # noqa: PERF203
                 _device_value["parameterNames"][f"UNKNOWN ({_device_param_key})"] = (
@@ -67,7 +67,7 @@ def inject_function_pairing_parameter_names(device_list: list[dict]):
             ).items():
                 try:
                     _channel_value["parameterNames"][
-                        f"{Parameter(int(_channel_param_key.lstrip("par"), 16)).name} ({_channel_param_key})"
+                        f"{Parameter(int(_channel_param_key.lstrip('par'), 16)).name} ({_channel_param_key})"
                     ] = _channel_param_value
                 except ValueError:  # noqa: PERF203
                     _channel_value["parameterNames"][
