@@ -101,7 +101,7 @@ class FreeAtHomeLightEntity(LightEntity):
         """Turn the light on."""
         if ATTR_BRIGHTNESS in kwargs:
             await self._light.set_brightness(
-                brightness_to_value(BRIGHTNESS_SCALE, kwargs[ATTR_BRIGHTNESS])
+                int(brightness_to_value(BRIGHTNESS_SCALE, kwargs[ATTR_BRIGHTNESS]))
             )
         else:
             await self._light.turn_on()
