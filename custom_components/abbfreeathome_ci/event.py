@@ -142,11 +142,15 @@ class FreeAtHomeEventEntity(EventEntity):
 
     async def async_added_to_hass(self) -> None:
         """Entity being added to hass."""
-        self._device.register_callback(self._async_handle_event)
+        self._device.register_callback(
+            callback_attribute="state", callback=self._async_handle_event
+        )
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
-        self._device.remove_callback(self._async_handle_event)
+        self._device.remove_callback(
+            callback_attribute="state", callback=self._async_handle_event
+        )
 
     @property
     def device_info(self) -> DeviceInfo:

@@ -56,11 +56,40 @@ class FreeAtHomeClimateEntity(ClimateEntity):
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
-        self._climate.register_callback(self.async_write_ha_state)
+        self._climate.register_callback(
+            callback_attribute="state", callback=self.async_write_ha_state
+        )
+        self._climate.register_callback(
+            callback_attribute="current_temperature", callback=self.async_write_ha_state
+        )
+        self._climate.register_callback(
+            callback_attribute="valve", callback=self.async_write_ha_state
+        )
+        self._climate.register_callback(
+            callback_attribute="target_temperature", callback=self.async_write_ha_state
+        )
+        self._climate.register_callback(
+            callback_attribute="eco_mode", callback=self.async_write_ha_state
+        )
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
-        self._climate.remove_callback(self._async_write_ha_state)
+        self._climate.remove_callback(
+            callback_attribute="state", callback=self._async_write_ha_state
+        )
+        self._climate.remove_callback(
+            callback_attribute="current_temperature",
+            callback=self._async_write_ha_state,
+        )
+        self._climate.remove_callback(
+            callback_attribute="valve", callback=self._async_write_ha_state
+        )
+        self._climate.remove_callback(
+            callback_attribute="target_temperature", callback=self._async_write_ha_state
+        )
+        self._climate.remove_callback(
+            callback_attribute="eco_mode", callback=self._async_write_ha_state
+        )
 
     @property
     def device_info(self) -> DeviceInfo:

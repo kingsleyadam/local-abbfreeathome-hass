@@ -48,11 +48,15 @@ class FreeAtHomeLockEntity(LockEntity):
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
-        self._lock.register_callback(self.async_write_ha_state)
+        self._lock.register_callback(
+            callback_attribute="state", callback=self.async_write_ha_state
+        )
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
-        self._lock.remove_callback(self.async_write_ha_state)
+        self._lock.remove_callback(
+            callback_attribute="state", callback=self.async_write_ha_state
+        )
 
     @property
     def device_info(self) -> DeviceInfo:
