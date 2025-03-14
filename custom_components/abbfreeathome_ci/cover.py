@@ -105,7 +105,7 @@ class FreeAtHomeCoverEntity(CoverEntity):
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
         for _callback_attribute in self._callback_attributes:
-            self._climate.register_callback(
+            self._device.register_callback(
                 callback_attribute=_callback_attribute,
                 callback=self.async_write_ha_state,
             )
@@ -118,7 +118,7 @@ class FreeAtHomeCoverEntity(CoverEntity):
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
         for _callback_attribute in self._callback_attributes:
-            self._climate.remove_callback(
+            self._device.remove_callback(
                 callback_attribute=_callback_attribute,
                 callback=self.async_write_ha_state,
             )
