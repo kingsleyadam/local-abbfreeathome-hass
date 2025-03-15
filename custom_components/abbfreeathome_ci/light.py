@@ -40,6 +40,10 @@ class FreeAtHomeLightEntity(LightEntity):
     """Defines a free@home light entity."""
 
     _attr_should_poll: bool = False
+    _callback_attributes: list[str] = [
+        "state",
+        "brightness",
+    ]
 
     def __init__(self, light: DimmingActuator, sysap_serial_number: str) -> None:
         """Initialize the light."""
@@ -54,11 +58,19 @@ class FreeAtHomeLightEntity(LightEntity):
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
-        self._light.register_callback(self.async_write_ha_state)
+        for _callback_attribute in self._callback_attributes:
+            self._light.register_callback(
+                callback_attribute=_callback_attribute,
+                callback=self.async_write_ha_state,
+            )
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
-        self._light.remove_callback(self.async_write_ha_state)
+        for _callback_attribute in self._callback_attributes:
+            self._light.remove_callback(
+                callback_attribute=_callback_attribute,
+                callback=self.async_write_ha_state,
+            )
 
     @property
     def device_info(self) -> DeviceInfo:

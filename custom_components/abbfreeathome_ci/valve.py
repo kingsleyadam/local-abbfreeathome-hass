@@ -54,11 +54,15 @@ class FreeAtHomeValveEntity(ValveEntity):
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
-        self._valve.register_callback(self.async_write_ha_state)
+        self._valve.register_callback(
+            callback_attribute="position", callback=self.async_write_ha_state
+        )
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
-        self._valve.remove_callback(self.async_write_ha_state)
+        self._valve.remove_callback(
+            callback_attribute="position", callback=self.async_write_ha_state
+        )
 
     @property
     def device_info(self) -> DeviceInfo:

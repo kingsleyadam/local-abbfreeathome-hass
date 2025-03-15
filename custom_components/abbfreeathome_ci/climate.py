@@ -40,6 +40,13 @@ class FreeAtHomeClimateEntity(ClimateEntity):
     """Defines a free@home climate entity."""
 
     _attr_should_poll: bool = False
+    _callback_attributes: list[str] = [
+        "state",
+        "current_temperature",
+        "valve",
+        "target_temperature",
+        "eco_mode",
+    ]
 
     def __init__(
         self, climate: RoomTemperatureController, sysap_serial_number: str
@@ -56,11 +63,19 @@ class FreeAtHomeClimateEntity(ClimateEntity):
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
-        self._climate.register_callback(self.async_write_ha_state)
+        for _callback_attribute in self._callback_attributes:
+            self._climate.register_callback(
+                callback_attribute=_callback_attribute,
+                callback=self.async_write_ha_state,
+            )
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
-        self._climate.remove_callback(self._async_write_ha_state)
+        for _callback_attribute in self._callback_attributes:
+            self._climate.remove_callback(
+                callback_attribute=_callback_attribute,
+                callback=self.async_write_ha_state,
+            )
 
     @property
     def device_info(self) -> DeviceInfo:

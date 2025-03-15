@@ -80,6 +80,10 @@ class FreeAtHomeCoverEntity(CoverEntity):
     """Defines a free@home cover entity."""
 
     _attr_should_poll: bool = False
+    _callback_attributes: list[str] = [
+        "state",
+        "position",
+    ]
 
     def __init__(
         self,
@@ -100,11 +104,29 @@ class FreeAtHomeCoverEntity(CoverEntity):
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
-        self._device.register_callback(self.async_write_ha_state)
+        for _callback_attribute in self._callback_attributes:
+            self._device.register_callback(
+                callback_attribute=_callback_attribute,
+                callback=self.async_write_ha_state,
+            )
+
+        if hasattr(self._device, "tilt_position"):
+            self._device.register_callback(
+                callback_attribute="tilt_position", callback=self.async_write_ha_state
+            )
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
-        self._device.remove_callback(self.async_write_ha_state)
+        for _callback_attribute in self._callback_attributes:
+            self._device.remove_callback(
+                callback_attribute=_callback_attribute,
+                callback=self.async_write_ha_state,
+            )
+
+        if hasattr(self._device, "tilt_position"):
+            self._device.remove_callback(
+                callback_attribute="tilt_position", callback=self.async_write_ha_state
+            )
 
     @property
     def device_info(self) -> DeviceInfo:
