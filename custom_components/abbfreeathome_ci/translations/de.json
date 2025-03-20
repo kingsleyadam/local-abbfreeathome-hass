@@ -8,7 +8,8 @@
           "host": "Host",
           "username": "Benutzername",
           "password": "Passwort",
-          "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?"
+          "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
+          "include_virtual_devices": "Virtuelle Geräte einschließen?"
         }
       },
       "zeroconf_confirm": {
@@ -18,7 +19,8 @@
           "host": "Host",
           "username": "Benutzername",
           "password": "Passwort",
-          "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?"
+          "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
+          "include_virtual_devices": "Virtuelle Geräte einschließen?"
         }
       },
       "reconfigure": {
@@ -27,7 +29,8 @@
         "data": {
           "username": "Benutzername",
           "password": "Passwort",
-          "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?"
+          "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
+          "include_virtual_devices": "Virtuelle Geräte einschließen?"
         }
       }
     },
@@ -135,6 +138,74 @@
             }
           }
         }
+      },
+      "virtual_switch_actuator_onoff": {
+        "name": "Virtuelles Schalt Ereignis ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "unknown": "Unbekannt",
+              "on": "Ein",
+              "off": "Aus"
+            }
+          }
+        }
+      }
+    },
+    "number": {
+      "virtual_brightness_sensor": {
+        "name": "Virtuelle Beleuchtungsstärke"
+      },
+      "virtual_energy_battery_battery_power": {
+        "name": "Virtuelle Batterie Leistung"
+      },
+      "virtual_energy_battery_soc": {
+        "name": "Virtuelle Batterie SOC"
+      },
+      "virtual_energy_battery_imported_today": {
+        "name": "Virtuelle Batterie importierte Energie heute"
+      },
+      "virtual_energy_battery_exported_today": {
+        "name": "Virtuelle Batterie exportierte Energie heute"
+      },
+      "virtual_energy_battery_imported_total": {
+        "name": "Virtuelle Batterie gesamte importierte Energie"
+      },
+      "virtual_energy_battery_exported_total": {
+        "name": "Virtuelle Batterie gesamte exportierte Energie"
+      },
+      "virtual_energy_inverter_current_power": {
+        "name": "Virtueller Wechselrichter aktuell aufgenommene Leistung"
+      },
+      "virtual_energy_inverter_imported_today": {
+        "name": "Virtueller Wechselrichter importierte Energie heute"
+      },
+      "virtual_energy_inverter_imported_total": {
+        "name": "Virtueller Wechselrichter gesamte importierte Energie"
+      },
+      "virtual_energy_two_way_meter_current_power": {
+        "name": "Virtueller Zweiwegezähler aktuell aufgenommene Leistung"
+      },
+      "virtual_energy_two_way_meter_imported_today": {
+        "name": "Virtueller Zweiwegezähler importierte Energie heute"
+      },
+      "virtual_energy_two_way_meter_exported_today": {
+        "name": "Virtueller Zweiwegezähler exportierte Energie heute"
+      },
+      "virtual_energy_two_way_meter_imported_total": {
+        "name": "Virtueller Zweiwegezähler gesamte importierte Energie"
+      },
+      "virtual_energy_two_way_meter_exported_total": {
+        "name": "Virtueller Zweiwegezähler gesamte exportierte Energie"
+      },
+      "virtual_temperature_sensor": {
+        "name": "Virtuelle Temperatur"
+      },
+      "virtual_wind_sensor_force": {
+        "name": "Virtuelle Windstärke"
+      },
+      "virtual_wind_sensor_speed": {
+        "name": "Virtuelle Windgeschwindigkeit"
       }
     },
     "select": {
@@ -187,6 +258,20 @@
           "tilted": "Gekippt",
           "open": "Offen"
         }
+      }
+    },
+    "switch": {
+      "virtual_brightness_sensor": {
+        "name": "Virtueller Helligkeitsalarm"
+      },
+      "virtual_rain_sensor": {
+        "name": "Virtueller Regenalarm"
+      },
+      "virtual_temperature_sensor": {
+        "name": "Virtueller Frostalarm"
+      },
+      "virtual_wind_sensor": {
+        "name": "Virtueller Windalarm"
       }
     }
   }

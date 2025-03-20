@@ -17,7 +17,12 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
-from .const import CONF_INCLUDE_ORPHAN_CHANNELS, CONF_SERIAL, DOMAIN
+from .const import (
+    CONF_INCLUDE_ORPHAN_CHANNELS,
+    CONF_INCLUDE_VIRTUAL_DEVICES,
+    CONF_SERIAL,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,6 +34,7 @@ PLATFORMS: list[Platform] = [
     Platform.EVENT,
     Platform.LIGHT,
     Platform.LOCK,
+    Platform.NUMBER,
     Platform.SELECT,
     Platform.SENSOR,
     Platform.SWITCH,
@@ -43,6 +49,7 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Required(CONF_USERNAME): cv.string,
                 vol.Required(CONF_PASSWORD): cv.string,
                 vol.Optional(CONF_INCLUDE_ORPHAN_CHANNELS, default=False): cv.boolean,
+                vol.Optional(CONF_INCLUDE_VIRTUAL_DEVICES, default=False): cv.boolean,
             }
         )
     },
@@ -86,6 +93,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except KeyError:
         _include_orphan_channels = True
 
+    # Define the basic interfaces to be included
+    _interfaces = [
+        Interface.UNDEFINED,
+        Interface.WIRED_BUS,
+        Interface.WIRELESS_RF,
+    ]
+
+    # Attempt to fetch virtual devices config entry, if not found fallback to False
+    try:
+        _include_virtual_devices = entry.data[CONF_INCLUDE_VIRTUAL_DEVICES]
+    except KeyError:
+        _include_virtual_devices = False
+
+    if _include_virtual_devices:
+        _interfaces.append(Interface.VIRTUAL_DEVICE)
+
     # Create the FreeAtHome Object
     _free_at_home = FreeAtHome(
         api=FreeAtHomeApi(
@@ -94,11 +117,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             password=entry.data[CONF_PASSWORD],
             client_session=_client_session,
         ),
-        interfaces=[
-            Interface.UNDEFINED,
-            Interface.WIRED_BUS,
-            Interface.WIRELESS_RF,
-        ],
+        interfaces=_interfaces,
         include_orphan_channels=_include_orphan_channels,
     )
 
@@ -184,6 +203,13 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         hass.config_entries.async_update_entry(
             entry, data=new_data, version=1, minor_version=2
+        )
+
+        if entry.minor_version < 3:
+            new_data[CONF_INCLUDE_VIRTUAL_DEVICES] = True
+
+        hass.config_entries.async_update_entry(
+            entry, data=new_data, version=1, minor_version=3
         )
 
     _LOGGER.debug(
