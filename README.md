@@ -93,6 +93,7 @@ The config setup will include some options to help configure the integration.
 | Username                                         | The **api** username, likely different from your normal login username.                                            |
 | Password                                         | The password for logging into the SysAP.                                                                           |
 | Include channels NOT on the free@home floorplan? | Whether to include channels that are not located on the free@home floorplan.                                       |
+| Include virtual devices?                         | Whether to include virtual devices or not.                                                                         |
 
 ###### Example
 
@@ -100,6 +101,7 @@ The config setup will include some options to help configure the integration.
 - **Username**: `installer`
 - **Password**: `<password>`
 - **Include channels NOT on the free@home floorplan?**: False
+- **Include virtual devices?**: False
 
 > Note: Support for SSL is not provided yet. For a valid SSL connection a cert pulled from the SysAP must be provided, research to be done to know if Home Assistant supports such a scenario.
 
@@ -123,6 +125,7 @@ abbfreeathome_ci:
   username: installer
   password: <password>
   include_orphan_channels: false
+  include_virtual_devices: false
 ```
 
 Each time Home Assistant is loaded, the `configuration.yaml` entry for `abbfreeathome_ci` will be checked, verified, and updated accordingly. This means that if you want to update your configuration, simply modify the `configuration.yaml` file and restart Home Assistant.
@@ -187,6 +190,160 @@ actions:
           - action: switch.turn_on
             target:
               device_id: 615bdcd2980a3a2a341488f50b7d8aea
+mode: single
+```
+
+## Virtual Devices
+!!! This is an advanced topic. If you don't know how to directly work with REST-APIs, you can just skip this section !!!
+
+### Introduction
+Virtual devices are a possibility to "create" a kind of proxy device in Free@Home for devices outside to Free@Home, but in Home-Assistant. Below is a description of each currently supported device including how to create it and possible use cases.
+
+### Preparation
+To create virtual devices the build-in swagger-interface `http://<ip-of-sysap>/swagger/fhapi` can be used. On the page, first click on `Authorize` on the upper right side and provide the API-user and -password. To deal with virtual devices, use the endpoint `virtualdevice`.
+
+Each virtual device needs to have an unique `serial`. **You need to remember this to be able to modify the virtual device later**
+
+The `ttl` parameter controls after which time - in seconds - the virtual device becomes unresponsive if no additional call to the endpoint is executed. If it is set to `0` it directly becomes unresponsive and it can be deleted in the F@H app. For now it can just be set to `-1` to disable keepalive-checks.
+
+After the creation of the virtual device through the endpoint, head over to the F@H app, place the virtual device in your floorplan and restart Home-Assistant.
+
+#### WindowDoorSensor
+**Creation:**
+```
+{
+  "type": "BinarySensor",
+  "properties": {
+    "ttl": "-1",
+    "displayname": "<Name you want to have the virtual device shown>"
+  }
+}
+```
+**Use Case:**
+You have a non-F@H door-sensor (e.g. Aqara) in Home-Assistant and want to see/react on the status of this sensor in F@H.
+
+**HA-Implementation:**
+A virtual door-sensor will be shown in HA as a switch. Create an automation, which reacts on the state-changes of the real sensor and update the virtual door-sensor accordingly.
+
+#### WeatherStation
+**Creation:**
+```
+{
+  "type": "WeatherStation",
+  "properties": {
+    "ttl": "-1",
+    "displayname": "<Name you want to have the virtual device shown>"
+  }
+}
+```
+**Use Case:**
+You have a non-F@H weather-station (e.g. HomematicIP) in Home-Assistant and want to see/react on the status of this sensor in F@H.
+
+**HA-Implementation:**
+A virtual weather-station shows up in HA with several entities (see below). Create an automation, which reacts on the state-changes of the real sensors and update the corresponding entities of the virtual weather-station.
+| HA-Entity        | Type   | Comments                                                  |
+| ---------------- | ------ | --------------------------------------------------------- |
+| Brightness Level | Number | brightness in lx, min-value = 0, float                    |
+| Brightness Alarm | Switch |                                                           |
+| Temperature      | Number | float                                                     |
+| Frost Alarm      | Switch |                                                           |
+| Wind Speed       | Number | speed in m/s, min-value = 0, float                        |
+| Wind Force       | Number | force in beaufort, min-value = 0, max-value = 12, integer |
+| Wind Alarm       | Switch |                                                           |
+| Rain Alarm       | Switch |                                                           |
+
+#### EnergyMeterv2
+**Creation:**
+```
+{
+  "type": "EnergyMeterv2",
+  "properties": {
+    "ttl": "-1",
+    "displayname": "<Name you want to have the virtual device shown>",
+    "flavor": "E",
+    "capabilities": [16,17,18,19,22,28]
+  }
+}
+```
+**Use Case:**
+You have all your energy-stuff (Two Way Meter, Inverter, Battery) in Home-Assitant and want to see the status of that in F@H.
+
+**HA-Implementation:**
+A virtual energy-meter shows up in HA with several entities (see below). Create an automation, which reacts on the state-changes of the real sensors and update the corresponding entities of the virtual energy-meter.
+| HA-Entity                            | Type   | Comments                                                                      |
+| ------------------------------------ | ------ | ----------------------------------------------------------------------------- |
+| Battery Power                        | Number | power going in and out of the battery now in Watt, float                      |
+| Battery SOC                          | Number | SOC of the battery, min-value = 0, max-value = 100, integer                   |
+| Battery Imported Energy Today        | Number | energy going in the battery today in Watt Hours, min-value = 0, integer       |
+| Battery Exported Energy Today        | Number | energy going out of the battery today in Watt Hours, min-value = 0, integer   |
+| Battery Imported Energy Total        | Number | energy going in the battery totally in Watt Hours, min-value = 0, integer     |
+| Battery Exported Energy Total        | Number | energy going out of the battery totally in Watt Hours, min-value = 0, integer |
+| Inverter Current Power               | Number | power produced by the inverter now in Watt, float                             |
+| Inverter Imported Energy Today       | Number | energy produced by the inverter today in Watt Hours, min-value = 0, integer   |
+| Inverter Imported Energy Total       | Number | energy produced by the inverter totally in Watt Hours, min-value = 0, integer |
+| Two Way Meter Current Power Consumed | Number | power going in and out of the household now in Watt, float                    |
+| Two Way Meter Imported Energy Today  | Number | energy imported from the grid today in Watt Hours, min-value = 0, integer     |
+| Two Way Meter Exported Energy Today  | Number | energy exported to the grid today in Watt Hours, min-value = 0, integer       |
+| Two Way Meter Imported Energy Total  | Number | energy imported from the grid totally in Watt Hours, min-value = 0, integer   |
+| Two Way Meter Exported Energy Total  | Number | energy exported to the grid totally in Watt Hours, min-value = 0, integer     |
+
+#### SwitchingActuator
+**Creation:**
+```
+{
+  "type": "SwitchingActuator",
+  "properties": {
+    "ttl": "-1",
+    "displayname": "<Name you want to have the virtual device shown>"
+  }
+}
+```
+**Use Case:**
+You have a non-F@H switch (e.g. Shelly-Plug) in Home-Assistant and want to see the status in F@H **AND** also want to control from within F@H app.
+
+**HA-Implementation:**
+For this two work the two directions (HA -> F@H and F@H -> HA) need to be handled.
+
+The direction `HA to F@H` needs to be handled like a WindowDoorSensor: A virtual switch will be shown in HA as a switch. Create an automation, which reacts on the state-changes of the real switch and update the virtual switch accordingly.
+
+The direction `F@H to HA` shows up in HA as an event as F@H only **requests** a state-change in HA. If nothing is done, the state in F@H will just switch back after a few seconds. You have to create an automation, which reacts on the event, do everything what is needed in HA (e.g. decide if the real switch can really be switched off) and **finally** update the virtual switch accordingly.
+```yaml
+alias: Test virtual switch event
+description: Turns a virtual switch on or off based on the event received from F@H
+triggers:
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: event.myvirtualswitch_myvirtualswitch
+conditions: []
+actions:
+  - variables:
+      value: "{{ trigger.event.data.new_state.attributes.event_type == \"On\" }}"
+  - choose:
+      - conditions:
+          - condition: and
+            conditions:
+              - condition: template
+                value_template: "{{ value }}"
+              - condition: state
+                entity_id: switch.myvirtualswitch
+                state: "off"
+        sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.myvirtualswitch
+      - conditions:
+          - condition: and
+            conditions:
+              - condition: template
+                value_template: "{{ value == false }}"
+              - condition: state
+                entity_id: switch.myvirtualswitch
+                state: "on"
+        sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.myvirtualswitch
 mode: single
 ```
 
