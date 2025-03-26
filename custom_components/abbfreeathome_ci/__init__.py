@@ -6,12 +6,19 @@ import logging
 
 from abbfreeathome.api import FreeAtHomeApi, FreeAtHomeSettings
 from abbfreeathome.bin.interface import Interface
+from abbfreeathome.exceptions import BadRequestException
 from abbfreeathome.freeathome import FreeAtHome
 import voluptuous as vol
 
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME, Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import (
+    HomeAssistant,
+    ServiceCall,
+    ServiceResponse,
+    ServiceValidationError,
+    SupportsResponse,
+)
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
@@ -22,6 +29,17 @@ from .const import (
     CONF_INCLUDE_VIRTUAL_DEVICES,
     CONF_SERIAL,
     DOMAIN,
+    VIRTUAL_DEVICE,
+)
+
+VIRTUALDEVICE_SCHEMA = (
+    vol.Schema(
+        {
+            vol.Required("serial"): str,
+        }
+    )
+    .extend(FreeAtHomeApi.virtualdevice_main_schema.schema)
+    .extend(FreeAtHomeApi.virtualdevice_properties_schema.schema)
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -150,6 +168,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Create a websocket connection for listen for changes in device entities.
     entry.async_create_background_task(hass, _free_at_home.ws_listen(), f"{DOMAIN}_ws")
 
+    # Setup services
+    if not hass.services.has_service(DOMAIN, VIRTUAL_DEVICE):
+        await async_setup_service(hass, entry)
+
     return True
 
 
@@ -219,3 +241,45 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     return True
+
+
+async def async_setup_service(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Set up services for ABB-free@home integration."""
+
+    async def virtual_device(call: ServiceCall) -> ServiceResponse:
+        """Service call to interact with the virtualdevice REST endpoint."""
+
+        # At this point the validation was successful and the dict can be constructed
+        data = {
+            "type": call.data.get("type"),
+            "properties": {
+                "ttl": call.data.get("ttl"),
+            },
+        }
+
+        if "displayname" in call.data:
+            data["properties"]["displayname"] = call.data.get("displayname")
+        if "flavor" in call.data:
+            data["properties"]["flavor"] = call.data.get("flavor")
+        if "capabilities" in call.data:
+            data["properties"]["capabilities"] = call.data.get("capabilities")
+
+        _fah = hass.data[DOMAIN][entry.entry_id]
+
+        try:
+            _result = await _fah.api.virtualdevice(
+                serial=call.data.get("serial"),
+                data=data,
+            )
+        except BadRequestException as e:
+            raise ServiceValidationError(e.message) from e
+
+        return _result
+
+    hass.services.async_register(
+        DOMAIN,
+        VIRTUAL_DEVICE,
+        virtual_device,
+        schema=VIRTUALDEVICE_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )

@@ -274,5 +274,37 @@
         "name": "Virtual Wind Alarm"
       }
     }
+  },
+  "services": {
+    "virtual_device": {
+      "name": "Virtual Device Maintenance",
+      "description": "Interact with the vitualdevice REST-endpoint, to create or modify virtual devices.",
+      "fields": {
+        "serial": {
+          "name": "Serial of virtual device",
+          "description": "A unique serial of the virtual device to identify."
+        },
+        "type": {
+          "name": "Type of virtual device",
+          "description": "The type of the virtual device to maintain."
+        },
+        "ttl": {
+          "name": "Lifetime of virtual device",
+          "description": "The lifetime of the virtual device in seconds before a keepalive needs to be received. -1=unlimited, 0=unresponsive or 180-86400."
+        },
+        "displayname": {
+          "name": "Displayname of virtual device",
+          "description": "Name of the virtual device, which will be displayed."
+        },
+        "flavor": {
+          "name": "Flavor of energymeter",
+          "description": "Flavor of the virtual energymeter to create."
+        },
+        "capabilities": {
+          "name": "Capabilities of energymeter",
+          "description": "Capabilities of the virtual energymeter to create as a list of integers."
+        }
+      }
+    }
   }
 }

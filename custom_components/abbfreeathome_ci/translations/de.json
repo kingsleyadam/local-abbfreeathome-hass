@@ -274,5 +274,37 @@
         "name": "Virtueller Windalarm"
       }
     }
+  },
+  "services": {
+    "virtual_device": {
+      "name": "Virtuelle Geräte Wartung",
+      "description": "Interagiert mit dem virtualdevice REST-Endpunkt, um virtuelle Geräte zu erzeugen oder zu modifizieren.",
+      "fields": {
+        "serial": {
+          "name": "Seriennummer des virtuellen Geräts",
+          "description": "Eine einzigartie Seriennummer um das virtuelle Gerät zu identifizieren."
+        },
+        "type": {
+          "name": "Typ des virtuellen Geräts",
+          "description": "Der Type des virtuellen Geräts, welches bearbeitet werden soll."
+        },
+        "ttl": {
+          "name": "Lebensdauer des virtuellen Geräts",
+          "description": "Die Lebensdauer des virtuellen Geräts in Sekunden bevor ein Keepalive empfangen werden muss. -1=unbegrenzt, 0=nicht reagierend oder 180-86400."
+        },
+        "displayname": {
+          "name": "Anzeigename des virtuellen Geräts",
+          "description": "Name des virtuellen Geräts, welche angezeigt wird."
+        },
+        "flavor": {
+          "name": "Flavor",
+          "description": "Flavor des virtuellen Energiemessers, welcher erzeugt werden soll."
+        },
+        "capabilities": {
+          "name": "Capabilities",
+          "description": "Fähigkeiten des virtuellen Energiemessers, welcher erzeugt werden soll, als eine Liste von Integern."
+        }
+      }
+    }
   }
 }

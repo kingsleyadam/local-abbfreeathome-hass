@@ -1,0 +1,32 @@
+virtual_device:
+  fields:
+    serial:
+      required: true
+      example: my-virtual-serial
+      selector:
+        text:
+    type:
+      required: true
+      example: BinarySensor
+      selector:
+        text:
+    ttl:
+      required: true
+      example: 180
+      selector:
+        number:
+          min: -1
+          max: 86400
+          mode: box
+    displayname:
+      required: false
+      selector:
+        text:
+    flavor:
+      required: false
+      selector:
+        text:
+    capabilities:
+      required: false
+      selector:
+        object:
