@@ -8,7 +8,8 @@
           "host": "[%key:common::config_flow::data::host%]",
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]",
-          "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?"
+          "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
+          "include_virtual_devices": "Include virtual devices?"
         }
       },
       "zeroconf_confirm": {
@@ -18,7 +19,8 @@
           "host": "[%key:common::config_flow::data::host%]",
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]",
-          "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?"
+          "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
+          "include_virtual_devices": "Include virtual devices?"
         }
       },
       "reconfigure": {
@@ -27,7 +29,8 @@
         "data": {
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]",
-          "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?"
+          "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
+          "include_virtual_devices": "Include virtual devices?"
         }
       }
     },
@@ -135,6 +138,74 @@
             }
           }
         }
+      },
+      "virtual_switch_actuator_onoff": {
+        "name": "Virtual Switch Event ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "unknown": "Unknown",
+              "on": "[%key:common::state::on%]",
+              "off": "[%key:common::state::off%]"
+            }
+          }
+        }
+      }
+    },
+    "number": {
+      "virtual_brightness_sensor": {
+        "name": "Virtual Illuminance"
+      },
+      "virtual_energy_battery_battery_power": {
+        "name": "Virtual Battery Power"
+      },
+      "virtual_energy_battery_soc": {
+        "name": "Virtual Battery SOC"
+      },
+      "virtual_energy_battery_imported_today": {
+        "name": "Virtual Battery Imported Energy Today"
+      },
+      "virtual_energy_battery_exported_today": {
+        "name": "Virtual Battery Exported Energy Today"
+      },
+      "virtual_energy_battery_imported_total": {
+        "name": "Virtual Battery Total Imported Energy"
+      },
+      "virtual_energy_battery_exported_total": {
+        "name": "Virtual Battery Total Exported Energy"
+      },
+      "virtual_energy_inverter_current_power": {
+        "name": "Virtual Inverter Current Power Consumed"
+      },
+      "virtual_energy_inverter_imported_today": {
+        "name": "Virtual Inverter Imported Energy Today"
+      },
+      "virtual_energy_inverter_imported_total": {
+        "name": "Virtual Inverter Total Imported Energy"
+      },
+      "virtual_energy_two_way_meter_current_power": {
+        "name": "Virtual Two Way Meter Current Power Consumed"
+      },
+      "virtual_energy_two_way_meter_imported_today": {
+        "name": "Virtual Two Way Meter Imported Energy Today"
+      },
+      "virtual_energy_two_way_meter_exported_today": {
+        "name": "Virtual Two Way Meter Exported Energy Today"
+      },
+      "virtual_energy_two_way_meter_imported_total": {
+        "name": "Virtual Two Way Meter Total Imported Energy"
+      },
+      "virtual_energy_two_way_meter_exported_total": {
+        "name": "Virtual Two Way Meter Total Exported Energy"
+      },
+      "virtual_temperature_sensor": {
+        "name": "Virtual Temperature"
+      },
+      "virtual_wind_sensor_force": {
+        "name": "Virtual Wind Force"
+      },
+      "virtual_wind_sensor_speed": {
+        "name": "Virtual Wind Speed"
       }
     },
     "select": {
@@ -186,6 +257,52 @@
           "closed": "[%key:common::state::closed%]",
           "tilted": "Tilted",
           "open": "[%key:common::state::open%]"
+        }
+      }
+    },
+    "switch": {
+      "virtual_brightness_sensor": {
+        "name": "Virtual Brightness Alarm"
+      },
+      "virtual_rain_sensor": {
+        "name": "Virtual Rain Alarm"
+      },
+      "virtual_temperature_sensor": {
+        "name": "Virtual Frost Alarm"
+      },
+      "virtual_wind_sensor": {
+        "name": "Virtual Wind Alarm"
+      }
+    }
+  },
+  "services": {
+    "virtual_device": {
+      "name": "Virtual Device Maintenance",
+      "description": "Interact with the vitualdevice REST-endpoint, to create or modify virtual devices.",
+      "fields": {
+        "serial": {
+          "name": "Serial of virtual device",
+          "description": "A unique serial of the virtual device to identify."
+        },
+        "type": {
+          "name": "Type of virtual device",
+          "description": "The type of the virtual device to maintain."
+        },
+        "ttl": {
+          "name": "Lifetime of virtual device",
+          "description": "The lifetime of the virtual device in seconds before a keepalive needs to be received. -1=unlimited, 0=unresponsive or 180-86400."
+        },
+        "displayname": {
+          "name": "Displayname of virtual device",
+          "description": "Name of the virtual device, which will be displayed."
+        },
+        "flavor": {
+          "name": "Flavor of energymeter",
+          "description": "Flavor of the virtual energymeter to create."
+        },
+        "capabilities": {
+          "name": "Capabilities of energymeter",
+          "description": "Capabilities of the virtual energymeter to create as a list of integers."
         }
       }
     }
