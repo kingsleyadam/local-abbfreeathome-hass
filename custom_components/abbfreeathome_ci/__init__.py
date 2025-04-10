@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import logging
 
-from abbfreeathome.api import FreeAtHomeApi, FreeAtHomeSettings
+from abbfreeathome.api import (
+    VIRTUAL_DEVICE_PROPERTIES_SCHEMA,
+    VIRTUAL_DEVICE_ROOT_SCHEMA,
+    FreeAtHomeApi,
+    FreeAtHomeSettings,
+)
 from abbfreeathome.bin.interface import Interface
 from abbfreeathome.exceptions import BadRequestException
 from abbfreeathome.freeathome import FreeAtHome
@@ -38,8 +43,8 @@ VIRTUALDEVICE_SCHEMA = (
             vol.Required("serial"): str,
         }
     )
-    .extend(FreeAtHomeApi.virtualdevice_main_schema.schema)
-    .extend(FreeAtHomeApi.virtualdevice_properties_schema.schema)
+    .extend(VIRTUAL_DEVICE_ROOT_SCHEMA.schema)
+    .extend(VIRTUAL_DEVICE_PROPERTIES_SCHEMA.schema)
 )
 
 _LOGGER = logging.getLogger(__name__)
