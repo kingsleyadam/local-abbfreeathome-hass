@@ -233,7 +233,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
         if entry.minor_version < 3:
-            new_data[CONF_INCLUDE_VIRTUAL_DEVICES] = True
+            new_data[CONF_INCLUDE_VIRTUAL_DEVICES] = False
 
         hass.config_entries.async_update_entry(
             entry, data=new_data, version=1, minor_version=3
