@@ -93,6 +93,7 @@ The config setup will include some options to help configure the integration.
 | Username                                         | The **api** username, likely different from your normal login username.                                            |
 | Password                                         | The password for logging into the SysAP.                                                                           |
 | Include channels NOT on the free@home floorplan? | Whether to include channels that are not located on the free@home floorplan.                                       |
+| Include virtual devices?                         | Whether to include virtual devices or not.                                                                         |
 
 ###### Example
 
@@ -100,6 +101,7 @@ The config setup will include some options to help configure the integration.
 - **Username**: `installer`
 - **Password**: `<password>`
 - **Include channels NOT on the free@home floorplan?**: False
+- **Include virtual devices?**: False
 
 > Note: Support for SSL is not provided yet. For a valid SSL connection a cert pulled from the SysAP must be provided, research to be done to know if Home Assistant supports such a scenario.
 
@@ -123,6 +125,7 @@ abbfreeathome_ci:
   username: installer
   password: <password>
   include_orphan_channels: false
+  include_virtual_devices: false
 ```
 
 Each time Home Assistant is loaded, the `configuration.yaml` entry for `abbfreeathome_ci` will be checked, verified, and updated accordingly. This means that if you want to update your configuration, simply modify the `configuration.yaml` file and restart Home Assistant.
@@ -189,6 +192,9 @@ actions:
               device_id: 615bdcd2980a3a2a341488f50b7d8aea
 mode: single
 ```
+
+## Virtual Devices
+Please check the [Wiki](https://github.com/kingsleyadam/local-abbfreeathome-hass/wiki/Virtual-Devices) for a detailed explanation of the virtual device support.
 
 ## Debugging
 
