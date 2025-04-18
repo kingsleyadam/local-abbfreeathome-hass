@@ -54,10 +54,10 @@ NUMBER_DESCRIPTIONS = {
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.POWER,
             "translation_key": "virtual_energy_battery_battery_power",
-            "native_max_value": 99999.9,
-            "native_min_value": -99999.9,
-            "native_step": 0.1,
-            "native_unit_of_measurement": UnitOfPower.WATT,
+            "native_max_value": 99999.999,
+            "native_min_value": -99999.999,
+            "native_step": 0.001,
+            "native_unit_of_measurement": UnitOfPower.KILO_WATT,
         },
     },
     "VirtualEnergyBatterySoc": {
