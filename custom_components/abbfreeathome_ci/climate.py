@@ -137,8 +137,9 @@ class FreeAtHomeClimateEntity(ClimateEntity):
         if self.hvac_mode == HVACMode.OFF:
             return HVACAction.OFF
 
-        if self._climate.valve and self._climate.valve > 0:
+        if self._climate.state_indication & 0x20 == 0x20:
             return HVACAction.HEATING
+
         return HVACAction.IDLE
 
     @property
