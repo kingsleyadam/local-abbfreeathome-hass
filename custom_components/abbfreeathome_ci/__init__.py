@@ -121,6 +121,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         Interface.UNDEFINED,
         Interface.WIRED_BUS,
         Interface.WIRELESS_RF,
+        Interface.SMOKEALARM,
     ]
 
     # Attempt to fetch virtual devices config entry, if not found fallback to False
