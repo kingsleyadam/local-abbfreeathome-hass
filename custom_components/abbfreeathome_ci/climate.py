@@ -43,7 +43,8 @@ class FreeAtHomeClimateEntity(ClimateEntity):
     _callback_attributes: list[str] = [
         "state",
         "current_temperature",
-        "valve",
+        "heating",
+        "cooling",
         "target_temperature",
         "eco_mode",
     ]
@@ -117,7 +118,7 @@ class FreeAtHomeClimateEntity(ClimateEntity):
     @property
     def extra_state_attributes(self) -> dict[Any] | None:
         """Return device specific state attributes."""
-        return {"valve": self._climate.valve}
+        return {"heating": self._climate.heating, "cooling": self._climate.cooling}
 
     @property
     def current_temperature(self) -> float | None:
@@ -129,7 +130,7 @@ class FreeAtHomeClimateEntity(ClimateEntity):
         """Return the current mode."""
         if not self._climate.state:
             return HVACMode.OFF
-        return HVACMode.HEAT
+        return HVACMode.HEAT_COOL
 
     @property
     def hvac_action(self) -> HVACAction | None:
@@ -137,8 +138,10 @@ class FreeAtHomeClimateEntity(ClimateEntity):
         if self.hvac_mode == HVACMode.OFF:
             return HVACAction.OFF
 
-        if self._climate.state_indication & 0x20 == 0x20:
+        if self._climate.heating > self._climate.cooling:
             return HVACAction.HEATING
+        if self._climate.cooling > self._climate.heating:
+            return HVACAction.COOLING
 
         return HVACAction.IDLE
 
@@ -162,7 +165,7 @@ class FreeAtHomeClimateEntity(ClimateEntity):
     @property
     def hvac_modes(self) -> list | None:
         """Return the list of available hvac modes."""
-        return [HVACMode.HEAT, HVACMode.OFF]
+        return [HVACMode.HEAT_COOL, HVACMode.OFF]
 
     @property
     def preset_modes(self) -> list | None:
@@ -181,11 +184,11 @@ class FreeAtHomeClimateEntity(ClimateEntity):
         """Return the current operation."""
         if not self._climate.state:
             return HVACMode.OFF
-        return HVACMode.HEAT
+        return HVACMode.HEAT_COOL
 
     async def async_set_hvac_mode(self, hvac_mode) -> None:
         """Set new target operation mode."""
-        if hvac_mode == HVACMode.HEAT:
+        if hvac_mode == HVACMode.HEAT_COOL:
             await self._climate.turn_on()
 
         if hvac_mode == HVACMode.OFF:
