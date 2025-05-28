@@ -2,11 +2,15 @@
 
 from typing import Any
 
-from abbfreeathome.devices.dimming_actuator import DimmingActuator
+from abbfreeathome.devices.dimming_actuator import (
+    ColorTemperatureActuator,
+    DimmingActuator,
+)
 from abbfreeathome.freeathome import FreeAtHome
 
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
+    ATTR_COLOR_TEMP_KELVIN,
     ColorMode,
     LightEntity,
     LightEntityDescription,
@@ -33,6 +37,12 @@ async def async_setup_entry(
     async_add_entities(
         FreeAtHomeLightEntity(light, sysap_serial_number=entry.data[CONF_SERIAL])
         for light in free_at_home.get_devices_by_class(device_class=DimmingActuator)
+    )
+    async_add_entities(
+        FreeAtHomeLightEntity(light, sysap_serial_number=entry.data[CONF_SERIAL])
+        for light in free_at_home.get_devices_by_class(
+            device_class=ColorTemperatureActuator
+        )
     )
 
 
@@ -63,12 +73,22 @@ class FreeAtHomeLightEntity(LightEntity):
                 callback_attribute=_callback_attribute,
                 callback=self.async_write_ha_state,
             )
+        if hasattr(self._light, "color_temperature"):
+            await self._light.register_callback(
+                callback_attribute="color_temperature",
+                callback=self.async_write_ha_state,
+            )
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
         for _callback_attribute in self._callback_attributes:
             self._light.remove_callback(
                 callback_attribute=_callback_attribute,
+                callback=self.async_write_ha_state,
+            )
+        if hasattr(self._light, "color_temperature"):
+            await self._light.remove_callback(
+                callback_attribute="color_temperature",
                 callback=self.async_write_ha_state,
             )
 
@@ -95,14 +115,32 @@ class FreeAtHomeLightEntity(LightEntity):
         return value_to_brightness(BRIGHTNESS_SCALE, self._light.brightness)
 
     @property
+    def color_temp_kelvin(self) -> int | None:
+        """Return the color temperature in Kelvin."""
+        return map_range(
+            self._light.color_temperature,
+            0,
+            100,
+            self._light.color_temperature_warmest,
+            self._light.color_temperature_coolest,
+        )
+
+    @property
     def color_mode(self) -> str | None:
         """Return the color mode of the light."""
+        if hasattr(self._light, "color_temperature"):
+            return ColorMode.COLOR_TEMP
         return ColorMode.BRIGHTNESS
 
     @property
     def supported_color_modes(self) -> set[str] | None:
         """Flag supported color modes."""
-        return {ColorMode.BRIGHTNESS}
+        _color_modes = {ColorMode.BRIGHTNESS}
+
+        if hasattr(self._light, "color_temperature"):
+            _color_modes.add(ColorMode.COLOR_TEMP)
+
+        return _color_modes
 
     @property
     def unique_id(self) -> str | None:
@@ -115,8 +153,22 @@ class FreeAtHomeLightEntity(LightEntity):
             await self._light.set_brightness(
                 int(brightness_to_value(BRIGHTNESS_SCALE, kwargs[ATTR_BRIGHTNESS]))
             )
-        else:
-            await self._light.turn_on()
+            return
+
+        if ATTR_COLOR_TEMP_KELVIN in kwargs:
+            if hasattr(self._light, "color_temperature"):
+                await self._light.set_color_temperature(
+                    map_range(
+                        kwargs[ATTR_COLOR_TEMP_KELVIN],
+                        self._light.color_temperature_warmest,
+                        self._light.color_temperature_coolest,
+                        0,
+                        100,
+                    )
+                )
+            return
+
+        await self._light.turn_on()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the light off."""
@@ -125,3 +177,14 @@ class FreeAtHomeLightEntity(LightEntity):
     async def async_update(self, **kwargs: Any) -> None:
         """Update the light state."""
         await self._light.refresh_state()
+
+
+def map_range(
+    value: int,
+    from_min: int,
+    from_max: int,
+    to_min: int,
+    to_max: int,
+) -> int:
+    """Map a value from one range to another."""
+    return (value - from_min) * (to_max - to_min) / (from_max - from_min) + to_min
