@@ -17,6 +17,8 @@ There are two main prerequisites before being able to use this integration.
 
 [ABB-free@home Local API Prerequisites](https://developer.eu.mybuildings.abb.com/fah_local/prerequisites)
 
+> Note: Earlier hardware versions may also work, as reported [here](https://github.com/kingsleyadam/local-abbfreeathome-hass/discussions/148), if they are running firmware version 2.6.0 or newer. Your results may vary.
+
 ## Device Support
 
 The current list of supported devices by function are:
@@ -194,6 +196,7 @@ mode: single
 ```
 
 ## Virtual Devices
+
 Please check the [Wiki](https://github.com/kingsleyadam/local-abbfreeathome-hass/wiki/Virtual-Devices) for a detailed explanation of the virtual device support.
 
 ## Debugging
