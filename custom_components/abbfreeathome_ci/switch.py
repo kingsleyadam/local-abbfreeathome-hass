@@ -3,6 +3,7 @@
 from typing import Any
 
 from abbfreeathome.devices.switch_actuator import SwitchActuator
+from abbfreeathome.devices.switch_sensor import SwitchSensor
 from abbfreeathome.devices.virtual.virtual_brightness_sensor import (
     VirtualBrightnessSensor,
 )
@@ -33,6 +34,13 @@ SWITCH_DESCRIPTIONS = {
     "SwitchActuator": {
         "device_class": SwitchActuator,
         "value_attribute": "state",
+        "entity_description_kwargs": {
+            "device_class": SwitchDeviceClass.SWITCH,
+        },
+    },
+    "SwitchSensorLed": {
+        "device_class": SwitchSensor,
+        "value_attribute": "led",
         "entity_description_kwargs": {
             "device_class": SwitchDeviceClass.SWITCH,
         },
@@ -118,6 +126,7 @@ class FreeAtHomeSwitchEntity(SwitchEntity):
     def __init__(
         self,
         device: SwitchActuator
+        | SwitchSensor
         | VirtualBrightnessSensor
         | VirtualSwitchActuator
         | VirtualWindowDoorSensor,
