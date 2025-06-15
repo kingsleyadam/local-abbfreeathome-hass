@@ -3,7 +3,7 @@
 from typing import Any
 
 from abbfreeathome.devices.switch_actuator import SwitchActuator
-from abbfreeathome.devices.switch_sensor import SwitchSensor
+from abbfreeathome.devices.switch_sensor import DimmingSensor, SwitchSensor
 from abbfreeathome.devices.virtual.virtual_brightness_sensor import (
     VirtualBrightnessSensor,
 )
@@ -31,6 +31,13 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import CONF_SERIAL, DOMAIN
 
 SWITCH_DESCRIPTIONS = {
+    "DimmingSensorLed": {
+        "device_class": DimmingSensor,
+        "value_attribute": "led",
+        "entity_description_kwargs": {
+            "device_class": SwitchDeviceClass.SWITCH,
+        },
+    },
     "SwitchActuator": {
         "device_class": SwitchActuator,
         "value_attribute": "state",
