@@ -132,7 +132,8 @@ class FreeAtHomeSwitchEntity(SwitchEntity):
 
     def __init__(
         self,
-        device: SwitchActuator
+        device: DimmingSensor
+        | SwitchActuator
         | SwitchSensor
         | VirtualBrightnessSensor
         | VirtualSwitchActuator
