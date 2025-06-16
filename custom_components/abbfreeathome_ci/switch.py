@@ -36,6 +36,7 @@ SWITCH_DESCRIPTIONS = {
         "value_attribute": "led",
         "entity_description_kwargs": {
             "device_class": SwitchDeviceClass.SWITCH,
+            "translation_key": "sensor_led",
         },
     },
     "SwitchActuator": {
@@ -50,6 +51,7 @@ SWITCH_DESCRIPTIONS = {
         "value_attribute": "led",
         "entity_description_kwargs": {
             "device_class": SwitchDeviceClass.SWITCH,
+            "translation_key": "sensor_led",
         },
     },
     "VirtualBrightessSensorAlarm": {

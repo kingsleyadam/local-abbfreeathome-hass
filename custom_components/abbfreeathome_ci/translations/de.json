@@ -261,6 +261,9 @@
       }
     },
     "switch": {
+      "sensor_led": {
+        "name": "LED ({channel_id})"
+      },
       "virtual_brightness_sensor": {
         "name": "Virtueller Helligkeitsalarm"
       },
