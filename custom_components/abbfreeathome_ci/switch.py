@@ -3,6 +3,7 @@
 from typing import Any
 
 from abbfreeathome.devices.switch_actuator import SwitchActuator
+from abbfreeathome.devices.switch_sensor import DimmingSensor, SwitchSensor
 from abbfreeathome.devices.virtual.virtual_brightness_sensor import (
     VirtualBrightnessSensor,
 )
@@ -30,11 +31,27 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import CONF_SERIAL, DOMAIN
 
 SWITCH_DESCRIPTIONS = {
+    "DimmingSensorLed": {
+        "device_class": DimmingSensor,
+        "value_attribute": "led",
+        "entity_description_kwargs": {
+            "device_class": SwitchDeviceClass.SWITCH,
+            "translation_key": "sensor_led",
+        },
+    },
     "SwitchActuator": {
         "device_class": SwitchActuator,
         "value_attribute": "state",
         "entity_description_kwargs": {
             "device_class": SwitchDeviceClass.SWITCH,
+        },
+    },
+    "SwitchSensorLed": {
+        "device_class": SwitchSensor,
+        "value_attribute": "led",
+        "entity_description_kwargs": {
+            "device_class": SwitchDeviceClass.SWITCH,
+            "translation_key": "sensor_led",
         },
     },
     "VirtualBrightessSensorAlarm": {
@@ -117,7 +134,9 @@ class FreeAtHomeSwitchEntity(SwitchEntity):
 
     def __init__(
         self,
-        device: SwitchActuator
+        device: DimmingSensor
+        | SwitchActuator
+        | SwitchSensor
         | VirtualBrightnessSensor
         | VirtualSwitchActuator
         | VirtualWindowDoorSensor,
@@ -200,11 +219,11 @@ class FreeAtHomeSwitchEntity(SwitchEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
-        await self._device.turn_on()
+        await getattr(self._device, f"turn_on_{self._value_attribute}", "turn_on")()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
-        await self._device.turn_off()
+        await getattr(self._device, f"turn_off_{self._value_attribute}", "turn_off")()
 
     async def async_update(self, **kwargs: Any) -> None:
         """Update the switch state."""

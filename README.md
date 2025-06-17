@@ -34,7 +34,7 @@ The current list of supported devices by function are:
 | FID_DES_DOOR_OPENER_ACTUATOR                       | `Lock`                    |
 | FID_DES_DOOR_RINGING_SENSOR                        | `Event`                   |
 | FID_DIMMING_ACTUATOR                               | `Light`                   |
-| FID_DIMMING_SENSOR                                 | `Event`                   |
+| FID_DIMMING_SENSOR\*                               | `Event`, `Switch`         |
 | FID_FORCE_ON_OFF_SENSOR                            | `Event`                   |
 | FID_HEATING_ACTUATOR                               | `Valve`                   |
 | FID_MOVEMENT_DETECTOR                              | `Binary Sensor`, `Sensor` |
@@ -45,12 +45,14 @@ The current list of supported devices by function are:
 | FID_SMOKE_DETECTOR                                 | `Binary Sensor`           |
 | FID_SWITCH_ACTUATOR                                | `Switch`                  |
 | FID_SWITCH_ACTUATOR_PYCUSTOM0                      | `Switch`                  |
-| FID_SWITCH_SENSOR                                  | `Event`                   |
+| FID_SWITCH_SENSOR\*                                | `Event`, `Switch`         |
 | FID_TEMPERATURE_SENSOR                             | `Binary Sensor`, `Sensor` |
 | FID_TRIGGER                                        | `Button`                  |
 | FID_WIND_SENSOR                                    | `Binary Sensor`, `Sensor` |
 | FID_WINDOW_DOOR_SENSOR                             | `Binary Sensor`           |
 | FID_WINDOW_DOOR_POSITION_SENSOR                    | `Binary Sensor`, `Sensor` |
+
+\*FID_DIMMING_SENSOR and FID_SWITCH_SENSOR: The LED of these sensors can be controlled. The relevant switch only occurs, if the "LED mode" in F@H is set to "Status Indication" (HA needs to be restarted, if the mode is changed, to take it into account.)
 
 ### Additional Devices
 
@@ -163,14 +165,14 @@ triggers:
   - trigger: state
     entity_id:
       - event.study_area_rocker_switch_event
-    to: 'Off'
+    to: "Off"
     attribute: event_type
     id: study_area_event_off
   - trigger: state
     entity_id:
       - event.study_area_rocker_switch_event
     attribute: event_type
-    to: 'On'
+    to: "On"
     id: study_area_event_on
 conditions: []
 actions:
