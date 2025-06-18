@@ -219,11 +219,21 @@ class FreeAtHomeSwitchEntity(SwitchEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
-        await getattr(self._device, f"turn_on_{self._value_attribute}", "turn_on")()
+        _method = getattr(self._device, f"turn_on_{self._value_attribute}", None)
+
+        if callable(_method):
+            await _method()
+        else:
+            await self._device.turn_on()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
-        await getattr(self._device, f"turn_off_{self._value_attribute}", "turn_off")()
+        _method = getattr(self._device, f"turn_off_{self._value_attribute}", None)
+
+        if callable(_method):
+            await _method()
+        else:
+            await self._device.turn_off()
 
     async def async_update(self, **kwargs: Any) -> None:
         """Update the switch state."""
