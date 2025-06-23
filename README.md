@@ -1,5 +1,6 @@
 # Home Assistant Integration - ABB-free@home
 
+[![Open in Dev Containers](https://img.shields.io/static/v1?label=Dev%20Containers&message=Open&color=blue)](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/kingsleyadam/local-abbfreeathome-hass)
 ![GitHub Release](https://img.shields.io/github/v/release/kingsleyadam/local-abbfreeathome-hass) ![hassfest](https://github.com/kingsleyadam/local-abbfreeathome-hass/actions/workflows/hassfest.yaml/badge.svg) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 This is a custom component to integrate with [Home Assistant](https://www.home-assistant.io/) for the ABB-free@home system over the **local api server**.
@@ -165,14 +166,14 @@ triggers:
   - trigger: state
     entity_id:
       - event.study_area_rocker_switch_event
-    to: "Off"
+    to: 'Off'
     attribute: event_type
     id: study_area_event_off
   - trigger: state
     entity_id:
       - event.study_area_rocker_switch_event
     attribute: event_type
-    to: "On"
+    to: 'On'
     id: study_area_event_on
 conditions: []
 actions:
