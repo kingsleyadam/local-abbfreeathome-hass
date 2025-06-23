@@ -1,16 +1,15 @@
 {
-	"name": "abbfreeathome-hass-dev",
-	"image": "mcr.microsoft.com/devcontainers/python:1-3.13-bookworm",
-
-	"features": {
-		"ghcr.io/va-h/devcontainers-features/uv:latest": {
-		"shellautocompletion": true
-		},
-		"ghcr.io/devcontainers-extra/features/pre-commit:2": {}
-	},
-	"containerEnv": {
-		"UV_LINK_MODE": "copy"
-	},
+  "name": "abbfreeathome-hass-dev",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.13-bookworm",
+  "features": {
+    "ghcr.io/va-h/devcontainers-features/uv:latest": {
+      "shellautocompletion": true
+    },
+    "ghcr.io/devcontainers-extra/features/pre-commit:2": {}
+  },
+  "containerEnv": {
+    "UV_LINK_MODE": "copy"
+  },
   "customizations": {
     "vscode": {
       "extensions": [
@@ -47,8 +46,5 @@
       }
     }
   },
-  "postCreateCommand": {
-    "installVirtualEnvironment": "uv venv && uv pip install -r dev-requirements.txt && uv pip install $(jq -r '.requirements[]' custom_components/abbfreeathome_ci/manifest.json)",
-    "installPrecommit": "pre-commit install"
-  }
+  "postCreateCommand": "uv venv && uv pip install -r dev-requirements.txt && uv pip install $(jq -r '.requirements[]' custom_components/abbfreeathome_ci/manifest.json) && pre-commit install"
 }
