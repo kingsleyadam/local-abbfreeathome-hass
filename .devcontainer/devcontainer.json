@@ -48,8 +48,7 @@
     }
   },
   "postCreateCommand": {
-    "installVirtualEnvironment": "uv venv && uv pip install -r dev-requirements.txt",
-    "installIntegrationRequirements": "uv pip install $(jq -r '.requirements[]' custom_components/abbfreeathome_ci/manifest.json)",
+    "installVirtualEnvironment": "uv venv && uv pip install -r dev-requirements.txt && uv pip install $(jq -r '.requirements[]' custom_components/abbfreeathome_ci/manifest.json)",
     "installPrecommit": "pre-commit install"
   }
 }
