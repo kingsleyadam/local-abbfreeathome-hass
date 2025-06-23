@@ -1,0 +1,55 @@
+{
+	"name": "abbfreeathome-hass-dev",
+	"image": "mcr.microsoft.com/devcontainers/python:1-3.13-bookworm",
+
+	"features": {
+		"ghcr.io/va-h/devcontainers-features/uv:latest": {
+		"shellautocompletion": true
+		},
+		"ghcr.io/devcontainers-extra/features/pre-commit:2": {}
+	},
+	"containerEnv": {
+		"UV_LINK_MODE": "copy"
+	},
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "charliermarsh.ruff",
+        "ms-python.pylint",
+        "ms-python.vscode-pylance",
+        "visualstudioexptteam.vscodeintellicode",
+        "ms-python.debugpy",
+        "esbenp.prettier-vscode",
+        "GitHub.vscode-pull-request-github",
+        "GitHub.copilot",
+        "waderyan.gitblame"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "editor.detectIndentation": false,
+        "files.insertFinalNewline": true,
+        "files.trimTrailingWhitespace": true,
+        "python.defaultInterpreterPath": "/workspaces/local-abbfreeathome-hass/.venv/bin/python",
+        "python.terminal.activateEnvInCurrentTerminal": true,
+        "python.testing.pytestArgs": [
+          "."
+        ],
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff"
+        },
+        "python.testing.unittestEnabled": false,
+        "python.testing.pytestEnabled": true,
+        "pylint.enabled": false,
+        "gitblame.statusBarMessageFormat": "Modified By ${author.name} (${time.ago})",
+        "gitblame.inlineMessageFormat": "Modified By ${author.name} (${time.ago})"
+      }
+    }
+  },
+  "postCreateCommand": {
+    "installVirtualEnvironment": "uv venv && uv pip install -r dev-requirements.txt",
+    "installIntegrationRequirements": "uv pip install $(jq -r '.requirements[]' custom_components/abbfreeathome_ci/manifest.json)",
+    "installPrecommit": "pre-commit install"
+  }
+}
