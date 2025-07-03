@@ -2,11 +2,11 @@
 
 from typing import Any
 
-from abbfreeathome.devices.dimming_actuator import (
+from abbfreeathome import FreeAtHome
+from abbfreeathome.channels.dimming_actuator import (
     ColorTemperatureActuator,
     DimmingActuator,
 )
-from abbfreeathome.freeathome import FreeAtHome
 
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
@@ -36,12 +36,12 @@ async def async_setup_entry(
 
     async_add_entities(
         FreeAtHomeLightEntity(light, sysap_serial_number=entry.data[CONF_SERIAL])
-        for light in free_at_home.get_devices_by_class(device_class=DimmingActuator)
+        for light in free_at_home.get_channels_by_class(channel_class=DimmingActuator)
     )
     async_add_entities(
         FreeAtHomeLightEntity(light, sysap_serial_number=entry.data[CONF_SERIAL])
-        for light in free_at_home.get_devices_by_class(
-            device_class=ColorTemperatureActuator
+        for light in free_at_home.get_channels_by_class(
+            channel_class=ColorTemperatureActuator
         )
     )
 
@@ -55,7 +55,11 @@ class FreeAtHomeLightEntity(LightEntity):
         "brightness",
     ]
 
-    def __init__(self, light: DimmingActuator, sysap_serial_number: str) -> None:
+    def __init__(
+        self,
+        light: DimmingActuator | ColorTemperatureActuator,
+        sysap_serial_number: str,
+    ) -> None:
         """Initialize the light."""
         super().__init__()
         self._light = light
@@ -96,10 +100,10 @@ class FreeAtHomeLightEntity(LightEntity):
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
         return {
-            "identifiers": {(DOMAIN, self._light.device_id)},
+            "identifiers": {(DOMAIN, self._light.device_serial)},
             "name": self._light.device_name,
             "manufacturer": "ABB busch-jaeger",
-            "serial_number": self._light.device_id,
+            "serial_number": self._light.device_serial,
             "suggested_area": self._light.room_name,
             "via_device": (DOMAIN, self._sysap_serial_number),
         }
@@ -145,7 +149,7 @@ class FreeAtHomeLightEntity(LightEntity):
     @property
     def unique_id(self) -> str | None:
         """Return a unique ID."""
-        return f"{self._light.device_id}_{self._light.channel_id}_light"
+        return f"{self._light.device_serial}_{self._light.channel_id}_light"
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the light on."""

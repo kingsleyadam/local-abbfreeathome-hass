@@ -2,19 +2,19 @@
 
 from typing import Any
 
-from abbfreeathome.devices.virtual.virtual_brightness_sensor import (
+from abbfreeathome import FreeAtHome
+from abbfreeathome.channels.virtual.virtual_brightness_sensor import (
     VirtualBrightnessSensor,
 )
-from abbfreeathome.devices.virtual.virtual_energy_battery import VirtualEnergyBattery
-from abbfreeathome.devices.virtual.virtual_energy_inverter import VirtualEnergyInverter
-from abbfreeathome.devices.virtual.virtual_energy_two_way_meter import (
+from abbfreeathome.channels.virtual.virtual_energy_battery import VirtualEnergyBattery
+from abbfreeathome.channels.virtual.virtual_energy_inverter import VirtualEnergyInverter
+from abbfreeathome.channels.virtual.virtual_energy_two_way_meter import (
     VirtualEnergyTwoWayMeter,
 )
-from abbfreeathome.devices.virtual.virtual_temperature_sensor import (
+from abbfreeathome.channels.virtual.virtual_temperature_sensor import (
     VirtualTemperatureSensor,
 )
-from abbfreeathome.devices.virtual.virtual_wind_sensor import VirtualWindSensor
-from abbfreeathome.freeathome import FreeAtHome
+from abbfreeathome.channels.virtual.virtual_wind_sensor import VirtualWindSensor
 
 from homeassistant.components.number import (
     NumberDeviceClass,
@@ -37,7 +37,7 @@ from .const import CONF_SERIAL, DOMAIN
 
 NUMBER_DESCRIPTIONS = {
     "VirtualBrightnessSensor": {
-        "device_class": VirtualBrightnessSensor,
+        "channel_class": VirtualBrightnessSensor,
         "value_attribute": "brightness",
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ILLUMINANCE,
@@ -49,7 +49,7 @@ NUMBER_DESCRIPTIONS = {
         },
     },
     "VirtualEnergyBatteryBatteryPower": {
-        "device_class": VirtualEnergyBattery,
+        "channel_class": VirtualEnergyBattery,
         "value_attribute": "battery_power",
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.POWER,
@@ -61,7 +61,7 @@ NUMBER_DESCRIPTIONS = {
         },
     },
     "VirtualEnergyBatterySoc": {
-        "device_class": VirtualEnergyBattery,
+        "channel_class": VirtualEnergyBattery,
         "value_attribute": "soc",
         "entity_description_kwargs": {
             "device_class": None,
@@ -73,7 +73,7 @@ NUMBER_DESCRIPTIONS = {
         },
     },
     "VirtualEnergyBatteryImportedToday": {
-        "device_class": VirtualEnergyBattery,
+        "channel_class": VirtualEnergyBattery,
         "value_attribute": "imported_today",
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ENERGY,
@@ -85,7 +85,7 @@ NUMBER_DESCRIPTIONS = {
         },
     },
     "VirtualEnergyBatteryExportedToday": {
-        "device_class": VirtualEnergyBattery,
+        "channel_class": VirtualEnergyBattery,
         "value_attribute": "exported_today",
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ENERGY,
@@ -97,7 +97,7 @@ NUMBER_DESCRIPTIONS = {
         },
     },
     "VirtualEnergyBatteryImportedTotal": {
-        "device_class": VirtualEnergyBattery,
+        "channel_class": VirtualEnergyBattery,
         "value_attribute": "imported_total",
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ENERGY,
@@ -109,7 +109,7 @@ NUMBER_DESCRIPTIONS = {
         },
     },
     "VirtualEnergyBatteryExportedTotal": {
-        "device_class": VirtualEnergyBattery,
+        "channel_class": VirtualEnergyBattery,
         "value_attribute": "exported_total",
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ENERGY,
@@ -121,7 +121,7 @@ NUMBER_DESCRIPTIONS = {
         },
     },
     "VirtualEnergyInverterCurrentPower": {
-        "device_class": VirtualEnergyInverter,
+        "channel_class": VirtualEnergyInverter,
         "value_attribute": "current_power",
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.POWER,
@@ -133,7 +133,7 @@ NUMBER_DESCRIPTIONS = {
         },
     },
     "VirtualEnergyInverterImportedToday": {
-        "device_class": VirtualEnergyInverter,
+        "channel_class": VirtualEnergyInverter,
         "value_attribute": "imported_today",
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ENERGY,
@@ -145,7 +145,7 @@ NUMBER_DESCRIPTIONS = {
         },
     },
     "VirtualEnergyInverterImportedTotal": {
-        "device_class": VirtualEnergyInverter,
+        "channel_class": VirtualEnergyInverter,
         "value_attribute": "imported_total",
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ENERGY,
@@ -157,7 +157,7 @@ NUMBER_DESCRIPTIONS = {
         },
     },
     "VirtualEnergyTwoWayMeterCurrentPower": {
-        "device_class": VirtualEnergyTwoWayMeter,
+        "channel_class": VirtualEnergyTwoWayMeter,
         "value_attribute": "current_power",
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.POWER,
@@ -169,7 +169,7 @@ NUMBER_DESCRIPTIONS = {
         },
     },
     "VirtualEnergyTwoMayMeterImportedToday": {
-        "device_class": VirtualEnergyTwoWayMeter,
+        "channel_class": VirtualEnergyTwoWayMeter,
         "value_attribute": "imported_today",
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ENERGY,
@@ -181,7 +181,7 @@ NUMBER_DESCRIPTIONS = {
         },
     },
     "VirtualEnergyTwoMayMeterExportedToday": {
-        "device_class": VirtualEnergyTwoWayMeter,
+        "channel_class": VirtualEnergyTwoWayMeter,
         "value_attribute": "exported_today",
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ENERGY,
@@ -193,7 +193,7 @@ NUMBER_DESCRIPTIONS = {
         },
     },
     "VirtualEnergyTwoMayMeterImportedTotal": {
-        "device_class": VirtualEnergyTwoWayMeter,
+        "channel_class": VirtualEnergyTwoWayMeter,
         "value_attribute": "imported_total",
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ENERGY,
@@ -205,7 +205,7 @@ NUMBER_DESCRIPTIONS = {
         },
     },
     "VirtualEnergyTwoMayMeterExportedTotal": {
-        "device_class": VirtualEnergyTwoWayMeter,
+        "channel_class": VirtualEnergyTwoWayMeter,
         "value_attribute": "exported_total",
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ENERGY,
@@ -217,7 +217,7 @@ NUMBER_DESCRIPTIONS = {
         },
     },
     "VirtualTemperatureSensor": {
-        "device_class": VirtualTemperatureSensor,
+        "channel_class": VirtualTemperatureSensor,
         "value_attribute": "temperature",
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.TEMPERATURE,
@@ -229,7 +229,7 @@ NUMBER_DESCRIPTIONS = {
         },
     },
     "VirtualWindSensorForce": {
-        "device_class": VirtualWindSensor,
+        "channel_class": VirtualWindSensor,
         "value_attribute": "force",
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.WIND_SPEED,
@@ -241,7 +241,7 @@ NUMBER_DESCRIPTIONS = {
         },
     },
     "VirtualWindSensorSpeed": {
-        "device_class": VirtualWindSensor,
+        "channel_class": VirtualWindSensor,
         "value_attribute": "speed",
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.WIND_SPEED,
@@ -266,16 +266,16 @@ async def async_setup_entry(
     for key, description in NUMBER_DESCRIPTIONS.items():
         async_add_entities(
             FreeAtHomeNumberEntity(
-                device,
+                channel,
                 value_attribute=description.get("value_attribute"),
                 entity_description_kwargs={"key": key}
                 | description.get("entity_description_kwargs"),
                 sysap_serial_number=entry.data[CONF_SERIAL],
             )
-            for device in free_at_home.get_devices_by_class(
-                device_class=description.get("device_class")
+            for channel in free_at_home.get_channels_by_class(
+                channel_class=description.get("channel_class")
             )
-            if getattr(device, description.get("value_attribute")) is not None
+            if getattr(channel, description.get("value_attribute")) is not None
         )
 
 
@@ -286,33 +286,33 @@ class FreeAtHomeNumberEntity(NumberEntity):
 
     def __init__(
         self,
-        device: VirtualBrightnessSensor | VirtualTemperatureSensor,
+        channel: VirtualBrightnessSensor | VirtualTemperatureSensor,
         value_attribute: str,
         entity_description_kwargs: dict[str:Any],
         sysap_serial_number: str,
     ) -> None:
         """Initialize the switch."""
         super().__init__()
-        self._device = device
+        self._channel = channel
         self._value_attribute = value_attribute
         self._sysap_serial_number = sysap_serial_number
 
         self.entity_description = NumberEntityDescription(
             has_entity_name=True,
-            name=device.channel_name,
-            translation_placeholders={"channel_id": device.channel_id},
+            name=channel.channel_name,
+            translation_placeholders={"channel_id": channel.channel_id},
             **entity_description_kwargs,
         )
 
     async def async_added_to_hass(self) -> None:
         """Run when this entity has been added to HA."""
-        self._device.register_callback(
+        self._channel.register_callback(
             callback_attribute=self._value_attribute, callback=self.async_write_ha_state
         )
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity beeing removed from hass."""
-        self._device.remove_callback(
+        self._channel.remove_callback(
             callback_attribute=self._value_attribute, callback=self.async_write_ha_state
         )
 
@@ -320,23 +320,23 @@ class FreeAtHomeNumberEntity(NumberEntity):
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
         return {
-            "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self._device.device_name,
+            "identifiers": {(DOMAIN, self._channel.device_serial)},
+            "name": self._channel.device_name,
             "manufacturer": "ABB busch-jaeger",
-            "serial_number": self._device.device_id,
-            "suggested_area": self._device.room_name,
+            "serial_number": self._channel.device_serial,
+            "suggested_area": self._channel.room_name,
             "via_device": (DOMAIN, self._sysap_serial_number),
         }
 
     @property
     def native_value(self) -> float | None:
         """Return value of the number."""
-        return getattr(self._device, self._value_attribute)
+        return getattr(self._channel, self._value_attribute)
 
     @property
     def unique_id(self) -> str | None:
         """Return a unique ID."""
-        return f"{self._device.device_id}_{self._device.channel_id}_{self.entity_description.key}"
+        return f"{self._channel.device_serial}_{self._channel.channel_id}_{self.entity_description.key}"
 
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value.
@@ -344,8 +344,8 @@ class FreeAtHomeNumberEntity(NumberEntity):
         This is especially needed as there are devices (virtual) with multiple numbers to set.
         """
         _method_to_call = "set_" + self._value_attribute
-        await getattr(self._device, _method_to_call)(float(value))
+        await getattr(self._channel, _method_to_call)(float(value))
 
     async def async_update(self, **kwargs: Any) -> None:
         """Update the number state."""
-        await self._device.refresh_state()
+        await self._channel.refresh_state()

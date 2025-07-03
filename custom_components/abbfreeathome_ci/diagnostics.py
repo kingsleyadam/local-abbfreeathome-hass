@@ -5,10 +5,10 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import Any
 
+from abbfreeathome import FreeAtHome
 from abbfreeathome.bin.function import Function
 from abbfreeathome.bin.pairing import Pairing
 from abbfreeathome.bin.parameter import Parameter
-from abbfreeathome.freeathome import FreeAtHome
 
 from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.config_entries import ConfigEntry

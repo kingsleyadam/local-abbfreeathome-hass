@@ -2,8 +2,8 @@
 
 from typing import Any
 
-from abbfreeathome.devices.room_temperature_controller import RoomTemperatureController
-from abbfreeathome.freeathome import FreeAtHome
+from abbfreeathome import FreeAtHome
+from abbfreeathome.channels.room_temperature_controller import RoomTemperatureController
 
 from homeassistant.components.climate import (
     ClimateEntity,
@@ -30,8 +30,8 @@ async def async_setup_entry(
 
     async_add_entities(
         FreeAtHomeClimateEntity(climate, sysap_serial_number=entry.data[CONF_SERIAL])
-        for climate in free_at_home.get_devices_by_class(
-            device_class=RoomTemperatureController
+        for climate in free_at_home.get_channels_by_class(
+            channel_class=RoomTemperatureController
         )
     )
 
@@ -82,10 +82,10 @@ class FreeAtHomeClimateEntity(ClimateEntity):
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
         return {
-            "identifiers": {(DOMAIN, self._climate.device_id)},
+            "identifiers": {(DOMAIN, self._climate.device_serial)},
             "name": self._climate.device_name,
             "manufacturer": "ABB busch-jaeger",
-            "serial_number": self._climate.device_id,
+            "serial_number": self._climate.device_serial,
             "suggested_area": self._climate.room_name,
             "via_device": (DOMAIN, self._sysap_serial_number),
         }
@@ -93,7 +93,7 @@ class FreeAtHomeClimateEntity(ClimateEntity):
     @property
     def unique_id(self) -> str | None:
         """Return a unique ID."""
-        return f"{self._climate.device_id}_{self._climate.channel_id}_climate"
+        return f"{self._climate.device_serial}_{self._climate.channel_id}_climate"
 
     @property
     def temperature_unit(self) -> str | None:
