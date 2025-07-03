@@ -2,9 +2,9 @@ name: Ruff Linter and Formatter
 
 on:
   push:
-    branches: [ main ]
+    branches: [main, 'beta/*', 'alpha/*']
   pull_request:
-    branches: [ main ]
+    branches: [main, 'beta/*', 'alpha/*']
   workflow_dispatch:
 
 jobs:
@@ -28,4 +28,4 @@ jobs:
         run: ruff check --output-format=github .
 
       - name: Run Ruff Formatter
-        run: ruff format --check .   
+        run: ruff format --check .
