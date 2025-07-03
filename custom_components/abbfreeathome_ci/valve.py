@@ -46,7 +46,7 @@ class FreeAtHomeValveEntity(ValveEntity):
 
         self.entity_description = ValveEntityDescription(
             key="HeatingActuatorValve",
-            channel_class=ValveDeviceClass.WATER,
+            device_class=ValveDeviceClass.WATER,
             entity_registry_enabled_default=False,
             name=valve.channel_name,
             reports_position=True,
