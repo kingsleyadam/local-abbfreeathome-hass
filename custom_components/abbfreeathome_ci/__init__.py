@@ -148,7 +148,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _free_at_home.get_config()
 
     # Load devices into the free at home object
-    await _free_at_home.load_devices()
+    await _free_at_home.load()
 
     # Register SysAP as a Device
     device_registry = dr.async_get(hass)
