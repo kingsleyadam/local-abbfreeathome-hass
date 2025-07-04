@@ -7,10 +7,10 @@ from ipaddress import IPv4Address
 import logging
 from typing import Any
 
+from abbfreeathome import FreeAtHomeApi
 from abbfreeathome.api import (
     ClientConnectionError,
     ForbiddenAuthException,
-    FreeAtHomeApi,
     FreeAtHomeSettings,
     InvalidCredentialsException,
     InvalidHostException,

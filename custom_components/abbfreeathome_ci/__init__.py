@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import logging
 
+from abbfreeathome import FreeAtHome, FreeAtHomeApi
 from abbfreeathome.api import (
     VIRTUAL_DEVICE_PROPERTIES_SCHEMA,
     VIRTUAL_DEVICE_ROOT_SCHEMA,
-    FreeAtHomeApi,
     FreeAtHomeSettings,
 )
 from abbfreeathome.bin.interface import Interface
 from abbfreeathome.exceptions import BadRequestException
-from abbfreeathome.freeathome import FreeAtHome
 import voluptuous as vol
 
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
@@ -149,7 +148,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _free_at_home.get_config()
 
     # Load devices into the free at home object
-    await _free_at_home.load_devices()
+    await _free_at_home.load()
 
     # Register SysAP as a Device
     device_registry = dr.async_get(hass)
@@ -206,7 +205,7 @@ async def async_remove_config_entry_device(
 
     # Unload the device from the FreeAtHome class
     free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
-    free_at_home.unload_device_by_device_serial(device_serial)
+    free_at_home.unload_device(device_serial)
 
     return True
 

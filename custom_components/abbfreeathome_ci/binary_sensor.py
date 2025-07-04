@@ -2,15 +2,15 @@
 
 from typing import Any
 
-from abbfreeathome.devices.brightness_sensor import BrightnessSensor
-from abbfreeathome.devices.carbon_monoxide_sensor import CarbonMonoxideSensor
-from abbfreeathome.devices.movement_detector import MovementDetector
-from abbfreeathome.devices.rain_sensor import RainSensor
-from abbfreeathome.devices.smoke_detector import SmokeDetector
-from abbfreeathome.devices.temperature_sensor import TemperatureSensor
-from abbfreeathome.devices.wind_sensor import WindSensor
-from abbfreeathome.devices.window_door_sensor import WindowDoorSensor
-from abbfreeathome.freeathome import FreeAtHome
+from abbfreeathome import FreeAtHome
+from abbfreeathome.channels.brightness_sensor import BrightnessSensor
+from abbfreeathome.channels.carbon_monoxide_sensor import CarbonMonoxideSensor
+from abbfreeathome.channels.movement_detector import MovementDetector
+from abbfreeathome.channels.rain_sensor import RainSensor
+from abbfreeathome.channels.smoke_detector import SmokeDetector
+from abbfreeathome.channels.temperature_sensor import TemperatureSensor
+from abbfreeathome.channels.wind_sensor import WindSensor
+from abbfreeathome.channels.window_door_sensor import WindowDoorSensor
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -26,7 +26,7 @@ from .const import CONF_SERIAL, DOMAIN
 
 SENSOR_DESCRIPTIONS = {
     "CarbonMonoxideSensorOnOff": {
-        "device_class": CarbonMonoxideSensor,
+        "channel_class": CarbonMonoxideSensor,
         "value_attribute": "state",
         "entity_description_kwargs": {
             "device_class": BinarySensorDeviceClass.CO,
@@ -34,7 +34,7 @@ SENSOR_DESCRIPTIONS = {
         },
     },
     "MovementDetectorMotion": {
-        "device_class": MovementDetector,
+        "channel_class": MovementDetector,
         "value_attribute": "state",
         "entity_description_kwargs": {
             "device_class": BinarySensorDeviceClass.MOTION,
@@ -42,7 +42,7 @@ SENSOR_DESCRIPTIONS = {
         },
     },
     "SmokeDetectorOnOff": {
-        "device_class": SmokeDetector,
+        "channel_class": SmokeDetector,
         "value_attribute": "state",
         "entity_description_kwargs": {
             "device_class": BinarySensorDeviceClass.SMOKE,
@@ -50,7 +50,7 @@ SENSOR_DESCRIPTIONS = {
         },
     },
     "WindowDoorSensorOnOff": {
-        "device_class": WindowDoorSensor,
+        "channel_class": WindowDoorSensor,
         "value_attribute": "state",
         "entity_description_kwargs": {
             "device_class": BinarySensorDeviceClass.WINDOW,
@@ -58,7 +58,7 @@ SENSOR_DESCRIPTIONS = {
         },
     },
     "RainSensorOnOff": {
-        "device_class": RainSensor,
+        "channel_class": RainSensor,
         "value_attribute": "state",
         "entity_description_kwargs": {
             "device_class": BinarySensorDeviceClass.MOISTURE,
@@ -66,7 +66,7 @@ SENSOR_DESCRIPTIONS = {
         },
     },
     "BrightnessSensorOnOff": {
-        "device_class": BrightnessSensor,
+        "channel_class": BrightnessSensor,
         "value_attribute": "alarm",
         "entity_description_kwargs": {
             "device_class": BinarySensorDeviceClass.LIGHT,
@@ -74,7 +74,7 @@ SENSOR_DESCRIPTIONS = {
         },
     },
     "TemperatureSensorOnOff": {
-        "device_class": TemperatureSensor,
+        "channel_class": TemperatureSensor,
         "value_attribute": "alarm",
         "entity_description_kwargs": {
             "device_class": BinarySensorDeviceClass.COLD,
@@ -82,7 +82,7 @@ SENSOR_DESCRIPTIONS = {
         },
     },
     "WindSensorOnOff": {
-        "device_class": WindSensor,
+        "channel_class": WindSensor,
         "value_attribute": "alarm",
         "entity_description_kwargs": {
             "device_class": BinarySensorDeviceClass.MOVING,
@@ -103,16 +103,16 @@ async def async_setup_entry(
     for key, description in SENSOR_DESCRIPTIONS.items():
         async_add_entities(
             FreeAtHomeBinarySensorEntity(
-                device,
+                channel,
                 value_attribute=description.get("value_attribute"),
                 entity_description_kwargs={"key": key}
                 | description.get("entity_description_kwargs"),
                 sysap_serial_number=entry.data[CONF_SERIAL],
             )
-            for device in free_at_home.get_devices_by_class(
-                device_class=description.get("device_class")
+            for channel in free_at_home.get_channels_by_class(
+                channel_class=description.get("channel_class")
             )
-            if getattr(device, description.get("value_attribute")) is not None
+            if getattr(channel, description.get("value_attribute")) is not None
         )
 
 
@@ -123,7 +123,7 @@ class FreeAtHomeBinarySensorEntity(BinarySensorEntity):
 
     def __init__(
         self,
-        device: BrightnessSensor
+        channel: BrightnessSensor
         | CarbonMonoxideSensor
         | MovementDetector
         | RainSensor
@@ -137,26 +137,26 @@ class FreeAtHomeBinarySensorEntity(BinarySensorEntity):
     ) -> None:
         """Initialize the sensor."""
         super().__init__()
-        self._device = device
+        self._channel = channel
         self._value_attribute = value_attribute
         self._sysap_serial_number = sysap_serial_number
 
         self.entity_description = BinarySensorEntityDescription(
             has_entity_name=True,
-            name=device.channel_name,
-            translation_placeholders={"channel_id": device.channel_id},
+            name=channel.channel_name,
+            translation_placeholders={"channel_id": channel.channel_id},
             **entity_description_kwargs,
         )
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
-        self._device.register_callback(
+        self._channel.register_callback(
             callback_attribute=self._value_attribute, callback=self.async_write_ha_state
         )
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
-        self._device.remove_callback(
+        self._channel.remove_callback(
             callback_attribute=self._value_attribute, callback=self.async_write_ha_state
         )
 
@@ -164,18 +164,18 @@ class FreeAtHomeBinarySensorEntity(BinarySensorEntity):
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
         return {
-            "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self._device.device_name,
+            "identifiers": {(DOMAIN, self._channel.device_serial)},
+            "name": self._channel.device_name,
             "manufacturer": "ABB busch-jaeger",
-            "serial_number": self._device.device_id,
-            "suggested_area": self._device.room_name,
+            "serial_number": self._channel.device_serial,
+            "suggested_area": self._channel.room_name,
             "via_device": (DOMAIN, self._sysap_serial_number),
         }
 
     @property
     def is_on(self) -> bool | None:
         """Return state of the binary sensor."""
-        return getattr(self._device, self._value_attribute)
+        return getattr(self._channel, self._value_attribute)
 
     @property
     def translation_key(self):
@@ -190,11 +190,11 @@ class FreeAtHomeBinarySensorEntity(BinarySensorEntity):
         if hasattr(self, "entity_description"):
             _translation_key = self.entity_description.translation_key
 
-        if self._device.channel_name == self._device.device_name:
+        if self._channel.channel_name == self._channel.device_name:
             return _translation_key
         return None
 
     @property
     def unique_id(self) -> str | None:
         """Return a unique ID."""
-        return f"{self._device.device_id}_{self._device.channel_id}_{self.entity_description.key}"
+        return f"{self._channel.device_serial}_{self._channel.channel_id}_{self.entity_description.key}"

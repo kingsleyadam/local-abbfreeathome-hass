@@ -2,8 +2,8 @@
 
 from typing import Any
 
-from abbfreeathome.devices.heating_actuator import HeatingActuator
-from abbfreeathome.freeathome import FreeAtHome
+from abbfreeathome import FreeAtHome
+from abbfreeathome.channels.heating_actuator import HeatingActuator
 
 from homeassistant.components.valve import (
     ValveDeviceClass,
@@ -29,7 +29,7 @@ async def async_setup_entry(
 
     async_add_entities(
         FreeAtHomeValveEntity(valve, sysap_serial_number=entry.data[CONF_SERIAL])
-        for valve in free_at_home.get_devices_by_class(device_class=HeatingActuator)
+        for valve in free_at_home.get_channels_by_class(channel_class=HeatingActuator)
     )
 
 
@@ -68,10 +68,10 @@ class FreeAtHomeValveEntity(ValveEntity):
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
         return {
-            "identifiers": {(DOMAIN, self._valve.device_id)},
+            "identifiers": {(DOMAIN, self._valve.device_serial)},
             "name": self._valve.device_name,
             "manufacturer": "ABB busch-jaeger",
-            "serial_number": self._valve.device_id,
+            "serial_number": self._valve.device_serial,
             "suggested_area": self._valve.room_name,
             "via_device": (DOMAIN, self._sysap_serial_number),
         }
@@ -84,7 +84,7 @@ class FreeAtHomeValveEntity(ValveEntity):
     @property
     def unique_id(self) -> str | None:
         """Return a unique ID."""
-        return f"{self._valve.device_id}_{self._valve.channel_id}_valve"
+        return f"{self._valve.device_serial}_{self._valve.channel_id}_valve"
 
     @property
     def supported_features(self) -> int | None:

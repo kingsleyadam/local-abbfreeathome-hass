@@ -2,8 +2,8 @@
 
 from typing import Any
 
-from abbfreeathome.devices.des_door_opener_actuator import DesDoorOpenerActuator
-from abbfreeathome.freeathome import FreeAtHome
+from abbfreeathome import FreeAtHome
+from abbfreeathome.channels.des_door_opener_actuator import DesDoorOpenerActuator
 
 from homeassistant.components.lock import LockEntity, LockEntityDescription
 from homeassistant.config_entries import ConfigEntry
@@ -24,8 +24,8 @@ async def async_setup_entry(
 
     async_add_entities(
         FreeAtHomeLockEntity(lock, sysap_serial_number=entry.data[CONF_SERIAL])
-        for lock in free_at_home.get_devices_by_class(
-            device_class=DesDoorOpenerActuator
+        for lock in free_at_home.get_channels_by_class(
+            channel_class=DesDoorOpenerActuator
         )
     )
 
@@ -62,10 +62,10 @@ class FreeAtHomeLockEntity(LockEntity):
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
         return {
-            "identifiers": {(DOMAIN, self._lock.device_id)},
+            "identifiers": {(DOMAIN, self._lock.device_serial)},
             "name": self._lock.device_name,
             "manufacturer": "ABB busch-jaeger",
-            "serial_number": self._lock.device_id,
+            "serial_number": self._lock.device_serial,
             "suggested_area": self._lock.room_name,
             "via_device": (DOMAIN, self._sysap_serial_number),
         }
@@ -78,7 +78,7 @@ class FreeAtHomeLockEntity(LockEntity):
     @property
     def unique_id(self) -> str | None:
         """Return a unique ID."""
-        return f"{self._lock.device_id}_{self._lock.channel_id}_valve"
+        return f"{self._lock.device_serial}_{self._lock.channel_id}_valve"
 
     async def async_lock(self, **kwargs):
         """Lock the device."""
@@ -90,4 +90,4 @@ class FreeAtHomeLockEntity(LockEntity):
 
     async def async_update(self, **kwargs: Any) -> None:
         """Update the lock state."""
-        await self._valve.refresh_state()
+        await self._lock.refresh_state()
