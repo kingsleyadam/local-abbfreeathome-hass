@@ -9,7 +9,8 @@
           "username": "Benutzername",
           "password": "Passwort",
           "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
-          "include_virtual_devices": "Virtuelle Geräte einschließen?"
+          "include_virtual_devices": "Virtuelle Geräte einschließen?",
+          "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?"
         }
       },
       "zeroconf_confirm": {
@@ -20,7 +21,8 @@
           "username": "Benutzername",
           "password": "Passwort",
           "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
-          "include_virtual_devices": "Virtuelle Geräte einschließen?"
+          "include_virtual_devices": "Virtuelle Geräte einschließen?",
+          "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?"
         }
       },
       "reconfigure": {
@@ -30,7 +32,8 @@
           "username": "Benutzername",
           "password": "Passwort",
           "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
-          "include_virtual_devices": "Virtuelle Geräte einschließen?"
+          "include_virtual_devices": "Virtuelle Geräte einschließen?",
+          "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?"
         }
       }
     },
