@@ -18,7 +18,6 @@
         "data": {
           "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
           "include_virtual_devices": "Include virtual devices?",
-          "create_subdevices": "Create Sub-Devices for each independent channel?",
           "password": "Password",
           "username": "Username"
         },
@@ -30,7 +29,6 @@
           "host": "Host",
           "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
           "include_virtual_devices": "Include virtual devices?",
-          "create_subdevices": "Create Sub-Devices for each independent channel?",
           "password": "Password",
           "username": "Username"
         },
@@ -42,7 +40,6 @@
           "host": "Host",
           "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
           "include_virtual_devices": "Include virtual devices?",
-          "create_subdevices": "Create Sub-Devices for each independent channel?",
           "password": "Password",
           "username": "Username"
         },

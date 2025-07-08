@@ -29,7 +29,6 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
-    CONF_CREATE_SUBDEVICES,
     CONF_INCLUDE_ORPHAN_CHANNELS,
     CONF_INCLUDE_VIRTUAL_DEVICES,
     CONF_SERIAL,
@@ -73,7 +72,6 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Required(CONF_PASSWORD): cv.string,
                 vol.Optional(CONF_INCLUDE_ORPHAN_CHANNELS, default=False): cv.boolean,
                 vol.Optional(CONF_INCLUDE_VIRTUAL_DEVICES, default=False): cv.boolean,
-                vol.Optional(CONF_CREATE_SUBDEVICES, default=False): cv.boolean,
             }
         )
     },
@@ -239,13 +237,6 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         hass.config_entries.async_update_entry(
             entry, data=new_data, version=1, minor_version=3
-        )
-
-        if entry.minor_version < 4:
-            new_data[CONF_CREATE_SUBDEVICES] = False
-
-        hass.config_entries.async_update_entry(
-            entry, data=new_data, version=1, minor_version=4
         )
 
     _LOGGER.debug(

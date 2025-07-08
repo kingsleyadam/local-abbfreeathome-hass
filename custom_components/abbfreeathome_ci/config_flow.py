@@ -29,7 +29,6 @@ from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
-    CONF_CREATE_SUBDEVICES,
     CONF_INCLUDE_ORPHAN_CHANNELS,
     CONF_INCLUDE_VIRTUAL_DEVICES,
     CONF_SERIAL,
@@ -45,7 +44,6 @@ def _schema_with_defaults(
     username: str | None = None,
     include_orphan_channels: bool = False,
     include_virtual_devices: bool = False,
-    create_subdevices: bool = False,
     step_id: str = "user",
 ) -> vol.Schema:
     schema = vol.Schema({})
@@ -63,7 +61,6 @@ def _schema_with_defaults(
             vol.Optional(
                 CONF_INCLUDE_VIRTUAL_DEVICES, default=include_virtual_devices
             ): bool,
-            vol.Optional(CONF_CREATE_SUBDEVICES, default=create_subdevices): bool,
         }
     )
 
@@ -122,7 +119,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for ABB-free@home."""
 
     VERSION = 1
-    MINOR_VERSION = 4
+    MINOR_VERSION = 3
     CONNECTION_CLASS = CONN_CLASS_LOCAL_PUSH
 
     def __init__(self) -> None:
@@ -136,7 +133,6 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._username: str | None = None
         self._include_orphan_channels: bool = False
         self._include_virtual_devices: bool = False
-        self._create_subdevices: bool = False
 
     async def async_step_import(self, import_data: dict[str, Any]) -> ConfigFlowResult:
         """Handle import from yaml configuration."""
@@ -177,7 +173,6 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._password = import_data[CONF_PASSWORD]
         self._include_orphan_channels = import_data[CONF_INCLUDE_ORPHAN_CHANNELS]
         self._include_virtual_devices = import_data[CONF_INCLUDE_VIRTUAL_DEVICES]
-        self._create_subdevices = import_data[CONF_CREATE_SUBDEVICES]
 
         # If SysAP already exists, update configuration and abort.
         await self.async_set_unique_id(settings.serial_number)
@@ -188,7 +183,6 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_PASSWORD: self._password,
                 CONF_INCLUDE_ORPHAN_CHANNELS: self._include_orphan_channels,
                 CONF_INCLUDE_VIRTUAL_DEVICES: self._include_virtual_devices,
-                CONF_CREATE_SUBDEVICES: self._create_subdevices,
             }
         )
 
@@ -234,7 +228,6 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._password = user_input[CONF_PASSWORD]
         self._include_orphan_channels = user_input[CONF_INCLUDE_ORPHAN_CHANNELS]
         self._include_virtual_devices = user_input[CONF_INCLUDE_VIRTUAL_DEVICES]
-        self._create_subdevices = user_input[CONF_CREATE_SUBDEVICES]
 
         return self._async_create_entry()
 
@@ -288,7 +281,6 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._password = user_input[CONF_PASSWORD]
         self._include_orphan_channels = user_input[CONF_INCLUDE_ORPHAN_CHANNELS]
         self._include_virtual_devices = user_input[CONF_INCLUDE_VIRTUAL_DEVICES]
-        self._create_subdevices = user_input[CONF_CREATE_SUBDEVICES]
 
         return self._async_create_entry()
 
@@ -307,7 +299,6 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._serial_number = entry.data[CONF_SERIAL]
         self._include_orphan_channels = entry.data[CONF_INCLUDE_ORPHAN_CHANNELS]
         self._include_virtual_devices = entry.data[CONF_INCLUDE_VIRTUAL_DEVICES]
-        self._create_subdevices = entry.data[CONF_CREATE_SUBDEVICES]
 
         if user_input is None:
             return self._async_show_setup_form(
@@ -315,7 +306,6 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
                 username=self._username,
                 include_orphan_channels=self._include_orphan_channels,
                 include_virtual_devices=self._include_virtual_devices,
-                create_subdevices=self._create_subdevices,
             )
 
         errors = await validate_api(
@@ -332,7 +322,6 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._password = user_input[CONF_PASSWORD]
         self._include_orphan_channels = user_input[CONF_INCLUDE_ORPHAN_CHANNELS]
         self._include_virtual_devices = user_input[CONF_INCLUDE_VIRTUAL_DEVICES]
-        self._create_subdevices = user_input[CONF_CREATE_SUBDEVICES]
 
         return self._async_update_reload_and_abort()
 
@@ -345,7 +334,6 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         username: str | None = None,
         include_orphan_channels: bool = False,
         include_virtual_devices: bool = False,
-        create_subdevices: bool = False,
     ) -> ConfigFlowResult:
         """Show the setup form to the user."""
         description_placeholders: Mapping[str, str | None] = {}
@@ -367,7 +355,6 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
                 username=username,
                 include_orphan_channels=include_orphan_channels,
                 include_virtual_devices=include_virtual_devices,
-                create_subdevices=create_subdevices,
             ),
             errors=errors or {},
             description_placeholders=description_placeholders,
@@ -385,7 +372,6 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_PASSWORD: self._password,
                 CONF_INCLUDE_ORPHAN_CHANNELS: self._include_orphan_channels,
                 CONF_INCLUDE_VIRTUAL_DEVICES: self._include_virtual_devices,
-                CONF_CREATE_SUBDEVICES: self._create_subdevices,
             },
         )
 
@@ -398,6 +384,5 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_PASSWORD: self._password,
                 CONF_INCLUDE_ORPHAN_CHANNELS: self._include_orphan_channels,
                 CONF_INCLUDE_VIRTUAL_DEVICES: self._include_virtual_devices,
-                CONF_CREATE_SUBDEVICES: self._create_subdevices,
             },
         )
