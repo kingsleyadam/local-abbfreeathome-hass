@@ -135,28 +135,21 @@ class FreeAtHomeCoverEntity(CoverEntity):
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
         if self._create_subdevices and self._channel.device.is_multi_device:
-            return {
-                "identifiers": {
+            return DeviceInfo(
+                identifiers={
                     (
                         DOMAIN,
                         f"{self._channel.device_serial}_{self._channel.channel_id}",
                     )
                 },
-                "name": self._channel.channel_name,
-                "manufacturer": "ABB Busch-Jaeger",
-                "serial_number": f"{self._channel.device_serial}_{self._channel.channel_id}",
-                "suggested_area": self._channel.room_name,
-                "via_device": (DOMAIN, self._channel.device_serial),
-            }
+                name=self._channel.channel_name,
+                manufacturer="ABB Busch-Jaeger",
+                serial_number=f"{self._channel.device_serial}_{self._channel.channel_id}",
+                suggested_area=self._channel.room_name,
+                via_device=(DOMAIN, self._channel.device_serial),
+            )
 
-        return {
-            "identifiers": {(DOMAIN, self._channel.device_serial)},
-            "name": self._channel.device_name,
-            "manufacturer": "ABB Busch-Jaeger",
-            "serial_number": self._channel.device_serial,
-            "suggested_area": self._channel.device.room_name,
-            "via_device": (DOMAIN, self._sysap_serial_number),
-        }
+        return DeviceInfo(identifiers={(DOMAIN, self._channel.device_serial)})
 
     @property
     def current_cover_position(self) -> int:
