@@ -14,7 +14,6 @@ from homeassistant.components.climate.const import HVACAction, HVACMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -33,9 +32,7 @@ async def async_setup_entry(
         FreeAtHomeClimateEntity(
             channel,
             sysap_serial_number=entry.data[CONF_SERIAL],
-            hass=hass,
             create_subdevices=entry.data[CONF_CREATE_SUBDEVICES],
-            config_entry_id=entry.entry_id,
         )
         for channel in free_at_home.get_channels_by_class(
             channel_class=RoomTemperatureController
@@ -60,9 +57,7 @@ class FreeAtHomeClimateEntity(ClimateEntity):
         self,
         channel: RoomTemperatureController,
         sysap_serial_number: str,
-        hass: HomeAssistant,
         create_subdevices: bool,
-        config_entry_id: str,
     ) -> None:
         """Initialize the climate device."""
         super().__init__()
@@ -74,18 +69,6 @@ class FreeAtHomeClimateEntity(ClimateEntity):
             key="RoomTemperatureController",
             name=channel.channel_name,
         )
-
-        if self._create_subdevices and self._channel.device.floor is None:
-            device_registry = dr.async_get(hass)
-            device_registry.async_get_or_create(
-                config_entry_id=config_entry_id,
-                identifiers={(DOMAIN, self._channel.device_serial)},
-                name=self._channel.device_name,
-                manufacturer="ABB Busch-Jaeger",
-                serial_number=self._channel.device_serial,
-                suggested_area=None,
-                via_device=(DOMAIN, self._sysap_serial_number),
-            )
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
@@ -106,7 +89,7 @@ class FreeAtHomeClimateEntity(ClimateEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
-        if self._create_subdevices and self._channel.device.floor is None:
+        if self._create_subdevices and self._channel.device.is_multi_device:
             return {
                 "identifiers": {
                     (

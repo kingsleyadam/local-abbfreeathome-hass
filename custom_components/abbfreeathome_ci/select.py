@@ -22,7 +22,6 @@ from abbfreeathome.channels.switch_actuator import (
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -127,9 +126,7 @@ async def async_setup_entry(
                 current_option_attribute=description.get("current_option_attribute"),
                 select_option_method=description.get("select_option_method"),
                 sysap_serial_number=entry.data[CONF_SERIAL],
-                hass=hass,
                 create_subdevices=entry.data[CONF_CREATE_SUBDEVICES],
-                config_entry_id=entry.entry_id,
             )
             for channel in free_at_home.get_channels_by_class(
                 channel_class=description.get("channel_class")
@@ -154,9 +151,7 @@ class FreeAtHomeSelectEntity(SelectEntity):
         current_option_attribute: str,
         select_option_method: str,
         sysap_serial_number: str,
-        hass: HomeAssistant,
         create_subdevices: bool,
-        config_entry_id: str,
     ) -> None:
         """Initialize the switch."""
         super().__init__()
@@ -176,18 +171,6 @@ class FreeAtHomeSelectEntity(SelectEntity):
             **entity_description_kwargs,
         )
 
-        if self._create_subdevices and self._channel.device.floor is None:
-            device_registry = dr.async_get(hass)
-            device_registry.async_get_or_create(
-                config_entry_id=config_entry_id,
-                identifiers={(DOMAIN, self._channel.device_serial)},
-                name=self._channel.device_name,
-                manufacturer="ABB Busch-Jaeger",
-                serial_number=self._channel.device_serial,
-                suggested_area=None,
-                via_device=(DOMAIN, self._sysap_serial_number),
-            )
-
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
         self._channel.register_callback(
@@ -205,7 +188,7 @@ class FreeAtHomeSelectEntity(SelectEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
-        if self._create_subdevices and self._channel.device.floor is None:
+        if self._create_subdevices and self._channel.device.is_multi_device:
             return {
                 "identifiers": {
                     (

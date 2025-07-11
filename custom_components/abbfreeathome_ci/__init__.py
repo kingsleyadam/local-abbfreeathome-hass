@@ -166,6 +166,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         configuration_url=entry.data[CONF_HOST],
     )
 
+    # Check, if sub-devices for multi-devices should be created
+    if entry.data[CONF_CREATE_SUBDEVICES]:
+        for _device in _free_at_home.get_devices().values():
+            if _device.is_multi_device:
+                device_registry.async_get_or_create(
+                    config_entry_id=entry.entry_id,
+                    identifiers={(DOMAIN, _device.device_serial)},
+                    name=_device.display_name,
+                    manufacturer="ABB Busch-Jaeger",
+                    serial_number=_device.device_serial,
+                    suggested_area=None,
+                    via_device=(DOMAIN, entry.data[CONF_SERIAL]),
+                )
+
     # Add the FreeAtHome object to hass data
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = _free_at_home
 

@@ -24,7 +24,6 @@ from homeassistant.components.event import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -117,9 +116,7 @@ async def async_setup_entry(
                 entity_description_kwargs={"key": key}
                 | description.get("entity_description_kwargs"),
                 sysap_serial_number=entry.data[CONF_SERIAL],
-                hass=hass,
                 create_subdevices=entry.data[CONF_CREATE_SUBDEVICES],
-                config_entry_id=entry.entry_id,
                 event_type_callback=description.get("event_type_callback"),
             )
             for channel in free_at_home.get_channels_by_class(
@@ -142,9 +139,7 @@ class FreeAtHomeEventEntity(EventEntity):
         state_attribute: str,
         entity_description_kwargs: dict[str:Any],
         sysap_serial_number: str,
-        hass: HomeAssistant,
         create_subdevices: bool,
-        config_entry_id: str,
         event_type_callback: callback,
     ) -> None:
         """Initialize the sensor."""
@@ -161,18 +156,6 @@ class FreeAtHomeEventEntity(EventEntity):
             translation_placeholders={"channel_id": channel.channel_id},
             **entity_description_kwargs,
         )
-
-        if self._create_subdevices and self._channel.device.floor is None:
-            device_registry = dr.async_get(hass)
-            device_registry.async_get_or_create(
-                config_entry_id=config_entry_id,
-                identifiers={(DOMAIN, self._channel.device_serial)},
-                name=self._channel.device_name,
-                manufacturer="ABB Busch-Jaeger",
-                serial_number=self._channel.device_serial,
-                suggested_area=None,
-                via_device=(DOMAIN, self._sysap_serial_number),
-            )
 
     @callback
     def _async_handle_event(self) -> None:
@@ -215,7 +198,7 @@ class FreeAtHomeEventEntity(EventEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
-        if self._create_subdevices and self._channel.device.floor is None:
+        if self._create_subdevices and self._channel.device.is_multi_device:
             return {
                 "identifiers": {
                     (
