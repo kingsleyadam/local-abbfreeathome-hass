@@ -29,6 +29,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
+    CONF_CREATE_SUBDEVICES,
     CONF_INCLUDE_ORPHAN_CHANNELS,
     CONF_INCLUDE_VIRTUAL_DEVICES,
     CONF_SERIAL,
@@ -72,6 +73,7 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Required(CONF_PASSWORD): cv.string,
                 vol.Optional(CONF_INCLUDE_ORPHAN_CHANNELS, default=False): cv.boolean,
                 vol.Optional(CONF_INCLUDE_VIRTUAL_DEVICES, default=False): cv.boolean,
+                vol.Optional(CONF_CREATE_SUBDEVICES, default=False): cv.boolean,
             }
         )
     },
@@ -164,6 +166,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         configuration_url=entry.data[CONF_HOST],
     )
 
+    for _device in _free_at_home.get_devices().values():
+        # Skip special F@H devices
+        if (
+            _device.device_serial.startswith("FFFF")  # Scenes
+            or _device.device_id
+            == "FFFF"  # System Access Point with a serial of "ABB700000000"
+            or not _device.channels  # No channels available
+        ):
+            continue
+
+        device_registry.async_get_or_create(
+            config_entry_id=entry.entry_id,
+            identifiers={(DOMAIN, _device.device_serial)},
+            name=_device.display_name,
+            manufacturer="ABB Busch-Jaeger",
+            serial_number=_device.device_serial,
+            suggested_area=_device.room_name,
+            via_device=(DOMAIN, entry.data[CONF_SERIAL]),
+        )
+
     # Add the FreeAtHome object to hass data
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = _free_at_home
 
@@ -237,6 +259,13 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         hass.config_entries.async_update_entry(
             entry, data=new_data, version=1, minor_version=3
+        )
+
+        if entry.minor_version < 4:
+            new_data[CONF_CREATE_SUBDEVICES] = False
+
+        hass.config_entries.async_update_entry(
+            entry, data=new_data, version=1, minor_version=4
         )
 
     _LOGGER.debug(

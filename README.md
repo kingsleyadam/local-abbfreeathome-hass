@@ -92,13 +92,14 @@ Copy the username listed within that window (usually `installer`) to be used whe
 
 The config setup will include some options to help configure the integration.
 
-| Configuration                                    | Description                                                                                                        |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| Hostname                                         | **Only available in Manual (User) Setup.** The full hostname including schema of the ABB-free@home SysAP endpoint. |
-| Username                                         | The **api** username, likely different from your normal login username.                                            |
-| Password                                         | The password for logging into the SysAP.                                                                           |
-| Include channels NOT on the free@home floorplan? | Whether to include channels that are not located on the free@home floorplan.                                       |
-| Include virtual devices?                         | Whether to include virtual devices or not.                                                                         |
+| Configuration                                    | Description                                                                                                                              |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Hostname                                         | **Only available in Manual (User) Setup.** The full hostname including schema of the ABB-free@home SysAP endpoint.                       |
+| Username                                         | The **api** username, likely different from your normal login username.                                                                  |
+| Password                                         | The password for logging into the SysAP.                                                                                                 |
+| Include channels NOT on the free@home floorplan? | Whether to include channels that are not located on the free@home floorplan.                                                             |
+| Include virtual devices?                         | Whether to include virtual devices or not.                                                                                               |
+| Create Sub-Devices for each independent channel? | Wether to create sub-devices for each channel of a physical device, which can be placed independently on the free@home floorplan or not. |
 
 ###### Example
 
@@ -107,6 +108,7 @@ The config setup will include some options to help configure the integration.
 - **Password**: `<password>`
 - **Include channels NOT on the free@home floorplan?**: False
 - **Include virtual devices?**: False
+- **Create Sub-Devices for each independent channel?**: False
 
 > Note: Support for SSL is not provided yet. For a valid SSL connection a cert pulled from the SysAP must be provided, research to be done to know if Home Assistant supports such a scenario.
 
@@ -131,6 +133,7 @@ abbfreeathome_ci:
   password: <password>
   include_orphan_channels: false
   include_virtual_devices: false
+  include_subdevices: false
 ```
 
 Each time Home Assistant is loaded, the `configuration.yaml` entry for `abbfreeathome_ci` will be checked, verified, and updated accordingly. This means that if you want to update your configuration, simply modify the `configuration.yaml` file and restart Home Assistant.
@@ -166,14 +169,14 @@ triggers:
   - trigger: state
     entity_id:
       - event.study_area_rocker_switch_event
-    to: 'Off'
+    to: "Off"
     attribute: event_type
     id: study_area_event_off
   - trigger: state
     entity_id:
       - event.study_area_rocker_switch_event
     attribute: event_type
-    to: 'On'
+    to: "On"
     id: study_area_event_on
 conditions: []
 actions:
