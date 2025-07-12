@@ -1,6 +1,7 @@
 """Constants for the ABB-free@home integration."""
 
 DOMAIN = "abbfreeathome_ci"
+MANUFACTURER = "ABB Busch-Jaeger"
 
 # Domain Configuration
 CONF_SERIAL = "serial"

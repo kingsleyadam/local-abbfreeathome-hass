@@ -34,6 +34,7 @@ from .const import (
     CONF_INCLUDE_VIRTUAL_DEVICES,
     CONF_SERIAL,
     DOMAIN,
+    MANUFACTURER,
     VIRTUAL_DEVICE,
 )
 
@@ -157,7 +158,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, entry.data[CONF_SERIAL])},
-        manufacturer="ABB Busch-Jaeger",
+        manufacturer=MANUFACTURER,
         model="System Access Point",
         name=_free_at_home_settings.name,
         serial_number=entry.data[CONF_SERIAL],
@@ -167,21 +168,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     for _device in _free_at_home.get_devices().values():
-        # Skip special F@H devices
-        if (
-            _device.device_serial.startswith("FFFF")  # Scenes
-            or _device.device_id
-            == "FFFF"  # System Access Point with a serial of "ABB700000000"
-            or not _device.channels  # No channels available
-        ):
+        if not _free_at_home.get_channels_by_device(_device.device_serial):
             continue
 
         device_registry.async_get_or_create(
             config_entry_id=entry.entry_id,
             identifiers={(DOMAIN, _device.device_serial)},
             name=_device.display_name,
-            manufacturer="ABB Busch-Jaeger",
+            manufacturer=MANUFACTURER,
             serial_number=_device.device_serial,
+            hw_version=_device.device_id,
             suggested_area=_device.room_name,
             via_device=(DOMAIN, entry.data[CONF_SERIAL]),
         )

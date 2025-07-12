@@ -27,7 +27,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN
+from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
 
 EVENT_DESCRIPTIONS = {
     "EventBlindSensorState": {
@@ -207,8 +207,9 @@ class FreeAtHomeEventEntity(EventEntity):
                     )
                 },
                 name=self._channel.channel_name,
-                manufacturer="ABB Busch-Jaeger",
+                manufacturer=MANUFACTURER,
                 serial_number=f"{self._channel.device_serial}_{self._channel.channel_id}",
+                hw_version=f"{self._channel.device.device_id} (sub)",
                 suggested_area=self._channel.room_name,
                 via_device=(DOMAIN, self._channel.device_serial),
             )
