@@ -170,8 +170,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Skip special F@H devices
         if (
             _device.device_serial.startswith("FFFF")  # Scenes
-            or _device.device_id == "FFFF"  # System Access Point
-            or len(_device.channels.keys()) == 0
+            or _device.device_id
+            == "FFFF"  # System Access Point with a serial of "ABB700000000"
+            or not _device.channels  # No channels available
         ):
             continue
 
