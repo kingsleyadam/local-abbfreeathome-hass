@@ -17,7 +17,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_SERIAL, DOMAIN
+from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
 
 
 async def async_setup_entry(
@@ -29,8 +29,12 @@ async def async_setup_entry(
     free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
 
     async_add_entities(
-        FreeAtHomeClimateEntity(climate, sysap_serial_number=entry.data[CONF_SERIAL])
-        for climate in free_at_home.get_channels_by_class(
+        FreeAtHomeClimateEntity(
+            channel,
+            sysap_serial_number=entry.data[CONF_SERIAL],
+            create_subdevices=entry.data[CONF_CREATE_SUBDEVICES],
+        )
+        for channel in free_at_home.get_channels_by_class(
             channel_class=RoomTemperatureController
         )
     )
@@ -50,22 +54,26 @@ class FreeAtHomeClimateEntity(ClimateEntity):
     ]
 
     def __init__(
-        self, climate: RoomTemperatureController, sysap_serial_number: str
+        self,
+        channel: RoomTemperatureController,
+        sysap_serial_number: str,
+        create_subdevices: bool,
     ) -> None:
         """Initialize the climate device."""
         super().__init__()
-        self._climate = climate
+        self._channel = channel
         self._sysap_serial_number = sysap_serial_number
+        self._create_subdevices = create_subdevices
 
         self.entity_description = ClimateEntityDescription(
             key="RoomTemperatureController",
-            name=climate.channel_name,
+            name=channel.channel_name,
         )
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
         for _callback_attribute in self._callback_attributes:
-            self._climate.register_callback(
+            self._channel.register_callback(
                 callback_attribute=_callback_attribute,
                 callback=self.async_write_ha_state,
             )
@@ -73,7 +81,7 @@ class FreeAtHomeClimateEntity(ClimateEntity):
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
         for _callback_attribute in self._callback_attributes:
-            self._climate.remove_callback(
+            self._channel.remove_callback(
                 callback_attribute=_callback_attribute,
                 callback=self.async_write_ha_state,
             )
@@ -81,19 +89,28 @@ class FreeAtHomeClimateEntity(ClimateEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
-        return {
-            "identifiers": {(DOMAIN, self._climate.device_serial)},
-            "name": self._climate.device_name,
-            "manufacturer": "ABB busch-jaeger",
-            "serial_number": self._climate.device_serial,
-            "suggested_area": self._climate.room_name,
-            "via_device": (DOMAIN, self._sysap_serial_number),
-        }
+        if self._create_subdevices and self._channel.device.is_multi_device:
+            return DeviceInfo(
+                identifiers={
+                    (
+                        DOMAIN,
+                        f"{self._channel.device_serial}_{self._channel.channel_id}",
+                    )
+                },
+                name=self._channel.channel_name,
+                manufacturer=MANUFACTURER,
+                serial_number=f"{self._channel.device_serial}_{self._channel.channel_id}",
+                hw_version=f"{self._channel.device.device_id} (sub)",
+                suggested_area=self._channel.room_name,
+                via_device=(DOMAIN, self._channel.device_serial),
+            )
+
+        return DeviceInfo(identifiers={(DOMAIN, self._channel.device_serial)})
 
     @property
     def unique_id(self) -> str | None:
         """Return a unique ID."""
-        return f"{self._climate.device_serial}_{self._climate.channel_id}_climate"
+        return f"{self._channel.device_serial}_{self._channel.channel_id}_climate"
 
     @property
     def temperature_unit(self) -> str | None:
@@ -118,17 +135,17 @@ class FreeAtHomeClimateEntity(ClimateEntity):
     @property
     def extra_state_attributes(self) -> dict[Any] | None:
         """Return device specific state attributes."""
-        return {"heating": self._climate.heating, "cooling": self._climate.cooling}
+        return {"heating": self._channel.heating, "cooling": self._channel.cooling}
 
     @property
     def current_temperature(self) -> float | None:
         """Return the current temperature."""
-        return self._climate.current_temperature
+        return self._channel.current_temperature
 
     @property
     def hvac_mode(self) -> HVACMode | None:
         """Return the current mode."""
-        if not self._climate.state:
+        if not self._channel.state:
             return HVACMode.OFF
         return HVACMode.HEAT_COOL
 
@@ -138,9 +155,9 @@ class FreeAtHomeClimateEntity(ClimateEntity):
         if self.hvac_mode == HVACMode.OFF:
             return HVACAction.OFF
 
-        if self._climate.heating > self._climate.cooling:
+        if self._channel.heating > self._channel.cooling:
             return HVACAction.HEATING
-        if self._climate.cooling > self._climate.heating:
+        if self._channel.cooling > self._channel.heating:
             return HVACAction.COOLING
 
         return HVACAction.IDLE
@@ -150,7 +167,7 @@ class FreeAtHomeClimateEntity(ClimateEntity):
         """Return the target temperature."""
         if self.hvac_mode == HVACMode.OFF:
             return None
-        return self._climate.target_temperature
+        return self._channel.target_temperature
 
     @property
     def supported_features(self) -> int | None:
@@ -175,45 +192,45 @@ class FreeAtHomeClimateEntity(ClimateEntity):
     @property
     def preset_mode(self) -> str | None:
         """Return the current mode."""
-        if self._climate.eco_mode:
+        if self._channel.eco_mode:
             return "eco"
         return None
 
     @property
     def state(self) -> bool | None:
         """Return the current operation."""
-        if not self._climate.state:
+        if not self._channel.state:
             return HVACMode.OFF
         return HVACMode.HEAT_COOL
 
     async def async_set_hvac_mode(self, hvac_mode) -> None:
         """Set new target operation mode."""
         if hvac_mode == HVACMode.HEAT_COOL:
-            await self._climate.turn_on()
+            await self._channel.turn_on()
 
         if hvac_mode == HVACMode.OFF:
-            await self._climate.turn_off()
+            await self._channel.turn_off()
 
     async def async_turn_on(self) -> None:
         """Turn the device on."""
-        await self._climate.turn_on()
+        await self._channel.turn_on()
 
     async def async_turn_off(self) -> None:
         """Turn the device off."""
-        await self._climate.turn_off()
+        await self._channel.turn_off()
 
     async def async_set_preset_mode(self, preset_mode) -> None:
         """Set new preset mode."""
         if preset_mode == "eco":
-            await self._climate.eco_on()
+            await self._channel.eco_on()
         else:
-            await self._climate.eco_off()
+            await self._channel.eco_off()
 
     async def async_set_temperature(self, **kwargs) -> None:
         """Set new target temperature."""
         temperature = kwargs.get(ATTR_TEMPERATURE)
-        await self._climate.set_temperature(temperature)
+        await self._channel.set_temperature(temperature)
 
     async def async_update(self, **kwargs: Any) -> None:
         """Update the switch state."""
-        await self._climate.refresh_state()
+        await self._channel.refresh_state()

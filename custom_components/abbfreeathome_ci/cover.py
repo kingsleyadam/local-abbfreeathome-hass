@@ -24,7 +24,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_SERIAL, DOMAIN
+from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
 
 SELECT_DESCRIPTIONS = {
     "AtticWindowActuator": {
@@ -69,6 +69,7 @@ async def async_setup_entry(
                 entity_description_kwargs={"key": key}
                 | description.get("entity_description_kwargs"),
                 sysap_serial_number=entry.data[CONF_SERIAL],
+                create_subdevices=entry.data[CONF_CREATE_SUBDEVICES],
             )
             for channel in free_at_home.get_channels_by_class(
                 channel_class=description.get("channel_class")
@@ -90,11 +91,13 @@ class FreeAtHomeCoverEntity(CoverEntity):
         channel: AtticWindowActuator | AwningActuator | BlindActuator | ShutterActuator,
         entity_description_kwargs: dict[str:Any],
         sysap_serial_number: str,
+        create_subdevices: bool,
     ) -> None:
         """Initialize the cover."""
         super().__init__()
         self._channel = channel
         self._sysap_serial_number = sysap_serial_number
+        self._create_subdevices = create_subdevices
 
         self.entity_description = CoverEntityDescription(
             has_entity_name=True,
@@ -131,14 +134,23 @@ class FreeAtHomeCoverEntity(CoverEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
-        return {
-            "identifiers": {(DOMAIN, self._channel.device_serial)},
-            "name": self._channel.device_name,
-            "manufacturer": "ABB busch-jaeger",
-            "serial_number": self._channel.device_serial,
-            "suggested_area": self._channel.room_name,
-            "via_device": (DOMAIN, self._sysap_serial_number),
-        }
+        if self._create_subdevices and self._channel.device.is_multi_device:
+            return DeviceInfo(
+                identifiers={
+                    (
+                        DOMAIN,
+                        f"{self._channel.device_serial}_{self._channel.channel_id}",
+                    )
+                },
+                name=self._channel.channel_name,
+                manufacturer=MANUFACTURER,
+                serial_number=f"{self._channel.device_serial}_{self._channel.channel_id}",
+                hw_version=f"{self._channel.device.device_id} (sub)",
+                suggested_area=self._channel.room_name,
+                via_device=(DOMAIN, self._channel.device_serial),
+            )
+
+        return DeviceInfo(identifiers={(DOMAIN, self._channel.device_serial)})
 
     @property
     def current_cover_position(self) -> int:
