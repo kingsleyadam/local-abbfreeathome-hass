@@ -1,1 +1,2 @@
 homeassistant>=2025.6.0
+local-abbfreeathome>=3.0.0b4
