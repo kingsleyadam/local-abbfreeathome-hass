@@ -63,7 +63,7 @@ class FreeAtHomeButtonEntity(ButtonEntity):
                         f"{self._channel.device_serial}_{self._channel.channel_id}",
                     )
                 },
-                name=self._channel.channel_name,
+                name=f"{self._channel.device_name} ({self._channel.channel_id})",
                 manufacturer=MANUFACTURER,
                 serial_number=f"{self._channel.device_serial}_{self._channel.channel_id}",
                 hw_version=f"{self._channel.device.device_id} (sub)",
