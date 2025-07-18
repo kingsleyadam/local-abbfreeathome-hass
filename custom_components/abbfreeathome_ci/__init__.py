@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import logging
 
+from abbfreeathome import FreeAtHome, FreeAtHomeApi
 from abbfreeathome.api import (
     VIRTUAL_DEVICE_PROPERTIES_SCHEMA,
     VIRTUAL_DEVICE_ROOT_SCHEMA,
-    FreeAtHomeApi,
     FreeAtHomeSettings,
 )
 from abbfreeathome.bin.interface import Interface
 from abbfreeathome.exceptions import BadRequestException
-from abbfreeathome.freeathome import FreeAtHome
 import voluptuous as vol
 
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
@@ -30,10 +29,12 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
+    CONF_CREATE_SUBDEVICES,
     CONF_INCLUDE_ORPHAN_CHANNELS,
     CONF_INCLUDE_VIRTUAL_DEVICES,
     CONF_SERIAL,
     DOMAIN,
+    MANUFACTURER,
     VIRTUAL_DEVICE,
 )
 
@@ -73,6 +74,7 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Required(CONF_PASSWORD): cv.string,
                 vol.Optional(CONF_INCLUDE_ORPHAN_CHANNELS, default=False): cv.boolean,
                 vol.Optional(CONF_INCLUDE_VIRTUAL_DEVICES, default=False): cv.boolean,
+                vol.Optional(CONF_CREATE_SUBDEVICES, default=False): cv.boolean,
             }
         )
     },
@@ -149,14 +151,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _free_at_home.get_config()
 
     # Load devices into the free at home object
-    await _free_at_home.load_devices()
+    await _free_at_home.load()
 
     # Register SysAP as a Device
     device_registry = dr.async_get(hass)
     device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, entry.data[CONF_SERIAL])},
-        manufacturer="ABB Busch-Jaeger",
+        manufacturer=MANUFACTURER,
         model="System Access Point",
         name=_free_at_home_settings.name,
         serial_number=entry.data[CONF_SERIAL],
@@ -164,6 +166,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hw_version=_free_at_home_settings.hardware_version,
         configuration_url=entry.data[CONF_HOST],
     )
+
+    for _device in _free_at_home.get_devices().values():
+        if not _free_at_home.get_channels_by_device(_device.device_serial):
+            continue
+
+        device_registry.async_get_or_create(
+            config_entry_id=entry.entry_id,
+            identifiers={(DOMAIN, _device.device_serial)},
+            name=_device.display_name,
+            manufacturer=MANUFACTURER,
+            serial_number=_device.device_serial,
+            hw_version=_device.device_id,
+            suggested_area=_device.room_name,
+            via_device=(DOMAIN, entry.data[CONF_SERIAL]),
+        )
 
     # Add the FreeAtHome object to hass data
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = _free_at_home
@@ -206,7 +223,7 @@ async def async_remove_config_entry_device(
 
     # Unload the device from the FreeAtHome class
     free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
-    free_at_home.unload_device_by_device_serial(device_serial)
+    free_at_home.unload_device(device_serial)
 
     return True
 
@@ -238,6 +255,13 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         hass.config_entries.async_update_entry(
             entry, data=new_data, version=1, minor_version=3
+        )
+
+        if entry.minor_version < 4:
+            new_data[CONF_CREATE_SUBDEVICES] = False
+
+        hass.config_entries.async_update_entry(
+            entry, data=new_data, version=1, minor_version=4
         )
 
     _LOGGER.debug(

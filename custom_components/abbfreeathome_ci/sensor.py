@@ -2,15 +2,15 @@
 
 from typing import Any
 
-from abbfreeathome.devices.brightness_sensor import BrightnessSensor
-from abbfreeathome.devices.movement_detector import MovementDetector
-from abbfreeathome.devices.temperature_sensor import TemperatureSensor
-from abbfreeathome.devices.wind_sensor import WindSensor
-from abbfreeathome.devices.window_door_sensor import (
+from abbfreeathome import FreeAtHome
+from abbfreeathome.channels.brightness_sensor import BrightnessSensor
+from abbfreeathome.channels.movement_detector import MovementDetector
+from abbfreeathome.channels.temperature_sensor import TemperatureSensor
+from abbfreeathome.channels.wind_sensor import WindSensor
+from abbfreeathome.channels.window_door_sensor import (
     WindowDoorSensor,
     WindowDoorSensorPosition,
 )
-from abbfreeathome.freeathome import FreeAtHome
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -24,11 +24,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_SERIAL, DOMAIN
+from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
 
 SENSOR_DESCRIPTIONS = {
     "BrightnessSensor": {
-        "device_class": BrightnessSensor,
+        "channel_class": BrightnessSensor,
         "value_attribute": "state",
         "entity_description_kwargs": {
             "device_class": SensorDeviceClass.ILLUMINANCE,
@@ -38,7 +38,7 @@ SENSOR_DESCRIPTIONS = {
         },
     },
     "MovementDetectorBrightness": {
-        "device_class": MovementDetector,
+        "channel_class": MovementDetector,
         "value_attribute": "brightness",
         "entity_description_kwargs": {
             "device_class": SensorDeviceClass.ILLUMINANCE,
@@ -48,7 +48,7 @@ SENSOR_DESCRIPTIONS = {
         },
     },
     "WindowDoorSensorPosition": {
-        "device_class": WindowDoorSensor,
+        "channel_class": WindowDoorSensor,
         "value_attribute": "position",
         "entity_description_kwargs": {
             "device_class": SensorDeviceClass.ENUM,
@@ -57,7 +57,7 @@ SENSOR_DESCRIPTIONS = {
         },
     },
     "TemperatureSensor": {
-        "device_class": TemperatureSensor,
+        "channel_class": TemperatureSensor,
         "value_attribute": "state",
         "entity_description_kwargs": {
             "device_class": SensorDeviceClass.TEMPERATURE,
@@ -67,7 +67,7 @@ SENSOR_DESCRIPTIONS = {
         },
     },
     "WindSensorSpeed": {
-        "device_class": WindSensor,
+        "channel_class": WindSensor,
         "value_attribute": "state",
         "entity_description_kwargs": {
             "device_class": SensorDeviceClass.WIND_SPEED,
@@ -77,7 +77,7 @@ SENSOR_DESCRIPTIONS = {
         },
     },
     "WindSensorForce": {
-        "device_class": WindSensor,
+        "channel_class": WindSensor,
         "value_attribute": "force",
         "entity_description_kwargs": {
             "device_class": SensorDeviceClass.WIND_SPEED,
@@ -101,16 +101,17 @@ async def async_setup_entry(
     for key, description in SENSOR_DESCRIPTIONS.items():
         async_add_entities(
             FreeAtHomeSensorEntity(
-                device,
+                channel,
                 value_attribute=description.get("value_attribute"),
                 entity_description_kwargs={"key": key}
                 | description.get("entity_description_kwargs"),
                 sysap_serial_number=entry.data[CONF_SERIAL],
+                create_subdevices=entry.data[CONF_CREATE_SUBDEVICES],
             )
-            for device in free_at_home.get_devices_by_class(
-                device_class=description.get("device_class")
+            for channel in free_at_home.get_channels_by_class(
+                channel_class=description.get("channel_class")
             )
-            if getattr(device, description.get("value_attribute")) is not None
+            if getattr(channel, description.get("value_attribute")) is not None
         )
 
 
@@ -121,54 +122,65 @@ class FreeAtHomeSensorEntity(SensorEntity):
 
     def __init__(
         self,
-        device: BrightnessSensor | MovementDetector | TemperatureSensor | WindSensor,
+        channel: BrightnessSensor | MovementDetector | TemperatureSensor | WindSensor,
         value_attribute: str,
         entity_description_kwargs: dict[str:Any],
         sysap_serial_number: str,
+        create_subdevices: bool,
     ) -> None:
         """Initialize the sensor."""
         super().__init__()
-        self._device = device
+        self._channel = channel
         self._value_attribute = value_attribute
         self._sysap_serial_number = sysap_serial_number
+        self._create_subdevices = create_subdevices
 
         self.entity_description = SensorEntityDescription(
             has_entity_name=True,
-            name=device.channel_name,
-            translation_placeholders={"channel_id": device.channel_id},
+            name=channel.channel_name,
+            translation_placeholders={"channel_id": channel.channel_id},
             **entity_description_kwargs,
         )
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
-        self._device.register_callback(
+        self._channel.register_callback(
             callback_attribute=self._value_attribute, callback=self.async_write_ha_state
         )
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
-        self._device.remove_callback(
+        self._channel.remove_callback(
             callback_attribute=self._value_attribute, callback=self.async_write_ha_state
         )
 
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
-        return {
-            "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self._device.device_name,
-            "manufacturer": "ABB busch-jaeger",
-            "serial_number": self._device.device_id,
-            "suggested_area": self._device.room_name,
-            "via_device": (DOMAIN, self._sysap_serial_number),
-        }
+        if self._create_subdevices and self._channel.device.is_multi_device:
+            return DeviceInfo(
+                identifiers={
+                    (
+                        DOMAIN,
+                        f"{self._channel.device_serial}_{self._channel.channel_id}",
+                    )
+                },
+                name=f"{self._channel.device_name} ({self._channel.channel_id})",
+                manufacturer=MANUFACTURER,
+                serial_number=f"{self._channel.device_serial}_{self._channel.channel_id}",
+                hw_version=f"{self._channel.device.device_id} (sub)",
+                suggested_area=self._channel.room_name,
+                via_device=(DOMAIN, self._channel.device_serial),
+            )
+
+        return DeviceInfo(identifiers={(DOMAIN, self._channel.device_serial)})
 
     @property
     def native_value(self) -> float | None:
         """Return state of the sensor."""
-        return getattr(self._device, self._value_attribute)
+        return getattr(self._channel, self._value_attribute)
 
     @property
     def unique_id(self) -> str | None:
         """Return a unique ID."""
-        return f"{self._device.device_id}_{self._device.channel_id}_{self.entity_description.key}"
+        return f"{self._channel.device_serial}_{self._channel.channel_id}_{self.entity_description.key}"

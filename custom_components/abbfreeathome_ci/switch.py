@@ -2,21 +2,21 @@
 
 from typing import Any
 
-from abbfreeathome.devices.switch_actuator import SwitchActuator
-from abbfreeathome.devices.switch_sensor import DimmingSensor, SwitchSensor
-from abbfreeathome.devices.virtual.virtual_brightness_sensor import (
+from abbfreeathome import FreeAtHome
+from abbfreeathome.channels.switch_actuator import SwitchActuator
+from abbfreeathome.channels.switch_sensor import DimmingSensor, SwitchSensor
+from abbfreeathome.channels.virtual.virtual_brightness_sensor import (
     VirtualBrightnessSensor,
 )
-from abbfreeathome.devices.virtual.virtual_rain_sensor import VirtualRainSensor
-from abbfreeathome.devices.virtual.virtual_switch_actuator import VirtualSwitchActuator
-from abbfreeathome.devices.virtual.virtual_temperature_sensor import (
+from abbfreeathome.channels.virtual.virtual_rain_sensor import VirtualRainSensor
+from abbfreeathome.channels.virtual.virtual_switch_actuator import VirtualSwitchActuator
+from abbfreeathome.channels.virtual.virtual_temperature_sensor import (
     VirtualTemperatureSensor,
 )
-from abbfreeathome.devices.virtual.virtual_wind_sensor import VirtualWindSensor
-from abbfreeathome.devices.virtual.virtual_window_door_sensor import (
+from abbfreeathome.channels.virtual.virtual_wind_sensor import VirtualWindSensor
+from abbfreeathome.channels.virtual.virtual_window_door_sensor import (
     VirtualWindowDoorSensor,
 )
-from abbfreeathome.freeathome import FreeAtHome
 
 from homeassistant.components.switch import (
     SwitchDeviceClass,
@@ -28,11 +28,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_SERIAL, DOMAIN
+from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
 
 SWITCH_DESCRIPTIONS = {
     "DimmingSensorLed": {
-        "device_class": DimmingSensor,
+        "channel_class": DimmingSensor,
         "value_attribute": "led",
         "entity_description_kwargs": {
             "device_class": SwitchDeviceClass.SWITCH,
@@ -40,14 +40,14 @@ SWITCH_DESCRIPTIONS = {
         },
     },
     "SwitchActuator": {
-        "device_class": SwitchActuator,
+        "channel_class": SwitchActuator,
         "value_attribute": "state",
         "entity_description_kwargs": {
             "device_class": SwitchDeviceClass.SWITCH,
         },
     },
     "SwitchSensorLed": {
-        "device_class": SwitchSensor,
+        "channel_class": SwitchSensor,
         "value_attribute": "led",
         "entity_description_kwargs": {
             "device_class": SwitchDeviceClass.SWITCH,
@@ -55,7 +55,7 @@ SWITCH_DESCRIPTIONS = {
         },
     },
     "VirtualBrightessSensorAlarm": {
-        "device_class": VirtualBrightnessSensor,
+        "channel_class": VirtualBrightnessSensor,
         "value_attribute": "alarm",
         "entity_description_kwargs": {
             "device_class": SwitchDeviceClass.SWITCH,
@@ -63,7 +63,7 @@ SWITCH_DESCRIPTIONS = {
         },
     },
     "VirtualRainSensorAlarm": {
-        "device_class": VirtualRainSensor,
+        "channel_class": VirtualRainSensor,
         "value_attribute": "alarm",
         "entity_description_kwargs": {
             "device_class": SwitchDeviceClass.SWITCH,
@@ -71,14 +71,14 @@ SWITCH_DESCRIPTIONS = {
         },
     },
     "VirtualSwitchActuatorOnOff": {
-        "device_class": VirtualSwitchActuator,
+        "channel_class": VirtualSwitchActuator,
         "value_attribute": "state",
         "entity_description_kwargs": {
             "device_class": SwitchDeviceClass.SWITCH,
         },
     },
     "VirtualWindSensorAlarm": {
-        "device_class": VirtualWindSensor,
+        "channel_class": VirtualWindSensor,
         "value_attribute": "alarm",
         "entity_description_kwargs": {
             "device_class": SwitchDeviceClass.SWITCH,
@@ -86,14 +86,14 @@ SWITCH_DESCRIPTIONS = {
         },
     },
     "VirtualWindowDoorSensorOnOff": {
-        "device_class": VirtualWindowDoorSensor,
+        "channel_class": VirtualWindowDoorSensor,
         "value_attribute": "state",
         "entity_description_kwargs": {
             "device_class": SwitchDeviceClass.SWITCH,
         },
     },
     "VirtualTemperatureSensorAlarm": {
-        "device_class": VirtualTemperatureSensor,
+        "channel_class": VirtualTemperatureSensor,
         "value_attribute": "alarm",
         "entity_description_kwargs": {
             "device_class": SwitchDeviceClass.SWITCH,
@@ -114,16 +114,17 @@ async def async_setup_entry(
     for key, description in SWITCH_DESCRIPTIONS.items():
         async_add_entities(
             FreeAtHomeSwitchEntity(
-                device,
+                channel,
                 value_attribute=description.get("value_attribute"),
                 entity_description_kwargs={"key": key}
                 | description.get("entity_description_kwargs"),
                 sysap_serial_number=entry.data[CONF_SERIAL],
+                create_subdevices=entry.data[CONF_CREATE_SUBDEVICES],
             )
-            for device in free_at_home.get_devices_by_class(
-                device_class=description.get("device_class")
+            for channel in free_at_home.get_channels_by_class(
+                channel_class=description.get("channel_class")
             )
-            if getattr(device, description.get("value_attribute")) is not None
+            if getattr(channel, description.get("value_attribute")) is not None
         )
 
 
@@ -134,7 +135,7 @@ class FreeAtHomeSwitchEntity(SwitchEntity):
 
     def __init__(
         self,
-        device: DimmingSensor
+        channel: DimmingSensor
         | SwitchActuator
         | SwitchSensor
         | VirtualBrightnessSensor
@@ -143,43 +144,54 @@ class FreeAtHomeSwitchEntity(SwitchEntity):
         value_attribute: str,
         entity_description_kwargs: dict[str:Any],
         sysap_serial_number: str,
+        create_subdevices: bool,
     ) -> None:
         """Initialize the sensor."""
         super().__init__()
-        self._device = device
+        self._channel = channel
         self._value_attribute = value_attribute
         self._sysap_serial_number = sysap_serial_number
+        self._create_subdevices = create_subdevices
 
         self.entity_description = SwitchEntityDescription(
             has_entity_name=True,
-            name=device.channel_name,
-            translation_placeholders={"channel_id": device.channel_id},
+            name=channel.channel_name,
+            translation_placeholders={"channel_id": channel.channel_id},
             **entity_description_kwargs,
         )
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
-        self._device.register_callback(
+        self._channel.register_callback(
             callback_attribute=self._value_attribute, callback=self.async_write_ha_state
         )
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
-        self._device.remove_callback(
+        self._channel.remove_callback(
             callback_attribute=self._value_attribute, callback=self.async_write_ha_state
         )
 
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
-        return {
-            "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self._device.device_name,
-            "manufacturer": "ABB busch-jaeger",
-            "serial_number": self._device.device_id,
-            "suggested_area": self._device.room_name,
-            "via_device": (DOMAIN, self._sysap_serial_number),
-        }
+        if self._create_subdevices and self._channel.device.is_multi_device:
+            return DeviceInfo(
+                identifiers={
+                    (
+                        DOMAIN,
+                        f"{self._channel.device_serial}_{self._channel.channel_id}",
+                    )
+                },
+                name=f"{self._channel.device_name} ({self._channel.channel_id})",
+                manufacturer=MANUFACTURER,
+                serial_number=f"{self._channel.device_serial}_{self._channel.channel_id}",
+                hw_version=f"{self._channel.device.device_id} (sub)",
+                suggested_area=self._channel.room_name,
+                via_device=(DOMAIN, self._channel.device_serial),
+            )
+
+        return DeviceInfo(identifiers={(DOMAIN, self._channel.device_serial)})
 
     @property
     def translation_key(self):
@@ -194,14 +206,14 @@ class FreeAtHomeSwitchEntity(SwitchEntity):
         if hasattr(self, "entity_description"):
             _translation_key = self.entity_description.translation_key
 
-        if self._device.channel_name == self._device.device_name:
+        if self._channel.channel_name == self._channel.device_name:
             return _translation_key
         return None
 
     @property
     def is_on(self) -> bool | None:
         """Return state of the switch."""
-        return getattr(self._device, self._value_attribute)
+        return getattr(self._channel, self._value_attribute)
 
     @property
     def unique_id(self) -> str | None:
@@ -213,28 +225,28 @@ class FreeAtHomeSwitchEntity(SwitchEntity):
             hasattr(self.entity_description, "translation_key")
             and self.entity_description.translation_key is not None
         ):
-            return f"{self._device.device_id}_{self._device.channel_id}_{self.entity_description.key}"
+            return f"{self._channel.device_serial}_{self._channel.channel_id}_{self.entity_description.key}"
 
-        return f"{self._device.device_id}_{self._device.channel_id}_switch"
+        return f"{self._channel.device_serial}_{self._channel.channel_id}_switch"
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
-        _method = getattr(self._device, f"turn_on_{self._value_attribute}", None)
+        _method = getattr(self._channel, f"turn_on_{self._value_attribute}", None)
 
         if callable(_method):
             await _method()
         else:
-            await self._device.turn_on()
+            await self._channel.turn_on()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
-        _method = getattr(self._device, f"turn_off_{self._value_attribute}", None)
+        _method = getattr(self._channel, f"turn_off_{self._value_attribute}", None)
 
         if callable(_method):
             await _method()
         else:
-            await self._device.turn_off()
+            await self._channel.turn_off()
 
     async def async_update(self, **kwargs: Any) -> None:
         """Update the switch state."""
-        await self._device.refresh_state()
+        await self._channel.refresh_state()
