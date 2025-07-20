@@ -142,6 +142,41 @@
           }
         }
       },
+      "virtual_room_temperature_controller_onoff": {
+        "name": "Virtual RTC Event ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "unknown": "Unknown",
+              "on": "On",
+              "off": "Off"
+            }
+          }
+        }
+      },
+      "virtual_room_temperature_controller_ecoonoff": {
+        "name": "Virtual RTC Event Eco Mode ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "unknown": "Unknown",
+              "on": "On",
+              "off": "Off"
+            }
+          }
+        }
+      },
+      "virtual_room_temperature_controller_target_temperature": {
+        "name": "Virtual RTC Event Target Temperature ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "unknown": "Unknown",
+              "requested_target_temperature": "Target Temperature"
+            }
+          }
+        }
+      },
       "virtual_switch_actuator_onoff": {
         "name": "Virtual Switch Event ({channel_id})",
         "state_attributes": {
@@ -200,6 +235,12 @@
       },
       "virtual_energy_two_way_meter_exported_total": {
         "name": "Virtual Two Way Meter Total Exported Energy"
+      },
+      "virtual_rtc_current_temperature": {
+        "name": "Virtual RTC Current Temperature"
+      },
+      "virtual_rtc_target_temperature": {
+        "name": "Virtual RTC Target Temperature"
       },
       "virtual_temperature_sensor": {
         "name": "Virtual Temperature"
@@ -272,6 +313,12 @@
       },
       "virtual_rain_sensor": {
         "name": "Virtual Rain Alarm"
+      },
+      "virtual_rtc": {
+        "name": "Virtual RTC"
+      },
+      "virtual_rtc_eco": {
+        "name": "Virtual RTC Eco Mode"
       },
       "virtual_temperature_sensor": {
         "name": "Virtual Frost Alarm"
