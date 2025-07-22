@@ -3,7 +3,7 @@
 from typing import Any
 
 from abbfreeathome import FreeAtHome
-from abbfreeathome.channels.switch_actuator import SwitchActuator
+from abbfreeathome.channels.switch_actuator import SwitchActuator, WelcomeIPMuteActuator
 from abbfreeathome.channels.switch_sensor import DimmingSensor, SwitchSensor
 from abbfreeathome.channels.virtual.virtual_brightness_sensor import (
     VirtualBrightnessSensor,
@@ -98,6 +98,14 @@ SWITCH_DESCRIPTIONS = {
         "entity_description_kwargs": {
             "device_class": SwitchDeviceClass.SWITCH,
             "translation_key": "virtual_temperature_sensor",
+        },
+    },
+    "WelcomeIPMuteActuator": {
+        "channel_class": WelcomeIPMuteActuator,
+        "value_attribute": "state",
+        "entity_description_kwargs": {
+            "device_class": SwitchDeviceClass.SWITCH,
+            "translation_key": "welcome_ip_mute_actuator",
         },
     },
 }

@@ -278,6 +278,9 @@
       },
       "virtual_wind_sensor": {
         "name": "Virtueller Windalarm"
+      },
+      "welcome_ip_mute_actuator": {
+        "name": "Stummschaltung"
       }
     }
   },
