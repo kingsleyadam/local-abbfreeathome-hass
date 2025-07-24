@@ -3,6 +3,7 @@
 from typing import Any
 
 from abbfreeathome import FreeAtHome
+from abbfreeathome.channels.movement_detector import BlockableMovementDetector
 from abbfreeathome.channels.switch_actuator import SwitchActuator
 from abbfreeathome.channels.switch_sensor import DimmingSensor, SwitchSensor
 from abbfreeathome.channels.virtual.virtual_brightness_sensor import (
@@ -98,6 +99,14 @@ SWITCH_DESCRIPTIONS = {
         "entity_description_kwargs": {
             "device_class": SwitchDeviceClass.SWITCH,
             "translation_key": "virtual_temperature_sensor",
+        },
+    },
+    "BlockableMovementDetector": {
+        "channel_class": BlockableMovementDetector,
+        "value_attribute": "blocked",
+        "entity_description_kwargs": {
+            "device_class": SwitchDeviceClass.SWITCH,
+            "translation_key": "movement_detector_block",
         },
     },
 }
