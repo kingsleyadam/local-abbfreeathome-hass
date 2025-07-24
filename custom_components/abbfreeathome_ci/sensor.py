@@ -4,7 +4,10 @@ from typing import Any
 
 from abbfreeathome import FreeAtHome
 from abbfreeathome.channels.brightness_sensor import BrightnessSensor
-from abbfreeathome.channels.movement_detector import MovementDetector
+from abbfreeathome.channels.movement_detector import (
+    BlockableMovementDetector,
+    MovementDetector,
+)
 from abbfreeathome.channels.temperature_sensor import TemperatureSensor
 from abbfreeathome.channels.wind_sensor import WindSensor
 from abbfreeathome.channels.window_door_sensor import (
@@ -39,6 +42,16 @@ SENSOR_DESCRIPTIONS = {
     },
     "MovementDetectorBrightness": {
         "channel_class": MovementDetector,
+        "value_attribute": "brightness",
+        "entity_description_kwargs": {
+            "device_class": SensorDeviceClass.ILLUMINANCE,
+            "native_unit_of_measurement": LIGHT_LUX,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "translation_key": "movement_detector_brightness",
+        },
+    },
+    "BlockableMovementDetectorBrightness": {
+        "channel_class": BlockableMovementDetector,
         "value_attribute": "brightness",
         "entity_description_kwargs": {
             "device_class": SensorDeviceClass.ILLUMINANCE,
