@@ -11,6 +11,9 @@ from abbfreeathome.channels.virtual.virtual_energy_inverter import VirtualEnergy
 from abbfreeathome.channels.virtual.virtual_energy_two_way_meter import (
     VirtualEnergyTwoWayMeter,
 )
+from abbfreeathome.channels.virtual.virtual_room_temperature_controller import (
+    VirtualRoomTemperatureController,
+)
 from abbfreeathome.channels.virtual.virtual_temperature_sensor import (
     VirtualTemperatureSensor,
 )
@@ -214,6 +217,30 @@ NUMBER_DESCRIPTIONS = {
             "native_min_value": 0.0,
             "native_step": 1.0,
             "native_unit_of_measurement": UnitOfEnergy.WATT_HOUR,
+        },
+    },
+    "VirtualRoomTemperatureControllerCurrentTemperature": {
+        "channel_class": VirtualRoomTemperatureController,
+        "value_attribute": "current_temperature",
+        "entity_description_kwargs": {
+            "device_class": NumberDeviceClass.TEMPERATURE,
+            "translation_key": "virtual_rtc_current_temperature",
+            "native_max_value": 999.9,
+            "native_min_value": -999.9,
+            "native_step": 0.1,
+            "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
+        },
+    },
+    "VirtualRoomTemperatureControllerTargetTemperature": {
+        "channel_class": VirtualRoomTemperatureController,
+        "value_attribute": "target_temperature",
+        "entity_description_kwargs": {
+            "device_class": NumberDeviceClass.TEMPERATURE,
+            "translation_key": "virtual_rtc_target_temperature",
+            "native_max_value": 35.0,
+            "native_min_value": 7.0,
+            "native_step": 0.5,
+            "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
         },
     },
     "VirtualTemperatureSensor": {
