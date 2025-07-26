@@ -3,7 +3,7 @@
 from typing import Any
 
 from abbfreeathome import FreeAtHome
-from abbfreeathome.channels.switch_actuator import SimpleSwitchActuator, SwitchActuator
+from abbfreeathome.channels.switch_actuator import SwitchActuator, WelcomeIPMuteActuator
 from abbfreeathome.channels.switch_sensor import DimmingSensor, SwitchSensor
 from abbfreeathome.channels.virtual.virtual_brightness_sensor import (
     VirtualBrightnessSensor,
@@ -101,7 +101,7 @@ SWITCH_DESCRIPTIONS = {
         },
     },
     "WelcomeIPMuteActuator": {
-        "channel_class": SimpleSwitchActuator,
+        "channel_class": WelcomeIPMuteActuator,
         "value_attribute": "state",
         "entity_description_kwargs": {
             "device_class": SwitchDeviceClass.SWITCH,
@@ -148,7 +148,8 @@ class FreeAtHomeSwitchEntity(SwitchEntity):
         | SwitchSensor
         | VirtualBrightnessSensor
         | VirtualSwitchActuator
-        | VirtualWindowDoorSensor,
+        | VirtualWindowDoorSensor
+        | WelcomeIPMuteActuator,
         value_attribute: str,
         entity_description_kwargs: dict[str:Any],
         sysap_serial_number: str,
