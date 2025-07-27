@@ -4,12 +4,15 @@ from typing import Any
 
 from abbfreeathome import FreeAtHome
 from abbfreeathome.channels.movement_detector import BlockableMovementDetector
-from abbfreeathome.channels.switch_actuator import SwitchActuator
+from abbfreeathome.channels.switch_actuator import SwitchActuator, WelcomeIPMuteActuator
 from abbfreeathome.channels.switch_sensor import DimmingSensor, SwitchSensor
 from abbfreeathome.channels.virtual.virtual_brightness_sensor import (
     VirtualBrightnessSensor,
 )
 from abbfreeathome.channels.virtual.virtual_rain_sensor import VirtualRainSensor
+from abbfreeathome.channels.virtual.virtual_room_temperature_controller import (
+    VirtualRoomTemperatureController,
+)
 from abbfreeathome.channels.virtual.virtual_switch_actuator import VirtualSwitchActuator
 from abbfreeathome.channels.virtual.virtual_temperature_sensor import (
     VirtualTemperatureSensor,
@@ -71,6 +74,22 @@ SWITCH_DESCRIPTIONS = {
             "translation_key": "virtual_rain_sensor",
         },
     },
+    "VirtualRoomTemperatureControllerOnOff": {
+        "channel_class": VirtualRoomTemperatureController,
+        "value_attribute": "state",
+        "entity_description_kwargs": {
+            "device_class": SwitchDeviceClass.SWITCH,
+            "translation_key": "virtual_rtc",
+        },
+    },
+    "VirtualRoomTemperatureControllerECOOnOff": {
+        "channel_class": VirtualRoomTemperatureController,
+        "value_attribute": "eco_mode",
+        "entity_description_kwargs": {
+            "device_class": SwitchDeviceClass.SWITCH,
+            "translation_key": "virtual_rtc_eco",
+        },
+    },
     "VirtualSwitchActuatorOnOff": {
         "channel_class": VirtualSwitchActuator,
         "value_attribute": "state",
@@ -99,6 +118,14 @@ SWITCH_DESCRIPTIONS = {
         "entity_description_kwargs": {
             "device_class": SwitchDeviceClass.SWITCH,
             "translation_key": "virtual_temperature_sensor",
+        },
+    },
+    "WelcomeIPMuteActuator": {
+        "channel_class": WelcomeIPMuteActuator,
+        "value_attribute": "state",
+        "entity_description_kwargs": {
+            "device_class": SwitchDeviceClass.SWITCH,
+            "translation_key": "welcome_ip_mute_actuator",
         },
     },
     "BlockableMovementDetector": {
@@ -149,7 +176,8 @@ class FreeAtHomeSwitchEntity(SwitchEntity):
         | SwitchSensor
         | VirtualBrightnessSensor
         | VirtualSwitchActuator
-        | VirtualWindowDoorSensor,
+        | VirtualWindowDoorSensor
+        | WelcomeIPMuteActuator,
         value_attribute: str,
         entity_description_kwargs: dict[str:Any],
         sysap_serial_number: str,
