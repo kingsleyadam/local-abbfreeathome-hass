@@ -142,6 +142,41 @@
           }
         }
       },
+      "virtual_room_temperature_controller_onoff": {
+        "name": "Virtuelles RTC Ereignis ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "unknown": "Unbekannt",
+              "on": "Ein",
+              "off": "Aus"
+            }
+          }
+        }
+      },
+      "virtual_room_temperature_controller_target_temperature": {
+        "name": "Virtuelles RTC Ereignis Ziel Temperatur ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "unknown": "Unbekannt",
+              "requested_target_temperature": "Ziel Temperatur"
+            }
+          }
+        }
+      },
+      "virtual_room_temperature_controller_ecoonoff": {
+        "name": "Virtelles RTC Ereignis Eco Modus ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "unknown": "Unbekannt",
+              "on": "Ein",
+              "off": "Aus"
+            }
+          }
+        }
+      },
       "virtual_switch_actuator_onoff": {
         "name": "Virtuelles Schalt Ereignis ({channel_id})",
         "state_attributes": {
@@ -200,6 +235,12 @@
       },
       "virtual_energy_two_way_meter_exported_total": {
         "name": "Virtueller Zweiwegezähler gesamte exportierte Energie"
+      },
+      "virtual_rtc_current_temperature": {
+        "name": "Virtueller RTC Aktuelle Temperatur"
+      },
+      "virtual_rtc_target_temperature": {
+        "name": "Virtueler RTC Ziel Temperatur"
       },
       "virtual_temperature_sensor": {
         "name": "Virtuelle Temperatur"
@@ -272,6 +313,12 @@
       },
       "virtual_rain_sensor": {
         "name": "Virtueller Regenalarm"
+      },
+      "virtual_rtc": {
+        "name": "Virtueller RTC"
+      },
+      "virtual_rtc_eco": {
+        "name": "Virtueller RTC Eco Modus"
       },
       "virtual_temperature_sensor": {
         "name": "Virtueller Frostalarm"

@@ -15,6 +15,9 @@ from abbfreeathome.channels.switch_sensor import (
     SwitchSensor,
     SwitchSensorState,
 )
+from abbfreeathome.channels.virtual.virtual_room_temperature_controller import (
+    VirtualRoomTemperatureController,
+)
 from abbfreeathome.channels.virtual.virtual_switch_actuator import VirtualSwitchActuator
 
 from homeassistant.components.event import (
@@ -85,6 +88,40 @@ EVENT_DESCRIPTIONS = {
             "translation_key": "switch_sensor",
         },
     },
+    "EventVirtualRoomTemperatureControllerOnOff": {
+        "channel_class": VirtualRoomTemperatureController,
+        "event_type_callback": lambda requested_state: "On"
+        if requested_state
+        else "Off",
+        "state_attribute": "requested_state",
+        "entity_description_kwargs": {
+            "device_class": EventDeviceClass.BUTTON,
+            "event_types": ["On", "Off"],
+            "translation_key": "virtual_room_temperature_controller_onoff",
+        },
+    },
+    "EventVirtualRoomTemperatureControllerEcoOnOff": {
+        "channel_class": VirtualRoomTemperatureController,
+        "event_type_callback": lambda requested_eco_mode: "On"
+        if requested_eco_mode
+        else "Off",
+        "state_attribute": "requested_eco_mode",
+        "entity_description_kwargs": {
+            "device_class": EventDeviceClass.BUTTON,
+            "event_types": ["On", "Off"],
+            "translation_key": "virtual_room_temperature_controller_ecoonoff",
+        },
+    },
+    "EventVirtualRoomTemperatureControllerTargetTemperature": {
+        "channel_class": VirtualRoomTemperatureController,
+        "event_type_callback": lambda requested_target_temperature: "requested_target_temperature",
+        "state_attribute": "requested_target_temperature",
+        "entity_description_kwargs": {
+            "event_types": ["requested_target_temperature"],
+            "translation_key": "virtual_room_temperature_controller_target_temperature",
+        },
+        "extra_data": "requested_target_temperature",
+    },
     "EventVirtualSwitchActuatorOnOff": {
         "channel_class": VirtualSwitchActuator,
         "event_type_callback": lambda requested_state: "On"
@@ -105,7 +142,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up binary sensor entities."""
+    """Set up event entities."""
     free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
 
     for key, description in EVENT_DESCRIPTIONS.items():
@@ -118,6 +155,9 @@ async def async_setup_entry(
                 sysap_serial_number=entry.data[CONF_SERIAL],
                 create_subdevices=entry.data[CONF_CREATE_SUBDEVICES],
                 event_type_callback=description.get("event_type_callback"),
+                extra_data=description.get("extra_data")
+                if "extra_data" in description
+                else None,
             )
             for channel in free_at_home.get_channels_by_class(
                 channel_class=description.get("channel_class")
@@ -141,6 +181,7 @@ class FreeAtHomeEventEntity(EventEntity):
         sysap_serial_number: str,
         create_subdevices: bool,
         event_type_callback: callback,
+        extra_data: str | None = None,
     ) -> None:
         """Initialize the sensor."""
         super().__init__()
@@ -149,6 +190,7 @@ class FreeAtHomeEventEntity(EventEntity):
         self._sysap_serial_number = sysap_serial_number
         self._create_subdevices = create_subdevices
         self._event_type_callback = event_type_callback
+        self._extra_data = extra_data
 
         self.entity_description = EventEntityDescription(
             has_entity_name=True,
@@ -159,7 +201,7 @@ class FreeAtHomeEventEntity(EventEntity):
 
     @callback
     def _async_handle_event(self) -> None:
-        """Handle the demo button event."""
+        """Handle the event."""
 
         if hasattr(self._channel, self._state_attribute):
             event_type = self._event_type_callback(
@@ -168,7 +210,12 @@ class FreeAtHomeEventEntity(EventEntity):
         else:
             event_type = self._event_type_callback()
 
-        self._trigger_event(event_type)
+        _extra_data = None
+
+        if self._extra_data and hasattr(self._channel, self._extra_data):
+            _extra_data = getattr(self._channel, self._extra_data)
+
+        self._trigger_event(event_type, {"extra_data": _extra_data})
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:

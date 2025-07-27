@@ -9,6 +9,9 @@ from abbfreeathome.channels.virtual.virtual_brightness_sensor import (
     VirtualBrightnessSensor,
 )
 from abbfreeathome.channels.virtual.virtual_rain_sensor import VirtualRainSensor
+from abbfreeathome.channels.virtual.virtual_room_temperature_controller import (
+    VirtualRoomTemperatureController,
+)
 from abbfreeathome.channels.virtual.virtual_switch_actuator import VirtualSwitchActuator
 from abbfreeathome.channels.virtual.virtual_temperature_sensor import (
     VirtualTemperatureSensor,
@@ -68,6 +71,22 @@ SWITCH_DESCRIPTIONS = {
         "entity_description_kwargs": {
             "device_class": SwitchDeviceClass.SWITCH,
             "translation_key": "virtual_rain_sensor",
+        },
+    },
+    "VirtualRoomTemperatureControllerOnOff": {
+        "channel_class": VirtualRoomTemperatureController,
+        "value_attribute": "state",
+        "entity_description_kwargs": {
+            "device_class": SwitchDeviceClass.SWITCH,
+            "translation_key": "virtual_rtc",
+        },
+    },
+    "VirtualRoomTemperatureControllerECOOnOff": {
+        "channel_class": VirtualRoomTemperatureController,
+        "value_attribute": "eco_mode",
+        "entity_description_kwargs": {
+            "device_class": SwitchDeviceClass.SWITCH,
+            "translation_key": "virtual_rtc_eco",
         },
     },
     "VirtualSwitchActuatorOnOff": {
