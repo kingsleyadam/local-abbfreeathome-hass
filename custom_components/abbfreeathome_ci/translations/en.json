@@ -305,6 +305,9 @@
       }
     },
     "switch": {
+      "movement_detector_block": {
+        "name": "Block Movement Detection"
+      },
       "sensor_led": {
         "name": "LED ({channel_id})"
       },

@@ -5,7 +5,10 @@ from typing import Any
 from abbfreeathome import FreeAtHome
 from abbfreeathome.channels.brightness_sensor import BrightnessSensor
 from abbfreeathome.channels.carbon_monoxide_sensor import CarbonMonoxideSensor
-from abbfreeathome.channels.movement_detector import MovementDetector
+from abbfreeathome.channels.movement_detector import (
+    BlockableMovementDetector,
+    MovementDetector,
+)
 from abbfreeathome.channels.rain_sensor import RainSensor
 from abbfreeathome.channels.smoke_detector import SmokeDetector
 from abbfreeathome.channels.temperature_sensor import TemperatureSensor
@@ -35,6 +38,14 @@ SENSOR_DESCRIPTIONS = {
     },
     "MovementDetectorMotion": {
         "channel_class": MovementDetector,
+        "value_attribute": "state",
+        "entity_description_kwargs": {
+            "device_class": BinarySensorDeviceClass.MOTION,
+            "translation_key": "movement_detector_motion",
+        },
+    },
+    "BlockableMovementDetectorMotion": {
+        "channel_class": BlockableMovementDetector,
         "value_attribute": "state",
         "entity_description_kwargs": {
             "device_class": BinarySensorDeviceClass.MOTION,
