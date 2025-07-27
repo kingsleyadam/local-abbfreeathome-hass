@@ -325,6 +325,9 @@
       },
       "virtual_wind_sensor": {
         "name": "Virtual Wind Alarm"
+      },
+      "welcome_ip_mute_actuator": {
+        "name": "Mute"
       }
     }
   },
