@@ -243,9 +243,7 @@ class FreeAtHomeSwitchEntity(SwitchEntity):
         if hasattr(self, "entity_description"):
             _translation_key = self.entity_description.translation_key
 
-        if self._channel.channel_name == self._channel.device_name:
-            return _translation_key
-        return None
+        return _translation_key
 
     @property
     def is_on(self) -> bool | None:
