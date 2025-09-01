@@ -33,6 +33,7 @@ from .const import (
     CONF_INCLUDE_ORPHAN_CHANNELS,
     CONF_INCLUDE_VIRTUAL_DEVICES,
     CONF_SERIAL,
+    CONF_SSL_CERT_PATH,
     DOMAIN,
     MANUFACTURER,
     VIRTUAL_DEVICE,
@@ -75,6 +76,7 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional(CONF_INCLUDE_ORPHAN_CHANNELS, default=False): cv.boolean,
                 vol.Optional(CONF_INCLUDE_VIRTUAL_DEVICES, default=False): cv.boolean,
                 vol.Optional(CONF_CREATE_SUBDEVICES, default=False): cv.boolean,
+                vol.Optional(CONF_SSL_CERT_PATH): cv.string,
             }
         )
     },
@@ -106,9 +108,31 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Get the Home Assistant ClientSession Object
     _client_session = async_get_clientsession(hass)
 
+    # Get SSL certificate configuration
+    _ssl_cert_path = entry.data.get(CONF_SSL_CERT_PATH)
+    _verify_ssl = bool(_ssl_cert_path)
+
+    # If SSL certificate path is provided, force verify_ssl to True
+    if _ssl_cert_path and _ssl_cert_path.strip():
+        _verify_ssl = True
+
+    # Log SSL configuration warnings
+    _host = entry.data[CONF_HOST]
+    if _host.startswith("https://"):
+        if not _ssl_cert_path:
+            _LOGGER.warning(
+                "HTTPS connection without SSL certificate path - SSL verification will be disabled. "
+                "This connection may not be secure. Consider providing an SSL certificate path for verification."
+            )
+        else:
+            _LOGGER.info("HTTPS connection with SSL certificate verification enabled")
+
     # Get settings from free@home SysAP
     _free_at_home_settings = FreeAtHomeSettings(
-        host=entry.data[CONF_HOST], client_session=_client_session
+        host=entry.data[CONF_HOST],
+        client_session=_client_session,
+        verify_ssl=_verify_ssl,
+        ssl_cert_ca_file=_ssl_cert_path,
     )
     await _free_at_home_settings.load()
 
@@ -142,6 +166,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             username=entry.data[CONF_USERNAME],
             password=entry.data[CONF_PASSWORD],
             client_session=_client_session,
+            verify_ssl=_verify_ssl,
+            ssl_cert_ca_file=_ssl_cert_path,
         ),
         interfaces=_interfaces,
         include_orphan_channels=_include_orphan_channels,
@@ -262,6 +288,15 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         hass.config_entries.async_update_entry(
             entry, data=new_data, version=1, minor_version=4
+        )
+
+        if entry.minor_version < 5:
+            # Add SSL certificate path support - default to None
+            if CONF_SSL_CERT_PATH not in new_data:
+                new_data[CONF_SSL_CERT_PATH] = None
+
+        hass.config_entries.async_update_entry(
+            entry, data=new_data, version=1, minor_version=5
         )
 
     _LOGGER.debug(

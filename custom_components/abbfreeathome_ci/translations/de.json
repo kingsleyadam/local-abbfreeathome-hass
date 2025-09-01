@@ -10,7 +10,11 @@
           "password": "Passwort",
           "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
           "include_virtual_devices": "Virtuelle Geräte einschließen?",
-          "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?"
+          "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?",
+          "ssl_cert_path": "SSL-Zertifikatsdateipfad (optional)"
+        },
+        "data_description": {
+          "ssl_cert_path": "Pfad zur SSL-Zertifikatsdatei für HTTPS-Verbindungen. Bei Verwendung von HTTPS ohne Zertifikat wird die SSL-Überprüfung deaktiviert (nicht für Produktionssysteme empfohlen)."
         }
       },
       "zeroconf_confirm": {
@@ -22,7 +26,11 @@
           "password": "Passwort",
           "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
           "include_virtual_devices": "Virtuelle Geräte einschließen?",
-          "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?"
+          "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?",
+          "ssl_cert_path": "SSL-Zertifikatsdateipfad (optional)"
+        },
+        "data_description": {
+          "ssl_cert_path": "Pfad zur SSL-Zertifikatsdatei für HTTPS-Verbindungen. Bei Verwendung von HTTPS ohne Zertifikat wird die SSL-Überprüfung deaktiviert (nicht für Produktionssysteme empfohlen)."
         }
       },
       "reconfigure": {
@@ -33,7 +41,11 @@
           "password": "Passwort",
           "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
           "include_virtual_devices": "Virtuelle Geräte einschließen?",
-          "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?"
+          "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?",
+          "ssl_cert_path": "SSL-Zertifikatsdateipfad (optional)"
+        },
+        "data_description": {
+          "ssl_cert_path": "Pfad zur SSL-Zertifikatsdatei für HTTPS-Verbindungen. Bei Verwendung von HTTPS ohne Zertifikat wird die SSL-Überprüfung deaktiviert (nicht für Produktionssysteme empfohlen)."
         }
       }
     },

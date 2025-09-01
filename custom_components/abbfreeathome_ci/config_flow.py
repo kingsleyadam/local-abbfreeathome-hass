@@ -33,6 +33,7 @@ from .const import (
     CONF_INCLUDE_ORPHAN_CHANNELS,
     CONF_INCLUDE_VIRTUAL_DEVICES,
     CONF_SERIAL,
+    CONF_SSL_CERT_PATH,
     DOMAIN,
     SYSAP_VERSION,
 )
@@ -46,6 +47,7 @@ def _schema_with_defaults(
     include_orphan_channels: bool = False,
     include_virtual_devices: bool = False,
     create_subdevices: bool = False,
+    ssl_cert_path: str | None = None,
     step_id: str = "user",
 ) -> vol.Schema:
     schema = vol.Schema({})
@@ -64,17 +66,23 @@ def _schema_with_defaults(
                 CONF_INCLUDE_VIRTUAL_DEVICES, default=include_virtual_devices
             ): bool,
             vol.Optional(CONF_CREATE_SUBDEVICES, default=create_subdevices): bool,
+            vol.Optional(CONF_SSL_CERT_PATH, default=ssl_cert_path): str,
         }
     )
 
 
 async def validate_settings(
-    host: str, client_session: ClientSession
+    host: str, client_session: ClientSession, ssl_cert_path: str | None = None
 ) -> tuple[FreeAtHomeSettings, dict[str, Any]]:
     """Validate the settings endpoint."""
     errors: dict[str, str] = {}
+    verify_ssl = bool(ssl_cert_path)
+
     settings: FreeAtHomeSettings = FreeAtHomeSettings(
-        host=host, client_session=client_session
+        host=host,
+        client_session=client_session,
+        verify_ssl=verify_ssl,
+        ssl_cert_ca_file=ssl_cert_path,
     )
 
     try:
@@ -92,12 +100,23 @@ async def validate_settings(
 
 
 async def validate_api(
-    host: str, username: str, password: str, client_session: ClientSession
+    host: str,
+    username: str,
+    password: str,
+    client_session: ClientSession,
+    ssl_cert_path: str | None = None,
 ) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
     errors: dict[str, str] = {}
+    verify_ssl = bool(ssl_cert_path)
+
     api = FreeAtHomeApi(
-        host=host, username=username, password=password, client_session=client_session
+        host=host,
+        username=username,
+        password=password,
+        client_session=client_session,
+        verify_ssl=verify_ssl,
+        ssl_cert_ca_file=ssl_cert_path,
     )
 
     try:
@@ -122,7 +141,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for ABB-free@home."""
 
     VERSION = 1
-    MINOR_VERSION = 4
+    MINOR_VERSION = 5
     CONNECTION_CLASS = CONN_CLASS_LOCAL_PUSH
 
     def __init__(self) -> None:
@@ -137,6 +156,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._include_orphan_channels: bool = False
         self._include_virtual_devices: bool = False
         self._create_subdevices: bool = False
+        self._ssl_cert_path: str | None = None
 
     async def async_step_import(self, import_data: dict[str, Any]) -> ConfigFlowResult:
         """Handle import from yaml configuration."""
@@ -144,6 +164,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         settings, settings_errors = await validate_settings(
             host=import_data[CONF_HOST],
             client_session=async_get_clientsession(self.hass),
+            ssl_cert_path=import_data.get(CONF_SSL_CERT_PATH),
         )
 
         if settings_errors:
@@ -159,6 +180,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             username=import_data[CONF_USERNAME],
             password=import_data[CONF_PASSWORD],
             client_session=async_get_clientsession(self.hass),
+            ssl_cert_path=import_data.get(CONF_SSL_CERT_PATH),
         )
 
         if api_errors:
@@ -178,6 +200,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._include_orphan_channels = import_data[CONF_INCLUDE_ORPHAN_CHANNELS]
         self._include_virtual_devices = import_data[CONF_INCLUDE_VIRTUAL_DEVICES]
         self._create_subdevices = import_data[CONF_CREATE_SUBDEVICES]
+        self._ssl_cert_path = import_data.get(CONF_SSL_CERT_PATH)
 
         # If SysAP already exists, update configuration and abort.
         await self.async_set_unique_id(settings.serial_number)
@@ -189,6 +212,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_INCLUDE_ORPHAN_CHANNELS: self._include_orphan_channels,
                 CONF_INCLUDE_VIRTUAL_DEVICES: self._include_virtual_devices,
                 CONF_CREATE_SUBDEVICES: self._create_subdevices,
+                CONF_SSL_CERT_PATH: self._ssl_cert_path,
             }
         )
 
@@ -206,6 +230,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         settings, settings_errors = await validate_settings(
             host=user_input[CONF_HOST],
             client_session=async_get_clientsession(self.hass),
+            ssl_cert_path=user_input.get(CONF_SSL_CERT_PATH),
         )
         if settings_errors.get("base") != "cannot_connect":
             self._sysap_version = settings.version
@@ -218,6 +243,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             username=user_input[CONF_USERNAME],
             password=user_input[CONF_PASSWORD],
             client_session=async_get_clientsession(self.hass),
+            ssl_cert_path=user_input.get(CONF_SSL_CERT_PATH),
         )
         if api_errors:
             return self._async_show_setup_form(step_id="user", errors=api_errors)
@@ -235,6 +261,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._include_orphan_channels = user_input[CONF_INCLUDE_ORPHAN_CHANNELS]
         self._include_virtual_devices = user_input[CONF_INCLUDE_VIRTUAL_DEVICES]
         self._create_subdevices = user_input[CONF_CREATE_SUBDEVICES]
+        self._ssl_cert_path = user_input.get(CONF_SSL_CERT_PATH)
 
         return self._async_create_entry()
 
@@ -247,7 +274,9 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
 
         self._host = f"http://{discovery_info.ip_address.exploded}"
         settings, errors = await validate_settings(
-            host=self._host, client_session=async_get_clientsession(self.hass)
+            host=self._host,
+            client_session=async_get_clientsession(self.hass),
+            ssl_cert_path=None,
         )
 
         if errors:
@@ -277,6 +306,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             username=user_input[CONF_USERNAME],
             password=user_input[CONF_PASSWORD],
             client_session=async_get_clientsession(self.hass),
+            ssl_cert_path=user_input.get(CONF_SSL_CERT_PATH),
         )
 
         if errors:
@@ -289,6 +319,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._include_orphan_channels = user_input[CONF_INCLUDE_ORPHAN_CHANNELS]
         self._include_virtual_devices = user_input[CONF_INCLUDE_VIRTUAL_DEVICES]
         self._create_subdevices = user_input[CONF_CREATE_SUBDEVICES]
+        self._ssl_cert_path = user_input.get(CONF_SSL_CERT_PATH)
 
         return self._async_create_entry()
 
@@ -308,6 +339,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._include_orphan_channels = entry.data[CONF_INCLUDE_ORPHAN_CHANNELS]
         self._include_virtual_devices = entry.data[CONF_INCLUDE_VIRTUAL_DEVICES]
         self._create_subdevices = entry.data[CONF_CREATE_SUBDEVICES]
+        self._ssl_cert_path = entry.data.get(CONF_SSL_CERT_PATH)
 
         if user_input is None:
             return self._async_show_setup_form(
@@ -316,6 +348,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
                 include_orphan_channels=self._include_orphan_channels,
                 include_virtual_devices=self._include_virtual_devices,
                 create_subdevices=self._create_subdevices,
+                ssl_cert_path=self._ssl_cert_path,
             )
 
         errors = await validate_api(
@@ -323,6 +356,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             username=user_input[CONF_USERNAME],
             password=user_input[CONF_PASSWORD],
             client_session=async_get_clientsession(self.hass),
+            ssl_cert_path=user_input.get(CONF_SSL_CERT_PATH),
         )
 
         if errors:
@@ -333,6 +367,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._include_orphan_channels = user_input[CONF_INCLUDE_ORPHAN_CHANNELS]
         self._include_virtual_devices = user_input[CONF_INCLUDE_VIRTUAL_DEVICES]
         self._create_subdevices = user_input[CONF_CREATE_SUBDEVICES]
+        self._ssl_cert_path = user_input.get(CONF_SSL_CERT_PATH)
 
         return self._async_update_reload_and_abort()
 
@@ -346,6 +381,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         include_orphan_channels: bool = False,
         include_virtual_devices: bool = False,
         create_subdevices: bool = False,
+        ssl_cert_path: str | None = None,
     ) -> ConfigFlowResult:
         """Show the setup form to the user."""
         description_placeholders: Mapping[str, str | None] = {}
@@ -368,6 +404,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
                 include_orphan_channels=include_orphan_channels,
                 include_virtual_devices=include_virtual_devices,
                 create_subdevices=create_subdevices,
+                ssl_cert_path=ssl_cert_path,
             ),
             errors=errors or {},
             description_placeholders=description_placeholders,
@@ -386,6 +423,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_INCLUDE_ORPHAN_CHANNELS: self._include_orphan_channels,
                 CONF_INCLUDE_VIRTUAL_DEVICES: self._include_virtual_devices,
                 CONF_CREATE_SUBDEVICES: self._create_subdevices,
+                CONF_SSL_CERT_PATH: self._ssl_cert_path,
             },
         )
 
@@ -399,5 +437,6 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_INCLUDE_ORPHAN_CHANNELS: self._include_orphan_channels,
                 CONF_INCLUDE_VIRTUAL_DEVICES: self._include_virtual_devices,
                 CONF_CREATE_SUBDEVICES: self._create_subdevices,
+                CONF_SSL_CERT_PATH: self._ssl_cert_path,
             },
         )

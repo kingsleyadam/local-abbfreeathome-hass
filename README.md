@@ -109,8 +109,17 @@ The config setup will include some options to help configure the integration.
 - **Include channels NOT on the free@home floorplan?**: False
 - **Include virtual devices?**: False
 - **Create Sub-Devices for each independent channel?**: False
+- **SSL Certificate File Path**: (optional)
 
-> Note: Support for SSL is not provided yet. For a valid SSL connection a cert pulled from the SysAP must be provided, research to be done to know if Home Assistant supports such a scenario.
+#### SSL Support
+
+The integration now supports SSL connections to the ABB-free@home SysAP. To enable SSL with certificate verification:
+
+1. Provide the path to your SSL certificate file in the "SSL Certificate File Path" field
+2. When a certificate path is provided, the integration will enable SSL verification
+3. When no certificate path is provided, SSL verification is disabled (default behavior)
+
+This allows you to securely connect to your SysAP when using HTTPS URLs while providing the necessary certificate for verification.
 
 #### SysAP Discovery
 
@@ -134,7 +143,35 @@ abbfreeathome_ci:
   include_orphan_channels: false
   include_virtual_devices: false
   include_subdevices: false
+  ssl_cert_path: /path/to/certificate.pem # optional
 ```
+
+**SSL Configuration Examples:**
+
+**With SSL certificate verification:**
+
+```yaml
+abbfreeathome_ci:
+  host: https://<hostname or ip address>
+  username: installer
+  password: <password>
+  ssl_cert_path: /config/ssl/sysap_cert.pem
+  # SSL verification enabled automatically when certificate path is provided
+```
+
+**HTTPS without SSL certificate (verification disabled with warning):**
+
+```yaml
+abbfreeathome_ci:
+  host: https://<hostname or ip address>
+  username: installer
+  password: <password>
+  # No ssl_cert_path means verification is disabled (generates warning)
+```
+
+> **Security Note:** When using HTTPS without providing an SSL certificate path, SSL certificate verification is automatically disabled. This is because ABB SysAP devices typically use self-signed certificates. A warning will be logged to indicate this security consideration.
+
+> **Certificate Usage:** When an SSL certificate path is provided, verification is automatically enabled using that certificate file for validation.
 
 Each time Home Assistant is loaded, the `configuration.yaml` entry for `abbfreeathome_ci` will be checked, verified, and updated accordingly. This means that if you want to update your configuration, simply modify the `configuration.yaml` file and restart Home Assistant.
 
@@ -169,14 +206,14 @@ triggers:
   - trigger: state
     entity_id:
       - event.study_area_rocker_switch_event
-    to: "Off"
+    to: 'Off'
     attribute: event_type
     id: study_area_event_off
   - trigger: state
     entity_id:
       - event.study_area_rocker_switch_event
     attribute: event_type
-    to: "On"
+    to: 'On'
     id: study_area_event_on
 conditions: []
 actions:

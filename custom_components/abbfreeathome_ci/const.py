@@ -8,6 +8,7 @@ CONF_SERIAL = "serial"
 CONF_INCLUDE_ORPHAN_CHANNELS = "include_orphan_channels"
 CONF_INCLUDE_VIRTUAL_DEVICES = "include_virtual_devices"
 CONF_CREATE_SUBDEVICES = "create_subdevices"
+CONF_SSL_CERT_PATH = "ssl_cert_path"
 
 # SysAP Settings
 SYSAP_VERSION = "sysap_version"
