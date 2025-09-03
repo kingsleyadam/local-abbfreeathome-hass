@@ -66,7 +66,10 @@ def _schema_with_defaults(
                 CONF_INCLUDE_VIRTUAL_DEVICES, default=include_virtual_devices
             ): bool,
             vol.Optional(CONF_CREATE_SUBDEVICES, default=create_subdevices): bool,
-            vol.Optional(CONF_SSL_CERT_PATH, default=ssl_cert_path): str,
+            vol.Optional(
+                CONF_SSL_CERT_PATH,
+                **({} if ssl_cert_path is None else {"default": ssl_cert_path}),
+            ): str,
         }
     )
 
