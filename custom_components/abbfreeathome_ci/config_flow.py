@@ -275,9 +275,9 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         if not isinstance(discovery_info.ip_address, IPv4Address):
             return self.async_abort(reason="not_ipv4address")
 
-        self._host = f"http://{discovery_info.ip_address.exploded}"
+        _sysap_host = f"http://{discovery_info.ip_address.exploded}"
         settings, errors = await validate_settings(
-            host=self._host,
+            host=_sysap_host,
             client_session=async_get_clientsession(self.hass),
             ssl_cert_path=None,
         )
@@ -285,12 +285,28 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         if errors:
             return self.async_abort(reason="invalid_settings")
 
+        # Preserve existing protocol (http/https) when updating host
+        if existing_entry := next(
+            (
+                entry
+                for entry in self._async_current_entries()
+                if entry.unique_id == settings.serial_number
+            ),
+            None,
+        ):
+            existing_host: str = existing_entry.data.get(CONF_HOST, "")
+            if existing_host.startswith("https://"):
+                _sysap_host = f"https://{discovery_info.ip_address.exploded}"
+
+        # Check if integration has already been setup.
+        await self.async_set_unique_id(settings.serial_number)
+        self._abort_if_unique_id_configured(updates={CONF_HOST: _sysap_host})
+
+        # This is a new entry, set class level variables and show setup form.
+        self._host = _sysap_host
         self._serial_number = settings.serial_number
         self._name = settings.name
         self._title = f"{settings.name} ({settings.serial_number})"
-
-        await self.async_set_unique_id(settings.serial_number)
-        self._abort_if_unique_id_configured(updates={CONF_HOST: self._host})
         self.context["title_placeholders"] = {CONF_NAME: self._title}
 
         return self._async_show_setup_form(
