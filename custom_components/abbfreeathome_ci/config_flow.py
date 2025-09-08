@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from ipaddress import IPv4Address
 import logging
 from typing import Any
@@ -41,6 +40,16 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+def _schema_ssl_cert_fields(ssl_cert_path: str | None = None) -> dict:
+    """Get SSL certificate path field schema."""
+    return {
+        vol.Optional(
+            CONF_SSL_CERT_PATH,
+            **({} if ssl_cert_path is None else {"default": ssl_cert_path}),
+        ): str,
+    }
+
+
 def _schema_with_defaults(
     host: str | None = None,
     username: str | None = None,
@@ -48,19 +57,22 @@ def _schema_with_defaults(
     include_virtual_devices: bool = False,
     create_subdevices: bool = False,
     ssl_cert_path: str | None = None,
-    step_id: str = "user",
     include_ssl: bool = True,
 ) -> vol.Schema:
     """Get schema with configurable field inclusion."""
-    schema = vol.Schema({})
+    schema_fields = {
+        vol.Required(CONF_HOST, default=host): str,
+        vol.Required(CONF_USERNAME, default=username or "installer"): str,
+        vol.Required(CONF_PASSWORD): str,
+    }
 
-    if step_id in ["user", "reconfigure", "zeroconf_confirm"]:
-        schema = schema.extend({vol.Required(CONF_HOST, default=host): str})
+    # Add SSL field if requested
+    if include_ssl:
+        schema_fields.update(_schema_ssl_cert_fields(ssl_cert_path))
 
-    schema = schema.extend(
+    # Add the remaining optional fields
+    schema_fields.update(
         {
-            vol.Required(CONF_USERNAME, default=username or "installer"): str,
-            vol.Required(CONF_PASSWORD): str,
             vol.Optional(
                 CONF_INCLUDE_ORPHAN_CHANNELS, default=include_orphan_channels
             ): bool,
@@ -71,30 +83,12 @@ def _schema_with_defaults(
         }
     )
 
-    # Only include SSL field when requested (for backward compatibility)
-    if include_ssl:
-        schema = schema.extend(
-            {
-                vol.Optional(
-                    CONF_SSL_CERT_PATH,
-                    **({} if ssl_cert_path is None else {"default": ssl_cert_path}),
-                ): str,
-            }
-        )
-
-    return schema
+    return vol.Schema(schema_fields)
 
 
 def _schema_ssl_config(ssl_cert_path: str | None = None) -> vol.Schema:
-    """Get schema for SSL configuration (step 2)."""
-    return vol.Schema(
-        {
-            vol.Optional(
-                CONF_SSL_CERT_PATH,
-                **({} if ssl_cert_path is None else {"default": ssl_cert_path}),
-            ): str,
-        }
-    )
+    """Get schema for SSL configuration step."""
+    return vol.Schema(_schema_ssl_cert_fields(ssl_cert_path))
 
 
 async def validate_settings(
@@ -184,54 +178,6 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._create_subdevices: bool = False
         self._ssl_cert_path: str | None = None
 
-    def _is_https_host(self, host: str) -> bool:
-        """Check if the host uses HTTPS protocol."""
-        return host.lower().startswith("https://")
-
-    @callback
-    def _async_show_setup_form(
-        self, step_id: str, errors: dict[str, str] | None = None
-    ) -> ConfigFlowResult:
-        """Show the setup form."""
-        if step_id == "user":
-            return self.async_show_form(
-                step_id=step_id,
-                data_schema=_schema_with_defaults(
-                    host=self._host,
-                    username=self._username,
-                    include_orphan_channels=self._include_orphan_channels,
-                    include_virtual_devices=self._include_virtual_devices,
-                    create_subdevices=self._create_subdevices,
-                    step_id=step_id,
-                    include_ssl=False,  # Don't include SSL in basic connection step
-                ),
-                errors=errors,
-                description_placeholders={"host": self._host or ""},
-            )
-        if step_id == "ssl_config":
-            return self.async_show_form(
-                step_id=step_id,
-                data_schema=_schema_ssl_config(ssl_cert_path=self._ssl_cert_path),
-                errors=errors,
-                description_placeholders={"host": self._host or ""},
-            )
-        # Fallback to legacy schema for other steps (with SSL included)
-        return self.async_show_form(
-            step_id=step_id,
-            data_schema=_schema_with_defaults(
-                host=self._host,
-                username=self._username,
-                include_orphan_channels=self._include_orphan_channels,
-                include_virtual_devices=self._include_virtual_devices,
-                create_subdevices=self._create_subdevices,
-                ssl_cert_path=self._ssl_cert_path,
-                step_id=step_id,
-                include_ssl=True,  # Include SSL for backward compatibility
-            ),
-            errors=errors,
-            description_placeholders={"host": self._host or ""},
-        )
-
     async def async_step_import(self, import_data: dict[str, Any]) -> ConfigFlowResult:
         """Handle import from yaml configuration."""
         # Check/Get Settings
@@ -308,33 +254,24 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._include_virtual_devices = user_input[CONF_INCLUDE_VIRTUAL_DEVICES]
         self._create_subdevices = user_input[CONF_CREATE_SUBDEVICES]
 
-        # Test basic connection without SSL first
-        # For HTTPS hosts, we'll validate with SSL in the next step
-        test_host = self._host
-        test_ssl_cert_path = None
-
         # If it's HTTPS, we need to proceed to SSL config step
         if self._is_https_host(self._host):
             return await self.async_step_ssl_config()
 
         # For HTTP hosts, validate immediately
         settings, settings_errors = await validate_settings(
-            host=test_host,
+            host=self._host,
             client_session=async_get_clientsession(self.hass),
-            ssl_cert_path=test_ssl_cert_path,
         )
-        if settings_errors.get("base") != "cannot_connect":
-            self._sysap_version = settings.version
         if settings_errors:
             return self._async_show_setup_form(step_id="user", errors=settings_errors)
 
         # Check for API Errors
         api_errors = await validate_api(
-            host=test_host,
+            host=self._host,
             username=self._username,
             password=self._password,
             client_session=async_get_clientsession(self.hass),
-            ssl_cert_path=test_ssl_cert_path,
         )
         if api_errors:
             return self._async_show_setup_form(step_id="user", errors=api_errors)
@@ -342,10 +279,10 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         await self.async_set_unique_id(settings.serial_number)
         self._abort_if_unique_id_configured()
 
+        self._sysap_version = settings.version
         self._serial_number = settings.serial_number
         self._name = settings.name
         self._title = f"{settings.name} ({settings.serial_number})"
-        self._ssl_cert_path = test_ssl_cert_path
 
         return self._async_create_entry()
 
@@ -365,8 +302,6 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             client_session=async_get_clientsession(self.hass),
             ssl_cert_path=self._ssl_cert_path,
         )
-        if settings_errors.get("base") != "cannot_connect":
-            self._sysap_version = settings.version
         if settings_errors:
             return self._async_show_setup_form(
                 step_id="ssl_config", errors=settings_errors
@@ -386,6 +321,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         await self.async_set_unique_id(settings.serial_number)
         self._abort_if_unique_id_configured()
 
+        self._sysap_version = settings.version
         self._serial_number = settings.serial_number
         self._name = settings.name
         self._title = f"{settings.name} ({settings.serial_number})"
@@ -433,20 +369,14 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._title = f"{settings.name} ({settings.serial_number})"
         self.context["title_placeholders"] = {CONF_NAME: self._title}
 
-        return self._async_show_setup_form(
-            step_id="zeroconf_confirm",
-            host=self._host,
-        )
+        return self._async_show_setup_form(step_id="zeroconf")
 
     async def async_step_zeroconf_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle a flow initiated by zeroconf."""
         if user_input is None:
-            return self._async_show_setup_form(
-                step_id="zeroconf_confirm",
-                host=self._host,
-            )
+            return self._async_show_setup_form(step_id="zeroconf_confirm")
 
         # Check/Get Settings with potentially updated host
         settings, settings_errors = await validate_settings(
@@ -456,7 +386,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         )
         if settings_errors:
             return self._async_show_setup_form(
-                step_id="zeroconf_confirm", host=self._host, errors=settings_errors
+                step_id="zeroconf_confirm", errors=settings_errors
             )
 
         errors = await validate_api(
@@ -469,7 +399,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
 
         if errors:
             return self._async_show_setup_form(
-                step_id="zeroconf_confirm", host=self._host, errors=errors
+                step_id="zeroconf_confirm", errors=errors
             )
 
         self._host = user_input[CONF_HOST]
@@ -501,15 +431,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._ssl_cert_path = entry.data.get(CONF_SSL_CERT_PATH)
 
         if user_input is None:
-            return self._async_show_setup_form(
-                step_id="reconfigure",
-                host=self._host,
-                username=self._username,
-                include_orphan_channels=self._include_orphan_channels,
-                include_virtual_devices=self._include_virtual_devices,
-                create_subdevices=self._create_subdevices,
-                ssl_cert_path=self._ssl_cert_path,
-            )
+            return self._async_show_setup_form(step_id="reconfigure")
 
         # Check/Get Settings with new host
         settings, settings_errors = await validate_settings(
@@ -519,14 +441,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         )
         if settings_errors:
             return self._async_show_setup_form(
-                step_id="reconfigure",
-                host=self._host,
-                username=self._username,
-                include_orphan_channels=self._include_orphan_channels,
-                include_virtual_devices=self._include_virtual_devices,
-                create_subdevices=self._create_subdevices,
-                ssl_cert_path=self._ssl_cert_path,
-                errors=settings_errors,
+                step_id="reconfigure", errors=settings_errors
             )
 
         errors = await validate_api(
@@ -538,16 +453,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
         if errors:
-            return self._async_show_setup_form(
-                step_id="reconfigure",
-                host=self._host,
-                username=self._username,
-                include_orphan_channels=self._include_orphan_channels,
-                include_virtual_devices=self._include_virtual_devices,
-                create_subdevices=self._create_subdevices,
-                ssl_cert_path=self._ssl_cert_path,
-                errors=errors,
-            )
+            return self._async_show_setup_form(step_id="reconfigure", errors=errors)
 
         self._host = user_input[CONF_HOST]
         self._username = user_input[CONF_USERNAME]
@@ -558,45 +464,6 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._ssl_cert_path = user_input.get(CONF_SSL_CERT_PATH)
 
         return self._async_update_reload_and_abort()
-
-    @callback
-    def _async_show_setup_form(
-        self,
-        step_id: str,
-        errors: dict[str, str] | None = None,
-        host: str | None = None,
-        username: str | None = None,
-        include_orphan_channels: bool = False,
-        include_virtual_devices: bool = False,
-        create_subdevices: bool = False,
-        ssl_cert_path: str | None = None,
-    ) -> ConfigFlowResult:
-        """Show the setup form to the user."""
-        description_placeholders: Mapping[str, str | None] = {}
-
-        if self._host:
-            description_placeholders[CONF_HOST] = self._host
-        if self._serial_number:
-            description_placeholders[CONF_SERIAL] = self._serial_number
-        if self._name:
-            description_placeholders[CONF_NAME] = self._name
-        if self._sysap_version:
-            description_placeholders[SYSAP_VERSION] = self._sysap_version
-
-        return self.async_show_form(
-            step_id=step_id,
-            data_schema=_schema_with_defaults(
-                step_id=step_id,
-                host=host,
-                username=username,
-                include_orphan_channels=include_orphan_channels,
-                include_virtual_devices=include_virtual_devices,
-                create_subdevices=create_subdevices,
-                ssl_cert_path=ssl_cert_path,
-            ),
-            errors=errors or {},
-            description_placeholders=description_placeholders,
-        )
 
     @callback
     def _async_create_entry(self) -> ConfigFlowResult:
@@ -616,6 +483,45 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
     @callback
+    def _async_show_setup_form(
+        self, step_id: str, errors: dict[str, str] | None = None
+    ) -> ConfigFlowResult:
+        """Show the setup form."""
+        description_placeholders: dict[str, str | None] = {}
+
+        if self._host:
+            description_placeholders[CONF_HOST] = self._host
+        if self._serial_number:
+            description_placeholders[CONF_SERIAL] = self._serial_number
+        if self._name:
+            description_placeholders[CONF_NAME] = self._name
+        if self._sysap_version:
+            description_placeholders[SYSAP_VERSION] = self._sysap_version
+
+        if step_id == "ssl_config":
+            return self.async_show_form(
+                step_id=step_id,
+                data_schema=_schema_ssl_config(ssl_cert_path=self._ssl_cert_path),
+                errors=errors,
+                description_placeholders=description_placeholders,
+            )
+
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=_schema_with_defaults(
+                host=self._host,
+                username=self._username,
+                include_orphan_channels=self._include_orphan_channels,
+                include_virtual_devices=self._include_virtual_devices,
+                create_subdevices=self._create_subdevices,
+                ssl_cert_path=self._ssl_cert_path,
+                include_ssl=step_id != "user",
+            ),
+            errors=errors,
+            description_placeholders=description_placeholders,
+        )
+
+    @callback
     def _async_update_reload_and_abort(self) -> ConfigFlowResult:
         return self.async_update_reload_and_abort(
             self._get_reconfigure_entry(),
@@ -629,3 +535,6 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_SSL_CERT_PATH: self._ssl_cert_path,
             },
         )
+
+    def _is_https_host(self, host: str) -> bool:
+        return host.lower().startswith("https://")

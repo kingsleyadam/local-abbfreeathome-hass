@@ -5,7 +5,7 @@
         "title": "ABB-free@home - SSL Configuration",
         "description": "Configure SSL settings for HTTPS connection to {host}",
         "data": {
-          "ssl_cert_path": "SSL Certificate File Path (optional)"
+          "ssl_cert_path": "SSL Certificate File Path"
         },
         "data_description": {
           "ssl_cert_path": "Path to SSL certificate file for HTTPS connections. When using HTTPS without a certificate, SSL verification will be disabled (not recommended for production)."
@@ -33,7 +33,7 @@
           "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
           "include_virtual_devices": "Include virtual devices?",
           "create_subdevices": "Create Sub-Devices for each independent channel?",
-          "ssl_cert_path": "SSL Certificate File Path (optional)"
+          "ssl_cert_path": "SSL Certificate File Path"
         },
         "data_description": {
           "ssl_cert_path": "Path to SSL certificate file for HTTPS connections. When using HTTPS without a certificate, SSL verification will be disabled (not recommended for production)."
@@ -48,7 +48,7 @@
           "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
           "include_virtual_devices": "Include virtual devices?",
           "create_subdevices": "Create Sub-Devices for each independent channel?",
-          "ssl_cert_path": "SSL Certificate File Path (optional)"
+          "ssl_cert_path": "SSL Certificate File Path"
         },
         "data_description": {
           "ssl_cert_path": "Path to SSL certificate file for HTTPS connections. When using HTTPS without a certificate, SSL verification will be disabled (not recommended for production)."

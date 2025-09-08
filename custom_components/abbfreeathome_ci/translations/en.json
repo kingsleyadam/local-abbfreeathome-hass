@@ -21,7 +21,7 @@
           "create_subdevices": "Create Sub-Devices for each independent channel?",
           "password": "Password",
           "username": "Username",
-          "ssl_cert_path": "SSL Certificate File Path (optional)"
+          "ssl_cert_path": "SSL Certificate File Path"
         },
         "data_description": {
           "ssl_cert_path": "Path to SSL certificate file for HTTPS connections. When using HTTPS without a certificate, SSL verification will be disabled (not recommended for production)."
@@ -31,7 +31,7 @@
       },
       "ssl_config": {
         "data": {
-          "ssl_cert_path": "SSL Certificate File Path (optional)"
+          "ssl_cert_path": "SSL Certificate File Path"
         },
         "data_description": {
           "ssl_cert_path": "Path to SSL certificate file for HTTPS connections. When using HTTPS without a certificate, SSL verification will be disabled (not recommended for production)."
@@ -59,7 +59,7 @@
           "create_subdevices": "Create Sub-Devices for each independent channel?",
           "password": "Password",
           "username": "Username",
-          "ssl_cert_path": "SSL Certificate File Path (optional)"
+          "ssl_cert_path": "SSL Certificate File Path"
         },
         "data_description": {
           "ssl_cert_path": "Path to SSL certificate file for HTTPS connections. When using HTTPS without a certificate, SSL verification will be disabled (not recommended for production)."

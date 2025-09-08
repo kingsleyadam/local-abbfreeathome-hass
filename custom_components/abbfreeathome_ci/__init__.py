@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from urllib.parse import urlparse, urlunparse
 
 from abbfreeathome import FreeAtHome, FreeAtHomeApi
 from abbfreeathome.api import (
@@ -180,6 +181,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _free_at_home.load()
 
     # Register SysAP as a Device
+    _configuration_url = entry.data[CONF_HOST]
+    parsed_url = urlparse(_configuration_url)
+    if parsed_url.scheme == "https":
+        _configuration_url = urlunparse(
+            (
+                "http",
+                f"{parsed_url.hostname}",
+                parsed_url.path,
+                parsed_url.params,
+                parsed_url.query,
+                parsed_url.fragment,
+            )
+        )
+
     device_registry = dr.async_get(hass)
     device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
@@ -190,7 +205,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         serial_number=entry.data[CONF_SERIAL],
         sw_version=_free_at_home_settings.version,
         hw_version=_free_at_home_settings.hardware_version,
-        configuration_url=entry.data[CONF_HOST],
+        configuration_url=_configuration_url,
     )
 
     for _device in _free_at_home.get_devices().values():
