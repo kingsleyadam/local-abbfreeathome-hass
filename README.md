@@ -142,8 +142,9 @@ abbfreeathome_ci:
   password: <password>
   include_orphan_channels: false
   include_virtual_devices: false
-  include_subdevices: false
+  create_subdevices: false
   ssl_cert_path: /path/to/certificate.pem # optional
+  verify_ssl: false # optional
 ```
 
 **SSL Configuration Examples:**

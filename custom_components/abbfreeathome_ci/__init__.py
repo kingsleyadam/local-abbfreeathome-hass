@@ -79,6 +79,7 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional(CONF_INCLUDE_VIRTUAL_DEVICES, default=False): cv.boolean,
                 vol.Optional(CONF_CREATE_SUBDEVICES, default=False): cv.boolean,
                 vol.Optional(CONF_SSL_CERT_PATH): cv.string,
+                vol.Optional(CONF_VERIFY_SSL): cv.boolean,
             }
         )
     },
