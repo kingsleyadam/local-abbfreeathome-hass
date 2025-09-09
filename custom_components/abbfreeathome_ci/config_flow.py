@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from ipaddress import IPv4Address
 import logging
 from typing import Any
@@ -388,14 +389,18 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._title = f"{settings.name} ({settings.serial_number})"
         self.context["title_placeholders"] = {CONF_NAME: self._title}
 
-        return self._async_show_setup_form(step_id="zeroconf")
+        return self._async_show_setup_form(
+            step_id="zeroconf", suggested_values={CONF_HOST: self._host}
+        )
 
     async def async_step_zeroconf_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle a flow initiated by zeroconf."""
         if user_input is None:
-            return self._async_show_setup_form(step_id="zeroconf_confirm")
+            return self._async_show_setup_form(
+                step_id="zeroconf_confirm", suggested_values={CONF_HOST: self._host}
+            )
 
         self._host = user_input.get(CONF_HOST)
         self._username = user_input.get(CONF_USERNAME)
@@ -419,7 +424,9 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         )
         if settings_errors:
             return self._async_show_setup_form(
-                step_id="zeroconf_confirm", errors=settings_errors
+                step_id="zeroconf_confirm",
+                errors=settings_errors,
+                suggested_values={CONF_HOST: self._host},
             )
 
         errors = await validate_api(
@@ -432,7 +439,9 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
 
         if errors:
             return self._async_show_setup_form(
-                step_id="zeroconf_confirm", errors=errors
+                step_id="zeroconf_confirm",
+                errors=errors,
+                suggested_values={CONF_HOST: self._host},
             )
 
         return self._async_create_entry()
@@ -451,7 +460,9 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._serial_number = entry.data.get(CONF_SERIAL)
 
         if user_input is None:
-            return self._async_show_setup_form(step_id="reconfigure")
+            return self._async_show_setup_form(
+                step_id="reconfigure", suggested_values=entry.data
+            )
 
         # Check/Get Settings with new host
         settings, settings_errors = await validate_settings(
@@ -462,7 +473,9 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         )
         if settings_errors:
             return self._async_show_setup_form(
-                step_id="reconfigure", errors=settings_errors
+                step_id="reconfigure",
+                errors=settings_errors,
+                suggested_values=user_input,
             )
 
         errors = await validate_api(
@@ -475,7 +488,11 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
         if errors:
-            return self._async_show_setup_form(step_id="reconfigure", errors=errors)
+            return self._async_show_setup_form(
+                step_id="reconfigure",
+                errors=errors,
+                suggested_values=user_input,
+            )
 
         self._host = user_input[CONF_HOST]
         self._username = user_input[CONF_USERNAME]
@@ -508,7 +525,10 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
 
     @callback
     def _async_show_setup_form(
-        self, step_id: str, errors: dict[str, str] | None = None
+        self,
+        step_id: str,
+        errors: dict[str, str] | None = None,
+        suggested_values: Mapping[str, Any] | None = None,
     ) -> ConfigFlowResult:
         """Show the setup form."""
         description_placeholders: dict[str, str | None] = {}
@@ -527,17 +547,9 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         else:
             _schema = _schema_with_defaults(include_ssl=step_id != "user")
 
-        if step_id == "reconfigure":
-            try:
-                _entry = self._get_reconfigure_entry()
-            except AttributeError:
-                return self.async_abort(reason="reconfigure_not_supported")
-            _schema = self.add_suggested_values_to_schema(_schema, _entry.data)
-
-        if step_id in ["zeroconf", "zeroconf_confirm"]:
-            _schema = self.add_suggested_values_to_schema(
-                _schema, {CONF_HOST: self._host}
-            )
+        # Update suggested value if provided
+        if suggested_values:
+            _schema = self.add_suggested_values_to_schema(_schema, suggested_values)
 
         return self.async_show_form(
             step_id=step_id,
