@@ -33,6 +33,7 @@ from .const import (
     CONF_INCLUDE_VIRTUAL_DEVICES,
     CONF_SERIAL,
     CONF_SSL_CERT_PATH,
+    CONF_VERIFY_SSL,
     DOMAIN,
     SYSAP_VERSION,
 )
@@ -40,9 +41,12 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-def _schema_ssl_cert_fields(ssl_cert_path: str | None = None) -> dict:
-    """Get SSL certificate path field schema."""
+def _schema_ssl_cert_fields(
+    ssl_cert_path: str | None = None, verify_ssl: bool = True
+) -> dict:
+    """Get SSL configuration fields schema."""
     return {
+        vol.Optional(CONF_VERIFY_SSL, default=verify_ssl): bool,
         vol.Optional(
             CONF_SSL_CERT_PATH,
             **({} if ssl_cert_path is None else {"default": ssl_cert_path}),
@@ -57,6 +61,7 @@ def _schema_with_defaults(
     include_virtual_devices: bool = False,
     create_subdevices: bool = False,
     ssl_cert_path: str | None = None,
+    verify_ssl: bool = True,
     include_ssl: bool = True,
 ) -> vol.Schema:
     """Get schema with configurable field inclusion."""
@@ -68,7 +73,7 @@ def _schema_with_defaults(
 
     # Add SSL field if requested
     if include_ssl:
-        schema_fields.update(_schema_ssl_cert_fields(ssl_cert_path))
+        schema_fields.update(_schema_ssl_cert_fields(ssl_cert_path, verify_ssl))
 
     # Add the remaining optional fields
     schema_fields.update(
@@ -86,17 +91,26 @@ def _schema_with_defaults(
     return vol.Schema(schema_fields)
 
 
-def _schema_ssl_config(ssl_cert_path: str | None = None) -> vol.Schema:
+def _schema_ssl_config(
+    ssl_cert_path: str | None = None, verify_ssl: bool = True
+) -> vol.Schema:
     """Get schema for SSL configuration step."""
-    return vol.Schema(_schema_ssl_cert_fields(ssl_cert_path))
+    return vol.Schema(_schema_ssl_cert_fields(ssl_cert_path, verify_ssl))
 
 
 async def validate_settings(
-    host: str, client_session: ClientSession, ssl_cert_path: str | None = None
+    host: str,
+    client_session: ClientSession,
+    ssl_cert_path: str | None = None,
+    verify_ssl: bool = True,
 ) -> tuple[FreeAtHomeSettings, dict[str, Any]]:
     """Validate the settings endpoint."""
     errors: dict[str, str] = {}
-    verify_ssl = bool(ssl_cert_path)
+
+    # Validate SSL configuration
+    if verify_ssl and not ssl_cert_path:
+        errors["ssl_cert_path"] = "ssl_cert_required_when_verify_enabled"
+        return None, errors
 
     settings: FreeAtHomeSettings = FreeAtHomeSettings(
         host=host,
@@ -125,10 +139,15 @@ async def validate_api(
     password: str,
     client_session: ClientSession,
     ssl_cert_path: str | None = None,
+    verify_ssl: bool = True,
 ) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
     errors: dict[str, str] = {}
-    verify_ssl = bool(ssl_cert_path)
+
+    # Validate SSL configuration
+    if verify_ssl and not ssl_cert_path:
+        errors["ssl_cert_path"] = "ssl_cert_required_when_verify_enabled"
+        return errors
 
     api = FreeAtHomeApi(
         host=host,
@@ -177,6 +196,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._include_virtual_devices: bool = False
         self._create_subdevices: bool = False
         self._ssl_cert_path: str | None = None
+        self._verify_ssl: bool = True
 
     async def async_step_import(self, import_data: dict[str, Any]) -> ConfigFlowResult:
         """Handle import from yaml configuration."""
@@ -185,6 +205,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             host=import_data[CONF_HOST],
             client_session=async_get_clientsession(self.hass),
             ssl_cert_path=import_data.get(CONF_SSL_CERT_PATH),
+            verify_ssl=import_data.get(CONF_VERIFY_SSL, True),
         )
 
         if settings_errors:
@@ -201,11 +222,12 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             password=import_data[CONF_PASSWORD],
             client_session=async_get_clientsession(self.hass),
             ssl_cert_path=import_data.get(CONF_SSL_CERT_PATH),
+            verify_ssl=import_data.get(CONF_VERIFY_SSL, True),
         )
 
         if api_errors:
             _LOGGER.error(
-                "Could not fetch ABB-free@home settings from SysAp; %s",
+                "Could not fetch ABB-free@home api configuration from SysAp; %s",
                 api_errors.get("base"),
             )
             return self.async_abort(reason="invalid_api")
@@ -221,6 +243,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._include_virtual_devices = import_data[CONF_INCLUDE_VIRTUAL_DEVICES]
         self._create_subdevices = import_data[CONF_CREATE_SUBDEVICES]
         self._ssl_cert_path = import_data.get(CONF_SSL_CERT_PATH)
+        self._verify_ssl = import_data.get(CONF_VERIFY_SSL, True)
 
         # If SysAP already exists, update configuration and abort.
         await self.async_set_unique_id(settings.serial_number)
@@ -233,6 +256,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_INCLUDE_VIRTUAL_DEVICES: self._include_virtual_devices,
                 CONF_CREATE_SUBDEVICES: self._create_subdevices,
                 CONF_SSL_CERT_PATH: self._ssl_cert_path,
+                CONF_VERIFY_SSL: self._verify_ssl,
             }
         )
 
@@ -258,9 +282,13 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         if self._is_https_host(self._host):
             return await self.async_step_ssl_config()
 
+        # Verify SSL settings as host is not https
+        self._verify_ssl = False
+
         # For HTTP hosts, validate immediately
         settings, settings_errors = await validate_settings(
             host=self._host,
+            verify_ssl=self._verify_ssl,
             client_session=async_get_clientsession(self.hass),
         )
         if settings_errors:
@@ -271,6 +299,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             host=self._host,
             username=self._username,
             password=self._password,
+            verify_ssl=self._verify_ssl,
             client_session=async_get_clientsession(self.hass),
         )
         if api_errors:
@@ -295,12 +324,14 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
 
         # Store SSL configuration
         self._ssl_cert_path = user_input.get(CONF_SSL_CERT_PATH)
+        self._verify_ssl = user_input.get(CONF_VERIFY_SSL)
 
         # Now validate with SSL settings
         settings, settings_errors = await validate_settings(
             host=self._host,
             client_session=async_get_clientsession(self.hass),
             ssl_cert_path=self._ssl_cert_path,
+            verify_ssl=self._verify_ssl,
         )
         if settings_errors:
             return self._async_show_setup_form(
@@ -314,6 +345,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             password=self._password,
             client_session=async_get_clientsession(self.hass),
             ssl_cert_path=self._ssl_cert_path,
+            verify_ssl=self._verify_ssl,
         )
         if api_errors:
             return self._async_show_setup_form(step_id="ssl_config", errors=api_errors)
@@ -378,11 +410,25 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is None:
             return self._async_show_setup_form(step_id="zeroconf_confirm")
 
+        self._host = user_input[CONF_HOST]
+        self._username = user_input[CONF_USERNAME]
+        self._password = user_input[CONF_PASSWORD]
+        self._include_orphan_channels = user_input[CONF_INCLUDE_ORPHAN_CHANNELS]
+        self._include_virtual_devices = user_input[CONF_INCLUDE_VIRTUAL_DEVICES]
+        self._create_subdevices = user_input[CONF_CREATE_SUBDEVICES]
+
+        # If it's HTTPS, we need to proceed to SSL config step
+        if self._is_https_host(self._host):
+            return await self.async_step_ssl_config()
+
+        # Verify SSL settings as host is not https
+        self._verify_ssl = False
+
         # Check/Get Settings with potentially updated host
         settings, settings_errors = await validate_settings(
-            host=user_input[CONF_HOST],
+            host=self._host,
+            verify_ssl=self._verify_ssl,
             client_session=async_get_clientsession(self.hass),
-            ssl_cert_path=user_input.get(CONF_SSL_CERT_PATH),
         )
         if settings_errors:
             return self._async_show_setup_form(
@@ -390,25 +436,17 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             )
 
         errors = await validate_api(
-            host=user_input[CONF_HOST],
-            username=user_input[CONF_USERNAME],
-            password=user_input[CONF_PASSWORD],
+            host=self._host,
+            username=self._username,
+            password=self._password,
+            verify_ssl=self._verify_ssl,
             client_session=async_get_clientsession(self.hass),
-            ssl_cert_path=user_input.get(CONF_SSL_CERT_PATH),
         )
 
         if errors:
             return self._async_show_setup_form(
                 step_id="zeroconf_confirm", errors=errors
             )
-
-        self._host = user_input[CONF_HOST]
-        self._username = user_input[CONF_USERNAME]
-        self._password = user_input[CONF_PASSWORD]
-        self._include_orphan_channels = user_input[CONF_INCLUDE_ORPHAN_CHANNELS]
-        self._include_virtual_devices = user_input[CONF_INCLUDE_VIRTUAL_DEVICES]
-        self._create_subdevices = user_input[CONF_CREATE_SUBDEVICES]
-        self._ssl_cert_path = user_input.get(CONF_SSL_CERT_PATH)
 
         return self._async_create_entry()
 
@@ -429,6 +467,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._include_virtual_devices = entry.data[CONF_INCLUDE_VIRTUAL_DEVICES]
         self._create_subdevices = entry.data[CONF_CREATE_SUBDEVICES]
         self._ssl_cert_path = entry.data.get(CONF_SSL_CERT_PATH)
+        self._verify_ssl = entry.data.get(CONF_VERIFY_SSL)
 
         if user_input is None:
             return self._async_show_setup_form(step_id="reconfigure")
@@ -436,8 +475,9 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         # Check/Get Settings with new host
         settings, settings_errors = await validate_settings(
             host=user_input[CONF_HOST],
-            client_session=async_get_clientsession(self.hass),
             ssl_cert_path=user_input.get(CONF_SSL_CERT_PATH),
+            verify_ssl=user_input.get(CONF_VERIFY_SSL),
+            client_session=async_get_clientsession(self.hass),
         )
         if settings_errors:
             return self._async_show_setup_form(
@@ -448,8 +488,9 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             host=user_input[CONF_HOST],
             username=user_input[CONF_USERNAME],
             password=user_input[CONF_PASSWORD],
-            client_session=async_get_clientsession(self.hass),
             ssl_cert_path=user_input.get(CONF_SSL_CERT_PATH),
+            verify_ssl=user_input.get(CONF_VERIFY_SSL),
+            client_session=async_get_clientsession(self.hass),
         )
 
         if errors:
@@ -462,6 +503,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._include_virtual_devices = user_input[CONF_INCLUDE_VIRTUAL_DEVICES]
         self._create_subdevices = user_input[CONF_CREATE_SUBDEVICES]
         self._ssl_cert_path = user_input.get(CONF_SSL_CERT_PATH)
+        self._verify_ssl = user_input.get(CONF_VERIFY_SSL)
 
         return self._async_update_reload_and_abort()
 
@@ -479,6 +521,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_INCLUDE_VIRTUAL_DEVICES: self._include_virtual_devices,
                 CONF_CREATE_SUBDEVICES: self._create_subdevices,
                 CONF_SSL_CERT_PATH: self._ssl_cert_path,
+                CONF_VERIFY_SSL: self._verify_ssl,
             },
         )
 
@@ -501,7 +544,9 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         if step_id == "ssl_config":
             return self.async_show_form(
                 step_id=step_id,
-                data_schema=_schema_ssl_config(ssl_cert_path=self._ssl_cert_path),
+                data_schema=_schema_ssl_config(
+                    ssl_cert_path=self._ssl_cert_path, verify_ssl=self._verify_ssl
+                ),
                 errors=errors,
                 description_placeholders=description_placeholders,
             )
@@ -515,6 +560,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
                 include_virtual_devices=self._include_virtual_devices,
                 create_subdevices=self._create_subdevices,
                 ssl_cert_path=self._ssl_cert_path,
+                verify_ssl=self._verify_ssl,
                 include_ssl=step_id != "user",
             ),
             errors=errors,
@@ -533,6 +579,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_INCLUDE_VIRTUAL_DEVICES: self._include_virtual_devices,
                 CONF_CREATE_SUBDEVICES: self._create_subdevices,
                 CONF_SSL_CERT_PATH: self._ssl_cert_path,
+                CONF_VERIFY_SSL: self._verify_ssl,
             },
         )
 

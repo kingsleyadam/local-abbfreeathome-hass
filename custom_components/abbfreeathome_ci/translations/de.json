@@ -5,10 +5,12 @@
         "title": "ABB-free@home - SSL-Konfiguration",
         "description": "SSL-Einstellungen für HTTPS-Verbindung zu {host} konfigurieren",
         "data": {
-          "ssl_cert_path": "SSL-Zertifikatsdateipfad"
+          "ssl_cert_path": "SSL-Zertifikatsdateipfad",
+          "verify_ssl": "SSL-Zertifikat überprüfen"
         },
         "data_description": {
-          "ssl_cert_path": "Pfad zur SSL-Zertifikatsdatei für HTTPS-Verbindungen. Bei Verwendung von HTTPS ohne Zertifikat wird die SSL-Überprüfung deaktiviert (nicht für Produktionssysteme empfohlen)."
+          "ssl_cert_path": "Pfad zur SSL-Zertifikatsdatei für HTTPS-Verbindungen. Erforderlich, wenn SSL-Überprüfung aktiviert ist.",
+          "verify_ssl": "SSL-Zertifikatsüberprüfung aktivieren. Wenn deaktiviert, werden HTTPS-Verbindungen das Serverzertifikat nicht überprüfen (nicht für Produktionssysteme empfohlen)."
         }
       },
       "user": {
@@ -58,6 +60,7 @@
     "error": {
       "cannot_connect": "Verbindung fehlgeschlagen",
       "invalid_auth": "Ungültige Authentifizierung",
+      "ssl_cert_required_when_verify_enabled": "SSL-Zertifikatspfad ist erforderlich, wenn SSL-Überprüfung aktiviert ist",
       "unknown": "Unerwarteter Fehler",
       "unsupported_sysap_version": "Die aktuelle Version {sysap_version} des SysAP wird nicht unterstützt. Nur Version 2.6.0 oder neuer wird unterstützt."
     },

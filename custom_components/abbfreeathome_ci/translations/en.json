@@ -10,6 +10,7 @@
     "error": {
       "cannot_connect": "Failed to connect",
       "invalid_auth": "Invalid authentication",
+      "ssl_cert_required_when_verify_enabled": "SSL certificate path is required when SSL verification is enabled",
       "unknown": "Unexpected error",
       "unsupported_sysap_version": "The current version {sysap_version} of the SysAP is not supported. Only version 2.6.0 or newer is supported."
     },
@@ -31,10 +32,12 @@
       },
       "ssl_config": {
         "data": {
-          "ssl_cert_path": "SSL Certificate File Path"
+          "ssl_cert_path": "SSL Certificate File Path",
+          "verify_ssl": "Verify SSL Certificate"
         },
         "data_description": {
-          "ssl_cert_path": "Path to SSL certificate file for HTTPS connections. When using HTTPS without a certificate, SSL verification will be disabled (not recommended for production)."
+          "ssl_cert_path": "Path to SSL certificate file for HTTPS connections. Required when SSL verification is enabled.",
+          "verify_ssl": "Enable SSL certificate verification. When disabled, HTTPS connections will not verify the server certificate (not recommended for production)."
         },
         "description": "Configure SSL settings for HTTPS connection to {host}",
         "title": "ABB-free@home - SSL Configuration"
