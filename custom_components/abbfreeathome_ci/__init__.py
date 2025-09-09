@@ -119,8 +119,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if _host.startswith("https://"):
         if not _verify_ssl:
             _LOGGER.warning(
-                "ABB-free@home HTTPS connection to SysAP without SSL certificate path - SSL verification will be disabled, "
-                "This connection may not be secure. Consider providing an SSL certificate path for verification"
+                "ABB-free@home HTTPS connection to SysAP without SSL verification, "
+                "This connection may not be secure. Consider providing an SSL certificate path and enabling SSL verification"
             )
         else:
             _LOGGER.info("HTTPS connection with SSL certificate verification enabled")

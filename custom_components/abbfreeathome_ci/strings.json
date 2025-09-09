@@ -10,7 +10,7 @@
         },
         "data_description": {
           "ssl_cert_path": "Path to SSL certificate file for HTTPS connections. Required when SSL verification is enabled.",
-          "verify_ssl": "Enable SSL certificate verification. When disabled, HTTPS connections will not verify the server certificate (not recommended for production)."
+          "verify_ssl": "Enable SSL certificate verification. When disabled, HTTPS connections will not verify the server certificate."
         }
       },
       "user": {
@@ -34,11 +34,7 @@
           "password": "[%key:common::config_flow::data::password%]",
           "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
           "include_virtual_devices": "Include virtual devices?",
-          "create_subdevices": "Create Sub-Devices for each independent channel?",
-          "ssl_cert_path": "SSL Certificate File Path"
-        },
-        "data_description": {
-          "ssl_cert_path": "Path to SSL certificate file for HTTPS connections. When using HTTPS without a certificate, SSL verification will be disabled (not recommended for production)."
+          "create_subdevices": "Create Sub-Devices for each independent channel?"
         }
       },
       "reconfigure": {
@@ -50,10 +46,12 @@
           "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
           "include_virtual_devices": "Include virtual devices?",
           "create_subdevices": "Create Sub-Devices for each independent channel?",
-          "ssl_cert_path": "SSL Certificate File Path"
+          "ssl_cert_path": "SSL Certificate File Path",
+          "verify_ssl": "Verify SSL Certificate"
         },
         "data_description": {
-          "ssl_cert_path": "Path to SSL certificate file for HTTPS connections. When using HTTPS without a certificate, SSL verification will be disabled (not recommended for production)."
+          "ssl_cert_path": "Path to SSL certificate file for HTTPS connections. When using HTTPS without a certificate, SSL verification will be disabled.",
+          "verify_ssl": "Enable SSL certificate verification. When disabled, HTTPS connections will not verify the server certificate."
         }
       }
     },
