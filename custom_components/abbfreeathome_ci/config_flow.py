@@ -116,6 +116,9 @@ async def validate_settings(
     except ClientConnectionError:
         errors["base"] = "cannot_connect"
         _LOGGER.exception("Client Connection Error")
+    except FileNotFoundError:
+        errors["ssl_cert_path"] = "ssl_invalid_cert_path"
+        _LOGGER.exception("%s - Invalid path for certificate", ssl_cert_path)
 
     return settings, errors
 
@@ -156,6 +159,9 @@ async def validate_api(
     except ClientConnectionError:
         errors["base"] = "cannot_connect"
         _LOGGER.exception("Client Connection Error")
+    except FileNotFoundError:
+        errors["ssl_cert_path"] = "ssl_invalid_cert_path"
+        _LOGGER.exception("%s - Invalid path for certificate", ssl_cert_path)
     except Exception:
         _LOGGER.exception("Unexpected exception")
         errors["base"] = "unknown"

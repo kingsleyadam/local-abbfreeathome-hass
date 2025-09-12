@@ -11,6 +11,7 @@
       "cannot_connect": "Verbindung fehlgeschlagen",
       "invalid_auth": "Ungültige Authentifizierung",
       "ssl_cert_required_when_verify_enabled": "SSL-Zertifikatspfad ist erforderlich, wenn SSL-Überprüfung aktiviert ist",
+      "ssl_invalid_cert_path": "Could not find SSL certificate",
       "unknown": "Unerwarteter Fehler",
       "unsupported_sysap_version": "Die aktuelle Version {sysap_version} des SysAP wird nicht unterstützt. Nur Version 2.6.0 oder neuer wird unterstützt."
     },
