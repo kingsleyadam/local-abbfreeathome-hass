@@ -100,6 +100,8 @@ The config setup will include some options to help configure the integration.
 | Include channels NOT on the free@home floorplan? | Whether to include channels that are not located on the free@home floorplan.                                                             |
 | Include virtual devices?                         | Whether to include virtual devices or not.                                                                                               |
 | Create Sub-Devices for each independent channel? | Wether to create sub-devices for each channel of a physical device, which can be placed independently on the free@home floorplan or not. |
+| Verify SSL Certificate                           | Enable SSL certificate verification. When disabled, HTTPS connections will not verify the server certificate.                            |
+| SSL Certificate File Path                        | Path to SSL certificate file to verify HTTPS/SSL connections.                                                                            |
 
 ###### Example
 
@@ -109,17 +111,25 @@ The config setup will include some options to help configure the integration.
 - **Include channels NOT on the free@home floorplan?**: False
 - **Include virtual devices?**: False
 - **Create Sub-Devices for each independent channel?**: False
+- **Verify SSL Certificate**: False
 - **SSL Certificate File Path**: (optional)
 
 #### SSL Support
 
-The integration now supports SSL connections to the ABB-free@home SysAP. To enable SSL with certificate verification:
+The integration supports SSL connections to the ABB-free@home SysAP. When setting up the intregration, if you provide `https` schema in the `Hostname` field you will be prompted with some SSL options. You can disable SSL verification completely by unhecking `Verify SSL Certificate`. You will still have an SSL connection, but the endpoint/certificated will not be verified and the connection may be insecure. To enable SSL with certificate verification:
 
-1. Provide the path to your SSL certificate file in the "SSL Certificate File Path" field
-2. When a certificate path is provided, the integration will enable SSL verification
-3. When no certificate path is provided, SSL verification is disabled (default behavior)
+1. Set Verify SSL Certificate to true
+2. Provide the path to your SSL certificate file in the "SSL Certificate File Path" field
 
 This allows you to securely connect to your SysAP when using HTTPS URLs while providing the necessary certificate for verification.
+
+##### Fetch SSL Certificate
+
+The certificate required for SSL verification is provided by the SysAP.
+
+- Navigate to your SysAP -> Settings --> free@home - Settings --> Local API
+- Under `Connection` you'll have an option to `Download Certificate`
+- Save the certificate to your Home Assistant server to be used by the integration for SSL verification
 
 #### SysAP Discovery
 
@@ -157,7 +167,7 @@ abbfreeathome_ci:
   username: installer
   password: <password>
   ssl_cert_path: /config/ssl/sysap_cert.pem
-  # SSL verification enabled automatically when certificate path is provided
+  verify_ssl: true
 ```
 
 **HTTPS without SSL certificate (verification disabled with warning):**
@@ -167,12 +177,8 @@ abbfreeathome_ci:
   host: https://<hostname or ip address>
   username: installer
   password: <password>
-  # No ssl_cert_path means verification is disabled (generates warning)
+  verify_ssl: false
 ```
-
-> **Security Note:** When using HTTPS without providing an SSL certificate path, SSL certificate verification is automatically disabled. This is because ABB SysAP devices typically use self-signed certificates. A warning will be logged to indicate this security consideration.
-
-> **Certificate Usage:** When an SSL certificate path is provided, verification is automatically enabled using that certificate file for validation.
 
 Each time Home Assistant is loaded, the `configuration.yaml` entry for `abbfreeathome_ci` will be checked, verified, and updated accordingly. This means that if you want to update your configuration, simply modify the `configuration.yaml` file and restart Home Assistant.
 

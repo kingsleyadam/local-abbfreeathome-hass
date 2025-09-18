@@ -27,7 +27,7 @@
           "verify_ssl": "SSL-Zertifikat überprüfen"
         },
         "data_description": {
-          "ssl_cert_path": "Pfad zur SSL-Zertifikatsdatei für HTTPS-Verbindungen. Bei Verwendung von HTTPS ohne Zertifikat wird die SSL-Überprüfung deaktiviert.",
+          "ssl_cert_path": "Pfad zur SSL-Zertifikatsdatei zur Überprüfung von HTTPS/SSL-Verbindungen.",
           "verify_ssl": "SSL-Zertifikatsüberprüfung aktivieren. Wenn deaktiviert, werden HTTPS-Verbindungen das Serverzertifikat nicht überprüfen."
         },
         "description": "Möchten Sie {name} ({serial}) auf {host} neu konfigurieren?",
@@ -39,7 +39,7 @@
           "verify_ssl": "SSL-Zertifikat überprüfen"
         },
         "data_description": {
-          "ssl_cert_path": "Pfad zur SSL-Zertifikatsdatei für HTTPS-Verbindungen. Erforderlich, wenn SSL-Überprüfung aktiviert ist.",
+          "ssl_cert_path": "Pfad zur SSL-Zertifikatsdatei zur Überprüfung von HTTPS/SSL-Verbindungen.",
           "verify_ssl": "SSL-Zertifikatsüberprüfung aktivieren. Wenn deaktiviert, werden HTTPS-Verbindungen das Serverzertifikat nicht überprüfen."
         },
         "description": "SSL-Einstellungen für HTTPS-Verbindung zu {host} konfigurieren",

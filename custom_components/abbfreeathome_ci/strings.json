@@ -50,7 +50,7 @@
           "verify_ssl": "Verify SSL Certificate"
         },
         "data_description": {
-          "ssl_cert_path": "Path to SSL certificate file for HTTPS connections. When using HTTPS without a certificate, SSL verification will be disabled.",
+          "ssl_cert_path": "Path to SSL certificate file to verify HTTPS/SSL connections.",
           "verify_ssl": "Enable SSL certificate verification. When disabled, HTTPS connections will not verify the server certificate."
         }
       }
