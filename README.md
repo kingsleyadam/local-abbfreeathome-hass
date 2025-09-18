@@ -112,7 +112,7 @@ The config setup will include some options to help configure the integration.
 - **Include virtual devices?**: False
 - **Create Sub-Devices for each independent channel?**: False
 - **Verify SSL Certificate**: False
-- **SSL Certificate File Path**: (optional)
+- **SSL Certificate File Path**: `config/ssl/sysap.crt`
 
 #### SSL Support
 
@@ -153,7 +153,7 @@ abbfreeathome_ci:
   include_orphan_channels: false
   include_virtual_devices: false
   create_subdevices: false
-  ssl_cert_path: /path/to/certificate.pem # optional
+  ssl_cert_path: config/ssl/sysap.crt # optional
   verify_ssl: false # optional
 ```
 
@@ -166,7 +166,7 @@ abbfreeathome_ci:
   host: https://<hostname or ip address>
   username: installer
   password: <password>
-  ssl_cert_path: /config/ssl/sysap_cert.pem
+  ssl_cert_path: config/ssl/sysap.crt
   verify_ssl: true
 ```
 
