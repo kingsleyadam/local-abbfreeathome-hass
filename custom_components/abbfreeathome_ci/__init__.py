@@ -34,7 +34,7 @@ from .const import (
     CONF_INCLUDE_ORPHAN_CHANNELS,
     CONF_INCLUDE_VIRTUAL_DEVICES,
     CONF_SERIAL,
-    CONF_SSL_CERT_PATH,
+    CONF_SSL_CERT_FILE_PATH,
     CONF_VERIFY_SSL,
     DOMAIN,
     MANUFACTURER,
@@ -78,7 +78,7 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional(CONF_INCLUDE_ORPHAN_CHANNELS, default=False): cv.boolean,
                 vol.Optional(CONF_INCLUDE_VIRTUAL_DEVICES, default=False): cv.boolean,
                 vol.Optional(CONF_CREATE_SUBDEVICES, default=False): cv.boolean,
-                vol.Optional(CONF_SSL_CERT_PATH): cv.string,
+                vol.Optional(CONF_SSL_CERT_FILE_PATH): cv.string,
                 vol.Optional(CONF_VERIFY_SSL): cv.boolean,
             }
         )
@@ -112,7 +112,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _client_session = async_get_clientsession(hass)
 
     # Get SSL certificate configuration
-    _ssl_cert_path = entry.data.get(CONF_SSL_CERT_PATH)
+    _ssl_cert_path = entry.data.get(CONF_SSL_CERT_FILE_PATH)
     _verify_ssl = entry.data.get(CONF_VERIFY_SSL)
 
     # Log SSL configuration warnings
@@ -307,8 +307,8 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
         if entry.minor_version < 5:
-            if CONF_SSL_CERT_PATH not in new_data:
-                new_data[CONF_SSL_CERT_PATH] = None
+            if CONF_SSL_CERT_FILE_PATH not in new_data:
+                new_data[CONF_SSL_CERT_FILE_PATH] = None
             if CONF_VERIFY_SSL not in new_data:
                 new_data[CONF_VERIFY_SSL] = False
 
