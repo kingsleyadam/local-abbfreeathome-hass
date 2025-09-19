@@ -112,7 +112,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _client_session = async_get_clientsession(hass)
 
     # Get SSL certificate configuration
-    _ssl_cert_path = entry.data.get(CONF_SSL_CERT_FILE_PATH)
+    _ssl_cert_file_path = entry.data.get(CONF_SSL_CERT_FILE_PATH)
     _verify_ssl = entry.data.get(CONF_VERIFY_SSL)
 
     # Log SSL configuration warnings
@@ -131,7 +131,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         host=entry.data[CONF_HOST],
         client_session=_client_session,
         verify_ssl=_verify_ssl,
-        ssl_cert_ca_file=_ssl_cert_path,
+        ssl_cert_ca_file=_ssl_cert_file_path,
     )
     await _free_at_home_settings.load()
 
@@ -166,7 +166,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             password=entry.data[CONF_PASSWORD],
             client_session=_client_session,
             verify_ssl=_verify_ssl,
-            ssl_cert_ca_file=_ssl_cert_path,
+            ssl_cert_ca_file=_ssl_cert_file_path,
         ),
         interfaces=_interfaces,
         include_orphan_channels=_include_orphan_channels,
