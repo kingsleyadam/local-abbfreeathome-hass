@@ -101,7 +101,7 @@ The config setup will include some options to help configure the integration.
 | Include virtual devices?                         | Whether to include virtual devices or not.                                                                                               |
 | Create Sub-Devices for each independent channel? | Wether to create sub-devices for each channel of a physical device, which can be placed independently on the free@home floorplan or not. |
 | Verify SSL Certificate                           | Enable SSL certificate verification. When disabled, HTTPS connections will not verify the server certificate.                            |
-| SSL Certificate File Path                        | Path to SSL certificate file to verify HTTPS/SSL connections.                                                                            |
+| SSL Certificate File Path                        | File path to SSL certificate file to verify HTTPS/SSL connections.                                                                       |
 
 ###### Example
 
@@ -153,7 +153,7 @@ abbfreeathome_ci:
   include_orphan_channels: false
   include_virtual_devices: false
   create_subdevices: false
-  ssl_cert_path: config/ssl/sysap.crt # optional
+  ssl_cert_file_path: config/ssl/sysap.crt # optional
   verify_ssl: false # optional
 ```
 
@@ -166,7 +166,7 @@ abbfreeathome_ci:
   host: https://<hostname or ip address>
   username: installer
   password: <password>
-  ssl_cert_path: config/ssl/sysap.crt
+  ssl_cert_file_path: config/ssl/sysap.crt
   verify_ssl: true
 ```
 

@@ -23,11 +23,11 @@
           "create_subdevices": "Create Sub-Devices for each independent channel?",
           "password": "Password",
           "username": "Username",
-          "ssl_cert_path": "SSL Certificate File Path",
+          "ssl_cert_file_path": "SSL Certificate File Path",
           "verify_ssl": "Verify SSL Certificate"
         },
         "data_description": {
-          "ssl_cert_path": "Path to SSL certificate file to verify HTTPS/SSL connections.",
+          "ssl_cert_file_path": "Path to SSL certificate file to verify HTTPS/SSL connections.",
           "verify_ssl": "Enable SSL certificate verification. When disabled, HTTPS connections will not verify the server certificate."
         },
         "description": "Do you want reconfigure {name} ({serial}) at {host}?",
@@ -35,11 +35,11 @@
       },
       "ssl_config": {
         "data": {
-          "ssl_cert_path": "SSL Certificate File Path",
+          "ssl_cert_file_path": "SSL Certificate File Path",
           "verify_ssl": "Verify SSL Certificate"
         },
         "data_description": {
-          "ssl_cert_path": "Path to SSL certificate file for HTTPS connections. Required when SSL verification is enabled.",
+          "ssl_cert_file_path": "Path to SSL certificate file for HTTPS connections. Required when SSL verification is enabled.",
           "verify_ssl": "Enable SSL certificate verification. When disabled, HTTPS connections will not verify the server certificate."
         },
         "description": "Configure SSL settings for HTTPS connection to {host}",

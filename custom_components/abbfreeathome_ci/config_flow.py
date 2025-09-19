@@ -88,22 +88,22 @@ def _schema_ssl_config() -> vol.Schema:
 async def validate_settings(
     host: str,
     client_session: ClientSession,
-    ssl_cert_path: str | None = None,
+    ssl_cert_file_path: str | None = None,
     verify_ssl: bool = True,
 ) -> tuple[FreeAtHomeSettings, dict[str, Any]]:
     """Validate the settings endpoint."""
     errors: dict[str, str] = {}
 
     # Validate SSL configuration
-    if verify_ssl and not ssl_cert_path:
-        errors["ssl_cert_path"] = "ssl_cert_required_when_verify_enabled"
+    if verify_ssl and not ssl_cert_file_path:
+        errors["ssl_cert_file_path"] = "ssl_cert_required_when_verify_enabled"
         return None, errors
 
     settings: FreeAtHomeSettings = FreeAtHomeSettings(
         host=host,
         client_session=client_session,
         verify_ssl=verify_ssl,
-        ssl_cert_ca_file=ssl_cert_path,
+        ssl_cert_ca_file=ssl_cert_file_path,
     )
 
     try:
@@ -117,8 +117,8 @@ async def validate_settings(
         errors["base"] = "cannot_connect"
         _LOGGER.exception("Client Connection Error")
     except FileNotFoundError:
-        errors["ssl_cert_path"] = "ssl_invalid_cert_path"
-        _LOGGER.exception("%s - Invalid path for certificate", ssl_cert_path)
+        errors["ssl_cert_file_path"] = "ssl_invalid_cert_path"
+        _LOGGER.exception("%s - Invalid path for certificate", ssl_cert_file_path)
 
     return settings, errors
 
@@ -128,15 +128,15 @@ async def validate_api(
     username: str,
     password: str,
     client_session: ClientSession,
-    ssl_cert_path: str | None = None,
+    ssl_cert_file_path: str | None = None,
     verify_ssl: bool = True,
 ) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
     errors: dict[str, str] = {}
 
     # Validate SSL configuration
-    if verify_ssl and not ssl_cert_path:
-        errors["ssl_cert_path"] = "ssl_cert_required_when_verify_enabled"
+    if verify_ssl and not ssl_cert_file_path:
+        errors["ssl_cert_file_path"] = "ssl_cert_required_when_verify_enabled"
         return errors
 
     api = FreeAtHomeApi(
@@ -145,7 +145,7 @@ async def validate_api(
         password=password,
         client_session=client_session,
         verify_ssl=verify_ssl,
-        ssl_cert_ca_file=ssl_cert_path,
+        ssl_cert_ca_file=ssl_cert_file_path,
     )
 
     try:
@@ -160,8 +160,8 @@ async def validate_api(
         errors["base"] = "cannot_connect"
         _LOGGER.exception("Client Connection Error")
     except FileNotFoundError:
-        errors["ssl_cert_path"] = "ssl_invalid_cert_path"
-        _LOGGER.exception("%s - Invalid path for certificate", ssl_cert_path)
+        errors["ssl_cert_file_path"] = "ssl_invalid_cert_path"
+        _LOGGER.exception("%s - Invalid path for certificate", ssl_cert_file_path)
     except Exception:
         _LOGGER.exception("Unexpected exception")
         errors["base"] = "unknown"
@@ -198,7 +198,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         # Check/Get Settings
         settings, settings_errors = await validate_settings(
             host=import_data.get(CONF_HOST),
-            ssl_cert_path=import_data.get(CONF_SSL_CERT_PATH),
+            ssl_cert_file_path=import_data.get(CONF_SSL_CERT_PATH),
             verify_ssl=import_data.get(CONF_VERIFY_SSL, _default_verify_ssl),
             client_session=async_get_clientsession(self.hass),
         )
@@ -215,7 +215,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             host=import_data.get(CONF_HOST),
             username=import_data.get(CONF_USERNAME),
             password=import_data.get(CONF_PASSWORD),
-            ssl_cert_path=import_data.get(CONF_SSL_CERT_PATH),
+            ssl_cert_file_path=import_data.get(CONF_SSL_CERT_PATH),
             verify_ssl=import_data.get(CONF_VERIFY_SSL, _default_verify_ssl),
             client_session=async_get_clientsession(self.hass),
         )
@@ -324,7 +324,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         # Now validate with SSL settings
         settings, settings_errors = await validate_settings(
             host=self._host,
-            ssl_cert_path=self._ssl_cert_path,
+            ssl_cert_file_path=self._ssl_cert_path,
             verify_ssl=self._verify_ssl,
             client_session=async_get_clientsession(self.hass),
         )
@@ -338,7 +338,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             host=self._host,
             username=self._username,
             password=self._password,
-            ssl_cert_path=self._ssl_cert_path,
+            ssl_cert_file_path=self._ssl_cert_path,
             verify_ssl=self._verify_ssl,
             client_session=async_get_clientsession(self.hass),
         )
@@ -473,7 +473,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         # Check/Get Settings with new host
         settings, settings_errors = await validate_settings(
             host=user_input[CONF_HOST],
-            ssl_cert_path=user_input.get(CONF_SSL_CERT_PATH),
+            ssl_cert_file_path=user_input.get(CONF_SSL_CERT_PATH),
             verify_ssl=user_input.get(CONF_VERIFY_SSL),
             client_session=async_get_clientsession(self.hass),
         )
@@ -488,7 +488,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             host=user_input[CONF_HOST],
             username=user_input[CONF_USERNAME],
             password=user_input[CONF_PASSWORD],
-            ssl_cert_path=user_input.get(CONF_SSL_CERT_PATH),
+            ssl_cert_file_path=user_input.get(CONF_SSL_CERT_PATH),
             verify_ssl=user_input.get(CONF_VERIFY_SSL),
             client_session=async_get_clientsession(self.hass),
         )

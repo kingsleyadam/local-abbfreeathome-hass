@@ -181,6 +181,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register SysAP as a Device
     _configuration_url = entry.data[CONF_HOST]
     parsed_url = urlparse(_configuration_url)
+
+    # The web interface doesn't seem to be accessible via https, sends the browser into a looping pattern.
+    # Because of this, register the SysAP with http config url instead of https
     if parsed_url.scheme == "https":
         _configuration_url = urlunparse(
             (

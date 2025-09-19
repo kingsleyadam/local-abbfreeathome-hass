@@ -23,11 +23,11 @@
           "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?",
           "password": "Passwort",
           "username": "Benutzername",
-          "ssl_cert_path": "SSL-Zertifikatsdateipfad",
+          "ssl_cert_file_path": "SSL-Zertifikatsdateipfad",
           "verify_ssl": "SSL-Zertifikat überprüfen"
         },
         "data_description": {
-          "ssl_cert_path": "Pfad zur SSL-Zertifikatsdatei zur Überprüfung von HTTPS/SSL-Verbindungen.",
+          "ssl_cert_file_path": "Pfad zur SSL-Zertifikatsdatei zur Überprüfung von HTTPS/SSL-Verbindungen.",
           "verify_ssl": "SSL-Zertifikatsüberprüfung aktivieren. Wenn deaktiviert, werden HTTPS-Verbindungen das Serverzertifikat nicht überprüfen."
         },
         "description": "Möchten Sie {name} ({serial}) auf {host} neu konfigurieren?",
@@ -35,11 +35,11 @@
       },
       "ssl_config": {
         "data": {
-          "ssl_cert_path": "SSL-Zertifikatsdateipfad",
+          "ssl_cert_file_path": "SSL-Zertifikatsdateipfad",
           "verify_ssl": "SSL-Zertifikat überprüfen"
         },
         "data_description": {
-          "ssl_cert_path": "Pfad zur SSL-Zertifikatsdatei zur Überprüfung von HTTPS/SSL-Verbindungen.",
+          "ssl_cert_file_path": "Pfad zur SSL-Zertifikatsdatei zur Überprüfung von HTTPS/SSL-Verbindungen.",
           "verify_ssl": "SSL-Zertifikatsüberprüfung aktivieren. Wenn deaktiviert, werden HTTPS-Verbindungen das Serverzertifikat nicht überprüfen."
         },
         "description": "SSL-Einstellungen für HTTPS-Verbindung zu {host} konfigurieren",
