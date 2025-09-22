@@ -100,6 +100,8 @@ The config setup will include some options to help configure the integration.
 | Include channels NOT on the free@home floorplan? | Whether to include channels that are not located on the free@home floorplan.                                                             |
 | Include virtual devices?                         | Whether to include virtual devices or not.                                                                                               |
 | Create Sub-Devices for each independent channel? | Wether to create sub-devices for each channel of a physical device, which can be placed independently on the free@home floorplan or not. |
+| Verify SSL Certificate                           | Enable SSL certificate verification. When disabled, HTTPS connections will not verify the server certificate.                            |
+| SSL Certificate File Path                        | File path to SSL certificate file to verify HTTPS/SSL connections.                                                                       |
 
 ###### Example
 
@@ -109,8 +111,25 @@ The config setup will include some options to help configure the integration.
 - **Include channels NOT on the free@home floorplan?**: False
 - **Include virtual devices?**: False
 - **Create Sub-Devices for each independent channel?**: False
+- **Verify SSL Certificate**: False
+- **SSL Certificate File Path**: `config/ssl/sysap.crt`
 
-> Note: Support for SSL is not provided yet. For a valid SSL connection a cert pulled from the SysAP must be provided, research to be done to know if Home Assistant supports such a scenario.
+#### SSL Support
+
+The integration supports SSL connections to the ABB-free@home SysAP. When setting up the intregration, if you provide `https` schema in the `Hostname` field you will be prompted with some SSL options. You can disable SSL verification completely by unhecking `Verify SSL Certificate`. You will still have an SSL connection, but the endpoint/certificate will not be verified and the connection may be insecure. To enable SSL with certificate verification:
+
+1. Set Verify SSL Certificate to true
+2. Provide the path to your SSL certificate file in the "SSL Certificate File Path" field
+
+This allows you to securely connect to your SysAP when using HTTPS URLs while providing the necessary certificate for verification.
+
+##### Fetch SSL Certificate
+
+The certificate required for SSL verification is provided by the SysAP.
+
+- Navigate to your SysAP -> Settings --> free@home - Settings --> Local API
+- Under `Connection` you'll have an option to `Download Certificate`
+- Save the certificate to your Home Assistant server to be used by the integration for SSL verification
 
 #### SysAP Discovery
 
@@ -133,7 +152,32 @@ abbfreeathome_ci:
   password: <password>
   include_orphan_channels: false
   include_virtual_devices: false
-  include_subdevices: false
+  create_subdevices: false
+  ssl_cert_file_path: config/ssl/sysap.crt # optional
+  verify_ssl: false # optional
+```
+
+**SSL Configuration Examples:**
+
+**With SSL certificate verification:**
+
+```yaml
+abbfreeathome_ci:
+  host: https://<hostname or ip address>
+  username: installer
+  password: <password>
+  ssl_cert_file_path: config/ssl/sysap.crt
+  verify_ssl: true
+```
+
+**HTTPS without SSL certificate (verification disabled with warning):**
+
+```yaml
+abbfreeathome_ci:
+  host: https://<hostname or ip address>
+  username: installer
+  password: <password>
+  verify_ssl: false
 ```
 
 Each time Home Assistant is loaded, the `configuration.yaml` entry for `abbfreeathome_ci` will be checked, verified, and updated accordingly. This means that if you want to update your configuration, simply modify the `configuration.yaml` file and restart Home Assistant.
@@ -169,14 +213,14 @@ triggers:
   - trigger: state
     entity_id:
       - event.study_area_rocker_switch_event
-    to: "Off"
+    to: 'Off'
     attribute: event_type
     id: study_area_event_off
   - trigger: state
     entity_id:
       - event.study_area_rocker_switch_event
     attribute: event_type
-    to: "On"
+    to: 'On'
     id: study_area_event_on
 conditions: []
 actions:

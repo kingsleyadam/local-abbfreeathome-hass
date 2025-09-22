@@ -1,54 +1,74 @@
 {
   "config": {
-    "step": {
-      "user": {
-        "title": "ABB-free@home - Konfiguration",
-        "description": "Trage den Hostnamen/IP-Adresse (mit Schema, z.B. http://), Benutzername und Passwort von Deinem ABB-free@home SysAP ein, den Du in Home Assistant integrieren möchtest.",
-        "data": {
-          "host": "Host",
-          "username": "Benutzername",
-          "password": "Passwort",
-          "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
-          "include_virtual_devices": "Virtuelle Geräte einschließen?",
-          "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?"
-        }
-      },
-      "zeroconf_confirm": {
-        "title": "ABB-free@home - Bestätigung",
-        "description": "Möchten Sie {name} ({serial}) auf {host} einrichten?",
-        "data": {
-          "host": "Host",
-          "username": "Benutzername",
-          "password": "Passwort",
-          "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
-          "include_virtual_devices": "Virtuelle Geräte einschließen?",
-          "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?"
-        }
-      },
-      "reconfigure": {
-        "title": "ABB-free@home - Neukonfiguration",
-        "description": "Möchten Sie {name} ({serial}) auf {host} neu konfigurieren?",
-        "data": {
-          "username": "Benutzername",
-          "password": "Passwort",
-          "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
-          "include_virtual_devices": "Virtuelle Geräte einschließen?",
-          "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?"
-        }
-      }
-    },
-    "error": {
-      "cannot_connect": "Verbindung fehlgeschlagen",
-      "invalid_auth": "Ungültige Authentifizierung",
-      "unknown": "Unerwarteter Fehler",
-      "unsupported_sysap_version": "Die aktuelle Version {sysap_version} des SysAP wird nicht unterstützt. Nur Version 2.6.0 oder neuer wird unterstützt."
-    },
     "abort": {
       "already_configured": "Gerät ist bereits konfiguriert",
       "already_in_progress": "Konfigurationsablauf wird bereits ausgeführt",
       "reauth_successful": "Die erneute Authentifizierung war erfolgreich",
-      "reconfigure_successful": "Die Neukonfiguration war erfolgreich",
-      "reconfigure_not_supported": "Die Neukonfiguration für diese Integration wird nur ab Home Assistant Version 2024.11.0 unterstützt."
+      "reconfigure_not_supported": "Die Neukonfiguration für diese Integration wird nur ab Home Assistant Version 2024.11.0 unterstützt.",
+      "reconfigure_successful": "Die Neukonfiguration war erfolgreich"
+    },
+    "error": {
+      "cannot_connect": "Verbindung fehlgeschlagen",
+      "invalid_auth": "Ungültige Authentifizierung",
+      "ssl_cert_required_when_verify_enabled": "SSL-Zertifikatspfad ist erforderlich, wenn SSL-Überprüfung aktiviert ist",
+      "ssl_invalid_cert_path": "SSL-Zertifikat konnte nicht gefunden werden",
+      "unknown": "Unerwarteter Fehler",
+      "unsupported_sysap_version": "Die aktuelle Version {sysap_version} des SysAP wird nicht unterstützt. Nur Version 2.6.0 oder neuer wird unterstützt."
+    },
+    "step": {
+      "reconfigure": {
+        "data": {
+          "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
+          "include_virtual_devices": "Virtuelle Geräte einschließen?",
+          "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?",
+          "password": "Passwort",
+          "username": "Benutzername",
+          "ssl_cert_file_path": "SSL-Zertifikatsdateipfad",
+          "verify_ssl": "SSL-Zertifikat überprüfen"
+        },
+        "data_description": {
+          "ssl_cert_file_path": "Pfad zur SSL-Zertifikatsdatei zur Überprüfung von HTTPS/SSL-Verbindungen.",
+          "verify_ssl": "SSL-Zertifikatsüberprüfung aktivieren. Wenn deaktiviert, werden HTTPS-Verbindungen das Serverzertifikat nicht überprüfen."
+        },
+        "description": "Möchten Sie {name} ({serial}) auf {host} neu konfigurieren?",
+        "title": "ABB-free@home - Neukonfiguration"
+      },
+      "ssl_config": {
+        "data": {
+          "ssl_cert_file_path": "SSL-Zertifikatsdateipfad",
+          "verify_ssl": "SSL-Zertifikat überprüfen"
+        },
+        "data_description": {
+          "ssl_cert_file_path": "Pfad zur SSL-Zertifikatsdatei zur Überprüfung von HTTPS/SSL-Verbindungen.",
+          "verify_ssl": "SSL-Zertifikatsüberprüfung aktivieren. Wenn deaktiviert, werden HTTPS-Verbindungen das Serverzertifikat nicht überprüfen."
+        },
+        "description": "SSL-Einstellungen für HTTPS-Verbindung zu {host} konfigurieren",
+        "title": "ABB-free@home - SSL-Konfiguration"
+      },
+      "user": {
+        "data": {
+          "host": "Host",
+          "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
+          "include_virtual_devices": "Virtuelle Geräte einschließen?",
+          "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?",
+          "password": "Passwort",
+          "username": "Benutzername"
+        },
+        "description": "Trage den Hostnamen/IP-Adresse (mit Schema, z.B. http://), Benutzername und Passwort von Deinem ABB-free@home SysAP ein, den Du in Home Assistant integrieren möchtest.",
+        "title": "ABB-free@home - Konfiguration"
+      },
+      "zeroconf_confirm": {
+        "data": {
+          "host": "Host",
+          "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
+          "include_virtual_devices": "Virtuelle Geräte einschließen?",
+          "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?",
+          "password": "Passwort",
+          "username": "Benutzername"
+        },
+        "description": "Möchten Sie {name} ({serial}) auf {host} einrichten?",
+        "title": "ABB-free@home - Bestätigung"
+      }
     }
   },
   "entity": {

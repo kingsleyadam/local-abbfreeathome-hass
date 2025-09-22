@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from urllib.parse import urlparse, urlunparse
 
 from abbfreeathome import FreeAtHome, FreeAtHomeApi
 from abbfreeathome.api import (
@@ -33,6 +34,8 @@ from .const import (
     CONF_INCLUDE_ORPHAN_CHANNELS,
     CONF_INCLUDE_VIRTUAL_DEVICES,
     CONF_SERIAL,
+    CONF_SSL_CERT_FILE_PATH,
+    CONF_VERIFY_SSL,
     DOMAIN,
     MANUFACTURER,
     VIRTUAL_DEVICE,
@@ -75,6 +78,8 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional(CONF_INCLUDE_ORPHAN_CHANNELS, default=False): cv.boolean,
                 vol.Optional(CONF_INCLUDE_VIRTUAL_DEVICES, default=False): cv.boolean,
                 vol.Optional(CONF_CREATE_SUBDEVICES, default=False): cv.boolean,
+                vol.Optional(CONF_SSL_CERT_FILE_PATH): cv.string,
+                vol.Optional(CONF_VERIFY_SSL): cv.boolean,
             }
         )
     },
@@ -106,9 +111,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Get the Home Assistant ClientSession Object
     _client_session = async_get_clientsession(hass)
 
+    # Get SSL certificate configuration
+    _ssl_cert_file_path = entry.data.get(CONF_SSL_CERT_FILE_PATH)
+    _verify_ssl = entry.data.get(CONF_VERIFY_SSL)
+
+    # Log SSL configuration warnings
+    _host = entry.data[CONF_HOST]
+    if _host.startswith("https://"):
+        if not _verify_ssl:
+            _LOGGER.warning(
+                "ABB-free@home HTTPS connection to SysAP without SSL verification, "
+                "This connection may not be secure. Consider providing an SSL certificate path and enabling SSL verification"
+            )
+        else:
+            _LOGGER.info("HTTPS connection with SSL certificate verification enabled")
+
     # Get settings from free@home SysAP
     _free_at_home_settings = FreeAtHomeSettings(
-        host=entry.data[CONF_HOST], client_session=_client_session
+        host=entry.data[CONF_HOST],
+        client_session=_client_session,
+        verify_ssl=_verify_ssl,
+        ssl_cert_ca_file=_ssl_cert_file_path,
     )
     await _free_at_home_settings.load()
 
@@ -142,6 +165,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             username=entry.data[CONF_USERNAME],
             password=entry.data[CONF_PASSWORD],
             client_session=_client_session,
+            verify_ssl=_verify_ssl,
+            ssl_cert_ca_file=_ssl_cert_file_path,
         ),
         interfaces=_interfaces,
         include_orphan_channels=_include_orphan_channels,
@@ -154,6 +179,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _free_at_home.load()
 
     # Register SysAP as a Device
+    _configuration_url = entry.data[CONF_HOST]
+    parsed_url = urlparse(_configuration_url)
+
+    # The web interface doesn't seem to be accessible via https, sends the browser into a looping pattern.
+    # Because of this, register the SysAP with http config url instead of https
+    if parsed_url.scheme == "https":
+        _configuration_url = urlunparse(
+            (
+                "http",
+                f"{parsed_url.hostname}",
+                parsed_url.path,
+                parsed_url.params,
+                parsed_url.query,
+                parsed_url.fragment,
+            )
+        )
+
     device_registry = dr.async_get(hass)
     device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
@@ -164,7 +206,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         serial_number=entry.data[CONF_SERIAL],
         sw_version=_free_at_home_settings.version,
         hw_version=_free_at_home_settings.hardware_version,
-        configuration_url=entry.data[CONF_HOST],
+        configuration_url=_configuration_url,
     )
 
     for _device in _free_at_home.get_devices().values():
@@ -262,6 +304,16 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         hass.config_entries.async_update_entry(
             entry, data=new_data, version=1, minor_version=4
+        )
+
+        if entry.minor_version < 5:
+            if CONF_SSL_CERT_FILE_PATH not in new_data:
+                new_data[CONF_SSL_CERT_FILE_PATH] = None
+            if CONF_VERIFY_SSL not in new_data:
+                new_data[CONF_VERIFY_SSL] = False
+
+        hass.config_entries.async_update_entry(
+            entry, data=new_data, version=1, minor_version=5
         )
 
     _LOGGER.debug(
