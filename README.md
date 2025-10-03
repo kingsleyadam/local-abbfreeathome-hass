@@ -116,7 +116,7 @@ The config setup will include some options to help configure the integration.
 
 #### SSL Support
 
-The integration supports SSL connections to the ABB-free@home SysAP. When setting up the intregration, if you provide `https` schema in the `Hostname` field you will be prompted with some SSL options. You can disable SSL verification completely by unhecking `Verify SSL Certificate`. You will still have an SSL connection, but the endpoint/certificate will not be verified and the connection may be insecure. To enable SSL with certificate verification:
+The integration supports SSL connections to the ABB-free@home SysAP. When setting up the integration, if you provide `https` schema in the `Hostname` field you will be prompted with some SSL options. You can disable SSL verification completely by unhecking `Verify SSL Certificate`. You will still have an SSL connection, but the endpoint/certificate will not be verified and the connection may be insecure. To enable SSL with certificate verification:
 
 1. Set Verify SSL Certificate to true
 2. Provide the path to your SSL certificate file in the "SSL Certificate File Path" field. The path will vary depending on your Home Assistant installation. With HAOS, if you place the ssl cert in your `config/` directory then the path would begin with `../config/`. This is the relative path to the Home Assistant installation directory.
