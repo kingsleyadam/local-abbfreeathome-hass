@@ -112,14 +112,14 @@ The config setup will include some options to help configure the integration.
 - **Include virtual devices?**: False
 - **Create Sub-Devices for each independent channel?**: False
 - **Verify SSL Certificate**: False
-- **SSL Certificate File Path**: `config/ssl/sysap.crt`
+- **SSL Certificate File Path**: `../config/ssl/sysap.crt`
 
 #### SSL Support
 
-The integration supports SSL connections to the ABB-free@home SysAP. When setting up the intregration, if you provide `https` schema in the `Hostname` field you will be prompted with some SSL options. You can disable SSL verification completely by unhecking `Verify SSL Certificate`. You will still have an SSL connection, but the endpoint/certificate will not be verified and the connection may be insecure. To enable SSL with certificate verification:
+The integration supports SSL connections to the ABB-free@home SysAP. When setting up the integration, if you provide `https` schema in the `Hostname` field you will be prompted with some SSL options. You can disable SSL verification completely by unhecking `Verify SSL Certificate`. You will still have an SSL connection, but the endpoint/certificate will not be verified and the connection may be insecure. To enable SSL with certificate verification:
 
 1. Set Verify SSL Certificate to true
-2. Provide the path to your SSL certificate file in the "SSL Certificate File Path" field
+2. Provide the path to your SSL certificate file in the "SSL Certificate File Path" field. The path will vary depending on your Home Assistant installation. With HAOS, if you place the ssl cert in your `config/` directory then the path would begin with `../config/`. This is the relative path to the Home Assistant installation directory.
 
 This allows you to securely connect to your SysAP when using HTTPS URLs while providing the necessary certificate for verification.
 
@@ -153,7 +153,7 @@ abbfreeathome_ci:
   include_orphan_channels: false
   include_virtual_devices: false
   create_subdevices: false
-  ssl_cert_file_path: config/ssl/sysap.crt # optional
+  ssl_cert_file_path: ../config/ssl/sysap.crt # optional
   verify_ssl: false # optional
 ```
 
@@ -166,7 +166,7 @@ abbfreeathome_ci:
   host: https://<hostname or ip address>
   username: installer
   password: <password>
-  ssl_cert_file_path: config/ssl/sysap.crt
+  ssl_cert_file_path: ../config/ssl/sysap.crt
   verify_ssl: true
 ```
 
