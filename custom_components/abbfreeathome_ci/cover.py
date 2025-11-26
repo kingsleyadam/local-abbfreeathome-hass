@@ -89,7 +89,7 @@ class FreeAtHomeCoverEntity(CoverEntity):
     def __init__(
         self,
         channel: AtticWindowActuator | AwningActuator | BlindActuator | ShutterActuator,
-        entity_description_kwargs: dict[str:Any],
+        entity_description_kwargs: dict[str, Any],
         sysap_serial_number: str,
         create_subdevices: bool,
     ) -> None:
