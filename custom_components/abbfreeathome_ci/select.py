@@ -147,7 +147,7 @@ class FreeAtHomeSelectEntity(SelectEntity):
         | DimmingActuator
         | ShutterActuator
         | SwitchActuator,
-        entity_description_kwargs: dict[str:Any],
+        entity_description_kwargs: dict[str, Any],
         current_option_attribute: str,
         select_option_method: str,
         sysap_serial_number: str,

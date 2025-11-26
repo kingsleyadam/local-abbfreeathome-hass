@@ -3,6 +3,7 @@
 from typing import Any
 
 from abbfreeathome import FreeAtHome
+from abbfreeathome.channels.air_quality_sensor import AirQualitySensor
 from abbfreeathome.channels.brightness_sensor import BrightnessSensor
 from abbfreeathome.channels.movement_detector import (
     BlockableMovementDetector,
@@ -22,7 +23,13 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import LIGHT_LUX, UnitOfSpeed, UnitOfTemperature
+from homeassistant.const import (
+    CONCENTRATION_PARTS_PER_MILLION,
+    LIGHT_LUX,
+    PERCENTAGE,
+    UnitOfSpeed,
+    UnitOfTemperature,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -30,6 +37,35 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
 
 SENSOR_DESCRIPTIONS = {
+    "AirQualitySensorCO2": {
+        "channel_class": AirQualitySensor,
+        "value_attribute": "co2",
+        "entity_description_kwargs": {
+            "device_class": SensorDeviceClass.CO2,
+            "native_unit_of_measurement": CONCENTRATION_PARTS_PER_MILLION,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "translation_key": "air_quality_sensor_co2",
+        },
+    },
+    "AirQualitySensorVOC": {
+        "channel_class": AirQualitySensor,
+        "value_attribute": "voc_index",
+        "entity_description_kwargs": {
+            "device_class": SensorDeviceClass.VOLATILE_ORGANIC_COMPOUNDS_PARTS,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "translation_key": "air_quality_sensor_voc",
+        },
+    },
+    "AirQualitySensorHumidity": {
+        "channel_class": AirQualitySensor,
+        "value_attribute": "humidity",
+        "entity_description_kwargs": {
+            "device_class": SensorDeviceClass.HUMIDITY,
+            "native_unit_of_measurement": PERCENTAGE,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "translation_key": "air_quality_sensor_humidity",
+        },
+    },
     "BrightnessSensor": {
         "channel_class": BrightnessSensor,
         "value_attribute": "state",
@@ -135,9 +171,13 @@ class FreeAtHomeSensorEntity(SensorEntity):
 
     def __init__(
         self,
-        channel: BrightnessSensor | MovementDetector | TemperatureSensor | WindSensor,
+        channel: AirQualitySensor
+        | BrightnessSensor
+        | MovementDetector
+        | TemperatureSensor
+        | WindSensor,
         value_attribute: str,
-        entity_description_kwargs: dict[str:Any],
+        entity_description_kwargs: dict[str, Any],
         sysap_serial_number: str,
         create_subdevices: bool,
     ) -> None:

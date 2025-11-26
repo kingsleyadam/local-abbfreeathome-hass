@@ -73,6 +73,12 @@
   },
   "entity": {
     "binary_sensor": {
+      "air_quality_sensor_co2_alert": {
+        "name": "CO2 Alert"
+      },
+      "air_quality_sensor_voc_alert": {
+        "name": "VOC Alert"
+      },
       "brightness_sensor": {
         "name": "Brightness Alarm"
       },
@@ -299,6 +305,15 @@
       }
     },
     "sensor": {
+      "air_quality_sensor_co2": {
+        "name": "CO2"
+      },
+      "air_quality_sensor_voc": {
+        "name": "VOC Index"
+      },
+      "air_quality_sensor_humidity": {
+        "name": "Humidity"
+      },
       "brightness_sensor": {
         "name": "Illuminance"
       },

@@ -28,6 +28,7 @@
         "editor.tabSize": 2,
         "editor.insertSpaces": true,
         "editor.detectIndentation": false,
+        "prettier.singleQuote": true,
         "files.insertFinalNewline": true,
         "files.trimTrailingWhitespace": true,
         "python.defaultInterpreterPath": "/workspaces/local-abbfreeathome-hass/.venv/bin/python",

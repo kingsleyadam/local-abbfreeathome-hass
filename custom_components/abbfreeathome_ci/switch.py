@@ -179,7 +179,7 @@ class FreeAtHomeSwitchEntity(SwitchEntity):
         | VirtualWindowDoorSensor
         | WelcomeIPMuteActuator,
         value_attribute: str,
-        entity_description_kwargs: dict[str:Any],
+        entity_description_kwargs: dict[str, Any],
         sysap_serial_number: str,
         create_subdevices: bool,
     ) -> None:

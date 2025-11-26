@@ -3,6 +3,7 @@
 from typing import Any
 
 from abbfreeathome import FreeAtHome
+from abbfreeathome.channels.air_quality_sensor import AirQualitySensor
 from abbfreeathome.channels.brightness_sensor import BrightnessSensor
 from abbfreeathome.channels.carbon_monoxide_sensor import CarbonMonoxideSensor
 from abbfreeathome.channels.movement_detector import (
@@ -28,6 +29,22 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
 
 SENSOR_DESCRIPTIONS = {
+    "AirQualitySensorCO2Alert": {
+        "channel_class": AirQualitySensor,
+        "value_attribute": "co2_alert",
+        "entity_description_kwargs": {
+            "device_class": BinarySensorDeviceClass.GAS,
+            "translation_key": "air_quality_sensor_co2_alert",
+        },
+    },
+    "AirQualitySensorVOCAlert": {
+        "channel_class": AirQualitySensor,
+        "value_attribute": "voc_alert",
+        "entity_description_kwargs": {
+            "device_class": BinarySensorDeviceClass.GAS,
+            "translation_key": "air_quality_sensor_voc_alert",
+        },
+    },
     "CarbonMonoxideSensorOnOff": {
         "channel_class": CarbonMonoxideSensor,
         "value_attribute": "state",
@@ -135,7 +152,8 @@ class FreeAtHomeBinarySensorEntity(BinarySensorEntity):
 
     def __init__(
         self,
-        channel: BrightnessSensor
+        channel: AirQualitySensor
+        | BrightnessSensor
         | CarbonMonoxideSensor
         | MovementDetector
         | RainSensor
@@ -144,7 +162,7 @@ class FreeAtHomeBinarySensorEntity(BinarySensorEntity):
         | WindowDoorSensor
         | WindSensor,
         value_attribute: str,
-        entity_description_kwargs: dict[str:Any],
+        entity_description_kwargs: dict[str, Any],
         sysap_serial_number: str,
         create_subdevices: bool,
     ) -> None:
