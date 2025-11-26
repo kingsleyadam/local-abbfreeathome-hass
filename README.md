@@ -26,6 +26,7 @@ The current list of supported devices by function are:
 
 | Function                                           | Platform(s)               |
 | -------------------------------------------------- | ------------------------- |
+| FID_AIRQUALITY_SENSOR\*                            | `Binary Sensor`, `Sensor` |
 | FID_ATTIC_WINDOW_ACTUATOR                          | `Cover`                   |
 | FID_AWNING_ACTUATOR                                | `Cover`                   |
 | FID_BLIND_ACTUATOR                                 | `Cover`                   |
