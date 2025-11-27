@@ -54,7 +54,7 @@ jobs:
         run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
 
       - name: Publish Test Report
-        uses: mikepenz/action-junit-report@v5.0.0-a03
+        uses: mikepenz/action-junit-report@v6.0.1
         if: success() || failure()
         with:
           report_paths: junit/test-results.xml
