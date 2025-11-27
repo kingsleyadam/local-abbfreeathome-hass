@@ -158,3 +158,33 @@ split-on-trailing-comma = false
 
 [tool.ruff.lint.mccabe]
 max-complexity = 25
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests",
+]
+norecursedirs = [
+    ".git",
+    "testing_config",
+]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["SLF001"]
+
+[tool.coverage.run]
+branch = true
+source = ["custom_components/abbfreeathome_ci"]
+omit = [
+  "*/tests/*",
+  "test_*",
+  "custom_components/abbfreeathome_ci/__init__.py" # Ignore in code-coverage until tests added
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
