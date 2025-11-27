@@ -22,6 +22,14 @@ jobs:
         with:
           python-version: '3.13'
 
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('dev-requirements.txt', 'custom_components/abbfreeathome_ci/manifest.json') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Install integration dependencies
         run: |
           pip install $(jq -r '.requirements[]' custom_components/abbfreeathome_ci/manifest.json)
