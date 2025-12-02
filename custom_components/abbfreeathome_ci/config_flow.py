@@ -551,7 +551,9 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         if step_id == "ssl_config":
             _schema = _schema_ssl_config()
         else:
-            _schema = _schema_with_defaults(include_ssl=step_id != "user")
+            _schema = _schema_with_defaults(
+                include_ssl=step_id not in ("user", "zeroconf_confirm")
+            )
 
         # Update suggested value if provided
         if suggested_values:
