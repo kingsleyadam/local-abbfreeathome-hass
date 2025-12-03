@@ -930,7 +930,7 @@ async def test_async_setup_entry_device_without_channels(
 
 
 async def test_async_migrate_entry_from_v1_1(hass: HomeAssistant) -> None:
-    """Test migration from version 1.1 (covers branch 250->253)."""
+    """Test migration from version 1.1 through all intermediate versions to 1.5."""
     entry = MockConfigEntry(
         version=1,
         minor_version=1,
