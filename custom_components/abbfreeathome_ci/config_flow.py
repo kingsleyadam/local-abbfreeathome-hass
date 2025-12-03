@@ -395,9 +395,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._title = f"{settings.name} ({settings.serial_number})"
         self.context["title_placeholders"] = {CONF_NAME: self._title}
 
-        return self._async_show_setup_form(
-            step_id="zeroconf", suggested_values={CONF_HOST: self._host}
-        )
+        return await self.async_step_zeroconf_confirm()
 
     async def async_step_zeroconf_confirm(
         self, user_input: dict[str, Any] | None = None
@@ -458,8 +456,10 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         """Handle user initiated reconfigure flow."""
         try:
             entry = self._get_reconfigure_entry()
-        except AttributeError:
-            return self.async_abort(reason="reconfigure_not_supported")
+        except AttributeError:  # pragma: no cover
+            return self.async_abort(
+                reason="reconfigure_not_supported"
+            )  # pragma: no cover
 
         self._host = entry.data.get(CONF_HOST)
         self._name = entry.data.get(CONF_NAME)
@@ -551,7 +551,9 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         if step_id == "ssl_config":
             _schema = _schema_ssl_config()
         else:
-            _schema = _schema_with_defaults(include_ssl=step_id != "user")
+            _schema = _schema_with_defaults(
+                include_ssl=step_id not in ("user", "zeroconf_confirm")
+            )
 
         # Update suggested value if provided
         if suggested_values:
