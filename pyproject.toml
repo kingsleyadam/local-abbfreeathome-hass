@@ -179,7 +179,6 @@ source = ["custom_components/abbfreeathome_ci"]
 omit = [
   "*/tests/*",
   "test_*",
-  "custom_components/abbfreeathome_ci/__init__.py" # Ignore in code-coverage until tests added
 ]
 
 [tool.coverage.report]

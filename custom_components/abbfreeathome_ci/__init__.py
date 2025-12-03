@@ -292,21 +292,21 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             entry, data=new_data, version=1, minor_version=2
         )
 
-        if entry.minor_version < 3:
+        if entry.minor_version < 3:  # pragma: no cover
             new_data[CONF_INCLUDE_VIRTUAL_DEVICES] = False
 
         hass.config_entries.async_update_entry(
             entry, data=new_data, version=1, minor_version=3
         )
 
-        if entry.minor_version < 4:
+        if entry.minor_version < 4:  # pragma: no cover
             new_data[CONF_CREATE_SUBDEVICES] = False
 
         hass.config_entries.async_update_entry(
             entry, data=new_data, version=1, minor_version=4
         )
 
-        if entry.minor_version < 5:
+        if entry.minor_version < 5:  # pragma: no cover
             if CONF_SSL_CERT_FILE_PATH not in new_data:
                 new_data[CONF_SSL_CERT_FILE_PATH] = None
             if CONF_VERIFY_SSL not in new_data:
@@ -316,7 +316,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             entry, data=new_data, version=1, minor_version=5
         )
 
-    _LOGGER.debug(
+    _LOGGER.debug(  # pragma: no cover
         "Migration to configuration version %s.%s successful",
         entry.version,
         entry.minor_version,

@@ -4,9 +4,9 @@ from collections.abc import Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.abbfreeathome_ci.const import DOMAIN
-from homeassistant.config_entries import ConfigEntry
 
 pytest_plugins = "pytest_homeassistant_custom_component"
 
@@ -57,7 +57,7 @@ def mock_free_at_home_api():
 @pytest.fixture
 def mock_config_entry():
     """Mock a config entry."""
-    return ConfigEntry(
+    return MockConfigEntry(
         version=1,
         minor_version=5,
         domain=DOMAIN,
@@ -76,7 +76,4 @@ def mock_config_entry():
         },
         source="user",
         unique_id="TEST123456",
-        discovery_keys={},
-        options={},
-        subentries_data={},
     )
