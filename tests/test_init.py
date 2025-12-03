@@ -961,7 +961,7 @@ async def test_async_migrate_entry_from_v1_1(hass: HomeAssistant) -> None:
 
 
 async def test_async_migrate_entry_from_v1_3(hass: HomeAssistant) -> None:
-    """Test migration from version 1.3 (covers branch 295->298)."""
+    """Test migration from version 1.3 through remaining versions to 1.5."""
     entry = MockConfigEntry(
         version=1,
         minor_version=3,
