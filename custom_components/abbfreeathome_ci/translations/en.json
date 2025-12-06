@@ -367,6 +367,14 @@
       "welcome_ip_mute_actuator": {
         "name": "Mute"
       }
+    },
+    "valve": {
+      "heating_actuator": {
+        "name": "Heating Valve"
+      },
+      "cooling_actuator": {
+        "name": "Cooling Valve"
+      }
     }
   },
   "services": {
