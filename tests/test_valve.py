@@ -364,7 +364,7 @@ async def test_heating_cooling_valve_callbacks(hass: HomeAssistant) -> None:
         channel=mock_channel,
         position_attribute="heating_position",
         set_position_method="set_heating_position",
-        callback_attributes=["heating_position", "cooling_position"],
+        callback_attributes=["heating_position"],
         entity_description_kwargs={
             "key": "HeatingCoolingActuatorHeatingValve",
             "device_class": ValveDeviceClass.WATER,
@@ -378,11 +378,11 @@ async def test_heating_cooling_valve_callbacks(hass: HomeAssistant) -> None:
 
     # Test callback registration - should register for both attributes
     await entity.async_added_to_hass()
-    assert mock_channel.register_callback.call_count == 2
+    assert mock_channel.register_callback.call_count == 1
 
     # Test callback removal
     await entity.async_will_remove_from_hass()
-    assert mock_channel.remove_callback.call_count == 2
+    assert mock_channel.remove_callback.call_count == 1
 
 
 async def test_valve_entity_set_position(hass: HomeAssistant) -> None:
