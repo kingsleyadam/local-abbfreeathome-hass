@@ -368,7 +368,7 @@ async def test_heating_cooling_valve_callbacks(hass: HomeAssistant) -> None:
         entity_description_kwargs={
             "key": "HeatingCoolingActuatorHeatingValve",
             "device_class": ValveDeviceClass.WATER,
-            "translation_key": "heating_cooling_actuator_heating",
+            "translation_key": "heating_actuator",
         },
         sysap_serial_number="TEST123456",
         create_subdevices=False,
