@@ -1,2 +1,5 @@
-pytest-homeassistant-custom-component==0.13.297
+# Pin pycares to <5.0.0 due to breaking API changes in 5.0.0 that cause
+# AttributeError with aiodns 3.5.0 (missing ares_query_a_result attribute)
+pycares<5.0.0
+pytest-homeassistant-custom-component==0.13.300
 homeassistant>=2025.6.0
