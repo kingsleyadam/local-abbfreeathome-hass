@@ -167,6 +167,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             client_session=_client_session,
             verify_ssl=_verify_ssl,
             ssl_cert_ca_file=_ssl_cert_file_path,
+            wait_for_result=False,  # Sets fire and forget behavior
         ),
         interfaces=_interfaces,
         include_orphan_channels=_include_orphan_channels,
