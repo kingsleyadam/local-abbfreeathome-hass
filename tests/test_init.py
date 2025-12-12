@@ -108,6 +108,7 @@ async def test_async_setup_entry_http(
             "custom_components.abbfreeathome_ci.FreeAtHome",
             return_value=mock_free_at_home,
         ),
+        patch("custom_components.abbfreeathome_ci.FreeAtHomeApi") as mock_api_class,
         patch(
             "custom_components.abbfreeathome_ci.async_get_clientsession"
         ) as mock_session,
@@ -117,6 +118,7 @@ async def test_async_setup_entry_http(
         ),
     ):
         mock_session.return_value = MagicMock()
+        mock_api_class.return_value = MagicMock()
 
         result = await async_setup_entry(hass, mock_config_entry)
 
@@ -126,6 +128,10 @@ async def test_async_setup_entry_http(
     mock_free_at_home_settings.load.assert_called_once()
     mock_free_at_home.get_config.assert_called_once()
     mock_free_at_home.load.assert_called_once()
+    # Verify FreeAtHomeApi was instantiated with wait_for_result=False
+    mock_api_class.assert_called_once()
+    call_kwargs = mock_api_class.call_args.kwargs
+    assert call_kwargs["wait_for_result"] is False
 
 
 async def test_async_setup_entry_https_without_verification(
@@ -167,6 +173,7 @@ async def test_async_setup_entry_https_without_verification(
             "custom_components.abbfreeathome_ci.FreeAtHome",
             return_value=mock_free_at_home,
         ),
+        patch("custom_components.abbfreeathome_ci.FreeAtHomeApi") as mock_api_class,
         patch("custom_components.abbfreeathome_ci.async_get_clientsession"),
         patch("custom_components.abbfreeathome_ci._LOGGER") as mock_logger,
         patch(
@@ -174,11 +181,16 @@ async def test_async_setup_entry_https_without_verification(
             return_value=AsyncMock(),
         ),
     ):
+        mock_api_class.return_value = MagicMock()
         result = await async_setup_entry(hass, https_entry)
 
     assert result is True
     mock_logger.warning.assert_called_once()
     assert "without SSL verification" in mock_logger.warning.call_args[0][0]
+    # Verify FreeAtHomeApi was instantiated with wait_for_result=False
+    mock_api_class.assert_called_once()
+    call_kwargs = mock_api_class.call_args.kwargs
+    assert call_kwargs["wait_for_result"] is False
 
 
 async def test_async_setup_entry_https_with_verification(
@@ -220,6 +232,7 @@ async def test_async_setup_entry_https_with_verification(
             "custom_components.abbfreeathome_ci.FreeAtHome",
             return_value=mock_free_at_home,
         ),
+        patch("custom_components.abbfreeathome_ci.FreeAtHomeApi") as mock_api_class,
         patch("custom_components.abbfreeathome_ci.async_get_clientsession"),
         patch("custom_components.abbfreeathome_ci._LOGGER") as mock_logger,
         patch(
@@ -227,11 +240,16 @@ async def test_async_setup_entry_https_with_verification(
             return_value=AsyncMock(),
         ),
     ):
+        mock_api_class.return_value = MagicMock()
         result = await async_setup_entry(hass, https_entry)
 
     assert result is True
     mock_logger.info.assert_called_once()
     assert "SSL certificate verification enabled" in mock_logger.info.call_args[0][0]
+    # Verify FreeAtHomeApi was instantiated with wait_for_result=False
+    mock_api_class.assert_called_once()
+    call_kwargs = mock_api_class.call_args.kwargs
+    assert call_kwargs["wait_for_result"] is False
 
 
 async def test_async_setup_entry_with_virtual_devices(
