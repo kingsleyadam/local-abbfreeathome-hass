@@ -88,7 +88,7 @@ class FreeAtHomeLightEntity(LightEntity):
                 callback=self.async_write_ha_state,
             )
         if hasattr(self._channel, "color_temperature"):
-            await self._channel.register_callback(
+            self._channel.register_callback(
                 callback_attribute="color_temperature",
                 callback=self.async_write_ha_state,
             )
@@ -101,7 +101,7 @@ class FreeAtHomeLightEntity(LightEntity):
                 callback=self.async_write_ha_state,
             )
         if hasattr(self._channel, "color_temperature"):
-            await self._channel.remove_callback(
+            self._channel.remove_callback(
                 callback_attribute="color_temperature",
                 callback=self.async_write_ha_state,
             )
@@ -158,12 +158,9 @@ class FreeAtHomeLightEntity(LightEntity):
     @property
     def supported_color_modes(self) -> set[str] | None:
         """Flag supported color modes."""
-        _color_modes = {ColorMode.BRIGHTNESS}
-
         if hasattr(self._channel, "color_temperature"):
-            _color_modes.add(ColorMode.COLOR_TEMP)
-
-        return _color_modes
+            return {ColorMode.COLOR_TEMP}
+        return {ColorMode.BRIGHTNESS}
 
     @property
     def unique_id(self) -> str | None:
