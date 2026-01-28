@@ -47,5 +47,5 @@
       }
     }
   },
-  "postCreateCommand": "uv venv && uv pip install -r dev-requirements.txt && uv pip install $(jq -r '.requirements[]' custom_components/abbfreeathome_ci/manifest.json) && pre-commit install"
+  "postCreateCommand": "uv venv --clear && uv pip install -r dev-requirements.txt && uv pip install $(jq -r '.requirements[]' custom_components/abbfreeathome_ci/manifest.json) && pre-commit install"
 }
