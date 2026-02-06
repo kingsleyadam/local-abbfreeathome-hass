@@ -41,10 +41,11 @@ jobs:
       - name: Test with pytest
         run: |
           pytest \
-            --cov=. \
+            --cov=custom_components.abbfreeathome_ci \
             --cov-branch \
             --cov-report=xml:coverage/coverage.xml \
-            --junitxml=junit/test-results.xml
+            --junitxml=junit/test-results.xml \
+            tests/
 
       - name: Code Coverage Summary Report
         id: coverage
