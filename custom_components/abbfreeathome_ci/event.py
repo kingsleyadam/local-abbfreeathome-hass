@@ -90,9 +90,9 @@ EVENT_DESCRIPTIONS = {
     },
     "EventVirtualRoomTemperatureControllerOnOff": {
         "channel_class": VirtualRoomTemperatureController,
-        "event_type_callback": lambda requested_state: "On"
-        if requested_state
-        else "Off",
+        "event_type_callback": lambda requested_state: (
+            "On" if requested_state else "Off"
+        ),
         "state_attribute": "requested_state",
         "entity_description_kwargs": {
             "device_class": EventDeviceClass.BUTTON,
@@ -102,9 +102,9 @@ EVENT_DESCRIPTIONS = {
     },
     "EventVirtualRoomTemperatureControllerEcoOnOff": {
         "channel_class": VirtualRoomTemperatureController,
-        "event_type_callback": lambda requested_eco_mode: "On"
-        if requested_eco_mode
-        else "Off",
+        "event_type_callback": lambda requested_eco_mode: (
+            "On" if requested_eco_mode else "Off"
+        ),
         "state_attribute": "requested_eco_mode",
         "entity_description_kwargs": {
             "device_class": EventDeviceClass.BUTTON,
@@ -114,7 +114,9 @@ EVENT_DESCRIPTIONS = {
     },
     "EventVirtualRoomTemperatureControllerTargetTemperature": {
         "channel_class": VirtualRoomTemperatureController,
-        "event_type_callback": lambda requested_target_temperature: "requested_target_temperature",
+        "event_type_callback": lambda requested_target_temperature: (
+            "requested_target_temperature"
+        ),
         "state_attribute": "requested_target_temperature",
         "entity_description_kwargs": {
             "event_types": ["requested_target_temperature"],
@@ -124,9 +126,9 @@ EVENT_DESCRIPTIONS = {
     },
     "EventVirtualSwitchActuatorOnOff": {
         "channel_class": VirtualSwitchActuator,
-        "event_type_callback": lambda requested_state: "On"
-        if requested_state
-        else "Off",
+        "event_type_callback": lambda requested_state: (
+            "On" if requested_state else "Off"
+        ),
         "state_attribute": "requested_state",
         "entity_description_kwargs": {
             "device_class": EventDeviceClass.BUTTON,
