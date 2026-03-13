@@ -4,7 +4,11 @@ from typing import Any
 
 from abbfreeathome import FreeAtHome
 from abbfreeathome.channels.movement_detector import BlockableMovementDetector
-from abbfreeathome.channels.switch_actuator import SwitchActuator, WelcomeIPMuteActuator
+from abbfreeathome.channels.switch_actuator import (
+    MWireSwitchActuator,
+    SwitchActuator,
+    WelcomeIPMuteActuator,
+)
 from abbfreeathome.channels.switch_sensor import DimmingSensor, SwitchSensor
 from abbfreeathome.channels.virtual.virtual_brightness_sensor import (
     VirtualBrightnessSensor,
@@ -45,6 +49,13 @@ SWITCH_DESCRIPTIONS = {
     },
     "SwitchActuator": {
         "channel_class": SwitchActuator,
+        "value_attribute": "state",
+        "entity_description_kwargs": {
+            "device_class": SwitchDeviceClass.SWITCH,
+        },
+    },
+    "MWireSwitchActuator": {
+        "channel_class": MWireSwitchActuator,
         "value_attribute": "state",
         "entity_description_kwargs": {
             "device_class": SwitchDeviceClass.SWITCH,
@@ -171,11 +182,17 @@ class FreeAtHomeSwitchEntity(SwitchEntity):
 
     def __init__(
         self,
-        channel: DimmingSensor
+        channel: BlockableMovementDetector
+        | DimmingSensor
+        | MWireSwitchActuator
         | SwitchActuator
         | SwitchSensor
         | VirtualBrightnessSensor
+        | VirtualRainSensor
+        | VirtualRoomTemperatureController
         | VirtualSwitchActuator
+        | VirtualTemperatureSensor
+        | VirtualWindSensor
         | VirtualWindowDoorSensor
         | WelcomeIPMuteActuator,
         value_attribute: str,
