@@ -42,7 +42,7 @@ def mock_free_at_home():
     mock.get_devices = MagicMock(return_value={})
     mock.get_channels_by_device = MagicMock(return_value=[])
     # Create coroutine lazily only when called
-    mock.ws_listen = MagicMock(side_effect=lambda: ws_listen_coro())
+    mock.ws_listen = MagicMock(side_effect=ws_listen_coro)
     mock.ws_close = AsyncMock()
     mock.unload_device = MagicMock()
     mock.api = MagicMock()
