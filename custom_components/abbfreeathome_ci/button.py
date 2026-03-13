@@ -1,7 +1,10 @@
 """Create ABB-free@home button entities."""
 
+from typing import Any
+
 from abbfreeathome import FreeAtHome
 from abbfreeathome.channels.trigger import Trigger
+from abbfreeathome.channels.virtual.virtual_trigger import VirtualTrigger
 
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.config_entries import ConfigEntry
@@ -10,6 +13,21 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
+
+BUTTON_DESCRIPTIONS = {
+    "Trigger": {
+        "channel_class": Trigger,
+        "entity_description_kwargs": {
+            "key": "button",
+        },
+    },
+    "VirtualTrigger": {
+        "channel_class": VirtualTrigger,
+        "entity_description_kwargs": {
+            "key": "button",
+        },
+    },
+}
 
 
 async def async_setup_entry(
@@ -20,14 +38,18 @@ async def async_setup_entry(
     """Set up buttons."""
     free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
 
-    async_add_entities(
-        FreeAtHomeButtonEntity(
-            channel,
-            sysap_serial_number=entry.data[CONF_SERIAL],
-            create_subdevices=entry.data[CONF_CREATE_SUBDEVICES],
+    for description in BUTTON_DESCRIPTIONS.values():
+        async_add_entities(
+            FreeAtHomeButtonEntity(
+                channel,
+                entity_description_kwargs=description.get("entity_description_kwargs"),
+                sysap_serial_number=entry.data[CONF_SERIAL],
+                create_subdevices=entry.data[CONF_CREATE_SUBDEVICES],
+            )
+            for channel in free_at_home.get_channels_by_class(
+                channel_class=description.get("channel_class")
+            )
         )
-        for channel in free_at_home.get_channels_by_class(channel_class=Trigger)
-    )
 
 
 class FreeAtHomeButtonEntity(ButtonEntity):
@@ -37,7 +59,8 @@ class FreeAtHomeButtonEntity(ButtonEntity):
 
     def __init__(
         self,
-        channel: Trigger,
+        channel: Trigger | VirtualTrigger,
+        entity_description_kwargs: dict[str, Any],
         sysap_serial_number: str,
         create_subdevices: bool,
     ) -> None:
@@ -48,8 +71,8 @@ class FreeAtHomeButtonEntity(ButtonEntity):
         self._create_subdevices = create_subdevices
 
         self.entity_description = ButtonEntityDescription(
-            key="button",
             name=channel.channel_name,
+            **entity_description_kwargs,
         )
 
     @property
