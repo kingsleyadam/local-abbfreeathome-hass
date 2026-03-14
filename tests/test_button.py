@@ -3,8 +3,10 @@
 from unittest.mock import AsyncMock, MagicMock
 
 from abbfreeathome.channels.trigger import Trigger
+from abbfreeathome.channels.virtual.virtual_trigger import VirtualTrigger
 
 from custom_components.abbfreeathome_ci.button import (
+    BUTTON_DESCRIPTIONS,
     FreeAtHomeButtonEntity,
     async_setup_entry,
 )
@@ -25,9 +27,10 @@ async def test_async_setup_entry_no_buttons(
     async_add_entities = MagicMock()
     await async_setup_entry(hass, mock_config_entry, async_add_entities)
 
-    async_add_entities.assert_called_once()
-    mock_free_at_home.get_channels_by_class.assert_called_once_with(
-        channel_class=Trigger
+    assert async_add_entities.call_count == len(BUTTON_DESCRIPTIONS)
+    mock_free_at_home.get_channels_by_class.assert_any_call(channel_class=Trigger)
+    mock_free_at_home.get_channels_by_class.assert_any_call(
+        channel_class=VirtualTrigger
     )
 
 
@@ -47,7 +50,9 @@ async def test_async_setup_entry_with_trigger(
     mock_channel.device.is_multi_device = False
 
     mock_free_at_home = MagicMock()
-    mock_free_at_home.get_channels_by_class.return_value = [mock_channel]
+    mock_free_at_home.get_channels_by_class.side_effect = lambda channel_class: (
+        [mock_channel] if channel_class is Trigger else []
+    )
     hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
 
     entities_added = []
@@ -81,6 +86,7 @@ async def test_button_entity_properties(hass: HomeAssistant) -> None:
 
     entity = FreeAtHomeButtonEntity(
         channel=mock_channel,
+        entity_description_kwargs={"key": "button"},
         sysap_serial_number="TEST123456",
         create_subdevices=False,
     )
@@ -108,6 +114,7 @@ async def test_button_entity_with_subdevices(hass: HomeAssistant) -> None:
 
     entity = FreeAtHomeButtonEntity(
         channel=mock_channel,
+        entity_description_kwargs={"key": "button"},
         sysap_serial_number="TEST123456",
         create_subdevices=True,
     )
@@ -132,6 +139,7 @@ async def test_button_entity_press(hass: HomeAssistant) -> None:
 
     entity = FreeAtHomeButtonEntity(
         channel=mock_channel,
+        entity_description_kwargs={"key": "button"},
         sysap_serial_number="TEST123456",
         create_subdevices=False,
     )
@@ -164,11 +172,15 @@ async def test_button_entity_multiple_channels(
     mock_channel3.device_serial = "ABB7F57FFFE67890"
 
     mock_free_at_home = MagicMock()
-    mock_free_at_home.get_channels_by_class.return_value = [
-        mock_channel1,
-        mock_channel2,
-        mock_channel3,
-    ]
+    mock_free_at_home.get_channels_by_class.side_effect = lambda channel_class: (
+        [
+            mock_channel1,
+            mock_channel2,
+            mock_channel3,
+        ]
+        if channel_class is Trigger
+        else []
+    )
     hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
 
     entities_added = []
@@ -190,3 +202,41 @@ async def test_button_entity_multiple_channels(
     assert "ABB7F57FFFE12345_ch0000_button" in unique_ids
     assert "ABB7F57FFFE12345_ch0001_button" in unique_ids
     assert "ABB7F57FFFE67890_ch0002_button" in unique_ids
+
+
+async def test_async_setup_entry_with_virtual_trigger(
+    hass: HomeAssistant, mock_config_entry
+) -> None:
+    """Test setup with a virtual trigger button."""
+    mock_config_entry.add_to_hass(hass)
+
+    mock_channel = MagicMock()
+    mock_channel.channel_name = "Virtual Doorbell"
+    mock_channel.channel_id = "ch0010"
+    mock_channel.device_serial = "ABB7F57FFFE99999"
+    mock_channel.device_name = "Virtual Button Device"
+    mock_channel.room_name = "Hallway"
+    mock_channel.device.is_multi_device = False
+
+    mock_free_at_home = MagicMock()
+    mock_free_at_home.get_channels_by_class.side_effect = lambda channel_class: (
+        [mock_channel] if channel_class is VirtualTrigger else []
+    )
+    hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
+
+    entities_added = []
+
+    def capture_entities(entity_generator):
+        """Capture entities from generator."""
+        entities = list(entity_generator)
+        entities_added.extend(entities)
+
+    async_add_entities = MagicMock(side_effect=capture_entities)
+    await async_setup_entry(hass, mock_config_entry, async_add_entities)
+
+    assert len(entities_added) == 1
+    entity = entities_added[0]
+
+    assert isinstance(entity, FreeAtHomeButtonEntity)
+    assert entity.entity_description.name == "Virtual Doorbell"
+    assert entity.unique_id == "ABB7F57FFFE99999_ch0010_button"
