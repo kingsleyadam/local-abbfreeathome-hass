@@ -135,11 +135,15 @@ class FreeAtHomeLightEntity(LightEntity):
     @property
     def brightness(self) -> int | None:
         """Return the current brightness."""
+        if self._channel.brightness is None:
+            return None
         return value_to_brightness(BRIGHTNESS_SCALE, self._channel.brightness)
 
     @property
     def color_temp_kelvin(self) -> int | None:
         """Return the color temperature in Kelvin."""
+        if self._channel.color_temperature is None:
+            return None
         return map_range(
             self._channel.color_temperature,
             0,

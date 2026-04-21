@@ -200,6 +200,19 @@ async def test_simple_light_is_unavailable(mock_unavailable_light_channel):
     assert entity.is_on is None
 
 
+async def test_brightness_returns_none_when_channel_brightness_is_none(
+    mock_unavailable_light_channel,
+):
+    """Test brightness returns None when channel brightness is None."""
+    entity = FreeAtHomeLightEntity(
+        mock_unavailable_light_channel,
+        sysap_serial_number="SERIAL123",
+        create_subdevices=False,
+    )
+    mock_unavailable_light_channel.brightness = None
+    assert entity.brightness is None
+
+
 async def test_brightness_property(mock_simple_light_channel):
     """Test brightness property for light."""
     entity = FreeAtHomeLightEntity(
@@ -242,6 +255,19 @@ async def test_color_temp_property(mock_color_temp_light_channel):
     assert entity.color_temp_kelvin is not None
     # Should be roughly in the middle: (2700 + 6500) / 2 = 4600
     assert 4500 <= entity.color_temp_kelvin <= 4700
+
+
+async def test_color_temp_kelvin_returns_none_when_color_temperature_is_none(
+    mock_color_temp_light_channel,
+):
+    """Test color_temp_kelvin returns None when channel color_temperature is None."""
+    entity = FreeAtHomeLightEntity(
+        mock_color_temp_light_channel,
+        sysap_serial_number="SERIAL123",
+        create_subdevices=False,
+    )
+    mock_color_temp_light_channel.color_temperature = None
+    assert entity.color_temp_kelvin is None
 
 
 async def test_color_temp_property_none(mock_simple_light_channel):
