@@ -45,11 +45,20 @@ EVENT_DESCRIPTIONS = {
     },
     "EventDesDoorRingingSensorActivated": {
         "channel_class": DesDoorRingingSensor,
-        "event_type_callback": lambda: "activated",
+        # Fire the standard doorbell "ring" event type alongside the legacy
+        # "activated" type. "ring" matches
+        # homeassistant.components.event.DoorbellEventType.RING ("ring"), which
+        # doorbell event entities must expose; "activated" is retained for
+        # backwards compatibility with existing automations. The string literals
+        # are used so the integration keeps working on Home Assistant versions
+        # predating the DoorbellEventType enum.
+        # https://developers.home-assistant.io/blog/2026/04/15/doorbell-standard-event-type
+        # Event type "activated" will be removed in a future release of this integration.
+        "event_type_callback": lambda: ["ring", "activated"],
         "state_attribute": "",
         "entity_description_kwargs": {
-            "device_class": EventDeviceClass.BUTTON,
-            "event_types": ["activated"],
+            "device_class": EventDeviceClass.DOORBELL,
+            "event_types": ["ring", "activated"],
             "translation_key": "des_door_ringing_sensor",
         },
     },
@@ -217,8 +226,13 @@ class FreeAtHomeEventEntity(EventEntity):
         if self._extra_data and hasattr(self._channel, self._extra_data):
             _extra_data = getattr(self._channel, self._extra_data)
 
-        self._trigger_event(event_type, {"extra_data": _extra_data})
-        self.async_write_ha_state()
+        # A callback may return a single event type or a list of them (e.g. a
+        # standard type fired alongside a legacy one for backwards
+        # compatibility). Normalize to a list and fire each one.
+        event_types = event_type if isinstance(event_type, list) else [event_type]
+        for _event_type in event_types:
+            self._trigger_event(_event_type, {"extra_data": _extra_data})
+            self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
         """Entity being added to hass."""
