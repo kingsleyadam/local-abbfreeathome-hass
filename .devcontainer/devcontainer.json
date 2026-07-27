@@ -5,7 +5,8 @@
     "ghcr.io/va-h/devcontainers-features/uv:latest": {
       "shellautocompletion": true
     },
-    "ghcr.io/devcontainers-extra/features/pre-commit:2": {}
+    "ghcr.io/devcontainers-extra/features/pre-commit:2": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
   },
   "containerEnv": {
     "UV_LINK_MODE": "copy"
@@ -16,7 +17,6 @@
         "charliermarsh.ruff",
         "ms-python.pylint",
         "ms-python.vscode-pylance",
-        "visualstudioexptteam.vscodeintellicode",
         "ms-python.debugpy",
         "esbenp.prettier-vscode",
         "GitHub.vscode-pull-request-github",
