@@ -184,6 +184,9 @@ class FreeAtHomeLightEntity(LightEntity):
                 coolest = self._channel.color_temperature_coolest
 
                 if warmest is None or coolest is None:
+                    # Bounds are unknown: still turn the light on, but skip
+                    # the color-temperature update rather than doing nothing.
+                    await self._channel.turn_on()
                     return
 
                 await self._channel.set_color_temperature(
