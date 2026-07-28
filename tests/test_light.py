@@ -270,6 +270,32 @@ async def test_color_temp_kelvin_returns_none_when_color_temperature_is_none(
     assert entity.color_temp_kelvin is None
 
 
+async def test_color_temp_kelvin_returns_none_when_warmest_is_none(
+    mock_color_temp_light_channel,
+):
+    """Test color_temp_kelvin returns None when channel warmest value is None."""
+    entity = FreeAtHomeLightEntity(
+        mock_color_temp_light_channel,
+        sysap_serial_number="SERIAL123",
+        create_subdevices=False,
+    )
+    mock_color_temp_light_channel.color_temperature_warmest = None
+    assert entity.color_temp_kelvin is None
+
+
+async def test_color_temp_kelvin_returns_none_when_coolest_is_none(
+    mock_color_temp_light_channel,
+):
+    """Test color_temp_kelvin returns None when channel coolest value is None."""
+    entity = FreeAtHomeLightEntity(
+        mock_color_temp_light_channel,
+        sysap_serial_number="SERIAL123",
+        create_subdevices=False,
+    )
+    mock_color_temp_light_channel.color_temperature_coolest = None
+    assert entity.color_temp_kelvin is None
+
+
 async def test_color_temp_property_none(mock_simple_light_channel):
     """Test color_temp property when not supported."""
     entity = FreeAtHomeLightEntity(
@@ -412,6 +438,42 @@ async def test_async_turn_on_color_temp_light_with_color_temp(
     call_args = mock_color_temp_light_channel.set_color_temperature.call_args[0][0]
     # Should be around 50 in 0-100 range
     assert 45 <= call_args <= 55
+
+
+async def test_async_turn_on_color_temp_light_with_none_warmest(
+    hass: HomeAssistant, mock_color_temp_light_channel
+):
+    """Test light still turns on but skips color temp when warmest is None."""
+    entity = FreeAtHomeLightEntity(
+        mock_color_temp_light_channel,
+        sysap_serial_number="SERIAL123",
+        create_subdevices=False,
+    )
+    entity.hass = hass
+
+    mock_color_temp_light_channel.color_temperature_warmest = None
+    await entity.async_turn_on(**{ATTR_COLOR_TEMP_KELVIN: 4600})
+
+    mock_color_temp_light_channel.set_color_temperature.assert_not_called()
+    mock_color_temp_light_channel.turn_on.assert_called_once()
+
+
+async def test_async_turn_on_color_temp_light_with_none_coolest(
+    hass: HomeAssistant, mock_color_temp_light_channel
+):
+    """Test light still turns on but skips color temp when coolest is None."""
+    entity = FreeAtHomeLightEntity(
+        mock_color_temp_light_channel,
+        sysap_serial_number="SERIAL123",
+        create_subdevices=False,
+    )
+    entity.hass = hass
+
+    mock_color_temp_light_channel.color_temperature_coolest = None
+    await entity.async_turn_on(**{ATTR_COLOR_TEMP_KELVIN: 4600})
+
+    mock_color_temp_light_channel.set_color_temperature.assert_not_called()
+    mock_color_temp_light_channel.turn_on.assert_called_once()
 
 
 async def test_async_turn_off_simple_light(

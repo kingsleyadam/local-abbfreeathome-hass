@@ -142,15 +142,14 @@ class FreeAtHomeLightEntity(LightEntity):
     @property
     def color_temp_kelvin(self) -> int | None:
         """Return the color temperature in Kelvin."""
-        if self._channel.color_temperature is None:
+        color_temperature = self._channel.color_temperature
+        warmest = self._channel.color_temperature_warmest
+        coolest = self._channel.color_temperature_coolest
+
+        if color_temperature is None or warmest is None or coolest is None:
             return None
-        return map_range(
-            self._channel.color_temperature,
-            0,
-            100,
-            self._channel.color_temperature_warmest,
-            self._channel.color_temperature_coolest,
-        )
+
+        return map_range(color_temperature, 0, 100, warmest, coolest)
 
     @property
     def color_mode(self) -> str | None:
@@ -181,11 +180,20 @@ class FreeAtHomeLightEntity(LightEntity):
 
         if ATTR_COLOR_TEMP_KELVIN in kwargs:
             if hasattr(self._channel, "color_temperature"):
+                warmest = self._channel.color_temperature_warmest
+                coolest = self._channel.color_temperature_coolest
+
+                if warmest is None or coolest is None:
+                    # Bounds are unknown: still turn the light on, but skip
+                    # the color-temperature update rather than doing nothing.
+                    await self._channel.turn_on()
+                    return
+
                 await self._channel.set_color_temperature(
                     map_range(
                         kwargs[ATTR_COLOR_TEMP_KELVIN],
-                        self._channel.color_temperature_warmest,
-                        self._channel.color_temperature_coolest,
+                        warmest,
+                        coolest,
                         0,
                         100,
                     )
