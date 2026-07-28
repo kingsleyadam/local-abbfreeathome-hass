@@ -157,6 +157,18 @@
           }
         }
       },
+      "staircase_light_sensor": {
+        "name": "Timed Pulse Event ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "unknown": "Unknown",
+              "on": "[%key:common::state::on%]",
+              "off": "[%key:common::state::off%]"
+            }
+          }
+        }
+      },
       "switch_sensor": {
         "name": "Switch Event ({channel_id})",
         "state_attributes": {
