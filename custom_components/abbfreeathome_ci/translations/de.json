@@ -157,6 +157,18 @@
           }
         }
       },
+      "staircase_light_sensor": {
+        "name": "Zeitimpuls Ereignis ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "unknown": "Unbekannt",
+              "on": "Ein",
+              "off": "Aus"
+            }
+          }
+        }
+      },
       "switch_sensor": {
         "name": "Schalt Ereignis ({channel_id})",
         "state_attributes": {

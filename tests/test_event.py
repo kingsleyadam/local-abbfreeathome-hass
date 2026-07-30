@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock, Mock, call, patch
 
 from abbfreeathome.channels.des_door_ringing_sensor import DesDoorRingingSensor
+from abbfreeathome.channels.switch_sensor import StaircaseLightSensor, SwitchSensorState
 from abbfreeathome.channels.virtual.virtual_room_temperature_controller import (
     VirtualRoomTemperatureController,
 )
@@ -18,6 +19,7 @@ from homeassistant.core import HomeAssistant
 
 DOORBELL_KEY = "EventDesDoorRingingSensorActivated"
 TARGET_TEMPERATURE_KEY = "EventVirtualRoomTemperatureControllerTargetTemperature"
+STAIRCASE_KEY = "EventStaircaseLightSensorOnOff"
 
 
 def _build_doorbell_channel() -> Mock:
@@ -131,6 +133,78 @@ async def test_async_setup_entry_adds_doorbell(
     assert doorbell.entity_description.device_class == EventDeviceClass.DOORBELL
     assert doorbell.event_types == ["ring", "activated"]
     assert doorbell.unique_id == f"ABB7F57FFFE12345_ch0000_{DOORBELL_KEY}"
+
+
+def _build_staircase_channel() -> Mock:
+    """Create a mock StaircaseLightSensor channel."""
+    channel = Mock(
+        spec=[
+            "channel_name",
+            "channel_id",
+            "device_serial",
+            "device_name",
+            "room_name",
+            "device",
+            "register_callback",
+            "remove_callback",
+            "state",
+        ]
+    )
+    channel.channel_name = "Gate"
+    channel.channel_id = "ch0004"
+    channel.device_serial = "ABB7F57FFFE99999"
+    channel.device_name = "Gate Device"
+    channel.room_name = "Driveway"
+    channel.device = Mock()
+    channel.device.is_multi_device = False
+    return channel
+
+
+def test_staircase_light_sensor_description() -> None:
+    """The staircase-light-sensor event exposes the switch-sensor states."""
+    description = EVENT_DESCRIPTIONS[STAIRCASE_KEY]
+    kwargs = description["entity_description_kwargs"]
+
+    assert description["channel_class"] is StaircaseLightSensor
+    assert kwargs["device_class"] == EventDeviceClass.BUTTON
+    assert kwargs["translation_key"] == "staircase_light_sensor"
+    assert set(kwargs["event_types"]) == {state.name for state in SwitchSensorState}
+    assert description["event_type_callback"]("on") == "on"
+
+
+async def test_async_setup_entry_adds_staircase_light_sensor(
+    hass: HomeAssistant, mock_config_entry
+) -> None:
+    """Test the staircase-light-sensor entity is created for its channel."""
+    mock_config_entry.add_to_hass(hass)
+
+    channel = _build_staircase_channel()
+
+    mock_free_at_home = MagicMock()
+    mock_free_at_home.get_channels_by_class.side_effect = lambda channel_class: (
+        [channel] if channel_class is StaircaseLightSensor else []
+    )
+    hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
+
+    entities_added = []
+
+    def capture_entities(entity_generator):
+        """Capture entities from generator."""
+        entities_added.extend(list(entity_generator))
+
+    async_add_entities = MagicMock(side_effect=capture_entities)
+    await async_setup_entry(hass, mock_config_entry, async_add_entities)
+
+    mock_free_at_home.get_channels_by_class.assert_any_call(
+        channel_class=StaircaseLightSensor
+    )
+
+    staircase = next(
+        e for e in entities_added if e.entity_description.key == STAIRCASE_KEY
+    )
+    assert isinstance(staircase, FreeAtHomeEventEntity)
+    assert staircase.entity_description.device_class == EventDeviceClass.BUTTON
+    assert staircase.unique_id == f"ABB7F57FFFE99999_ch0004_{STAIRCASE_KEY}"
 
 
 async def test_async_setup_entry_no_channels(

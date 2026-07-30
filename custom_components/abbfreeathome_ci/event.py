@@ -12,6 +12,7 @@ from abbfreeathome.channels.force_on_off_sensor import (
 from abbfreeathome.channels.switch_sensor import (
     DimmingSensor,
     DimmingSensorState,
+    StaircaseLightSensor,
     SwitchSensor,
     SwitchSensorState,
 )
@@ -85,6 +86,16 @@ EVENT_DESCRIPTIONS = {
             "device_class": EventDeviceClass.BUTTON,
             "event_types": [state.name for state in ForceOnOffSensorState],
             "translation_key": "force_on_off_sensor",
+        },
+    },
+    "EventStaircaseLightSensorOnOff": {
+        "channel_class": StaircaseLightSensor,
+        "event_type_callback": lambda state: state,
+        "state_attribute": "state",
+        "entity_description_kwargs": {
+            "device_class": EventDeviceClass.BUTTON,
+            "event_types": [state.name for state in SwitchSensorState],
+            "translation_key": "staircase_light_sensor",
         },
     },
     "EventSwitchSensorOnOff": {
@@ -185,6 +196,7 @@ class FreeAtHomeEventEntity(EventEntity):
         | DesDoorRingingSensor
         | DimmingSensor
         | ForceOnOffSensor
+        | StaircaseLightSensor
         | SwitchSensor
         | VirtualSwitchActuator,
         state_attribute: str,
