@@ -75,15 +75,23 @@ async def test_async_setup_entry_with_covers(
         channels[cover_class] = mock_channel
 
     mock_free_at_home = MagicMock()
-    mock_free_at_home.get_channels_by_class.side_effect = lambda channel_class: [
-        channels[channel_class]
-    ]
+
+    def get_channels_by_class_side_effect(channel_class):
+        """Return the mock channel for the requested cover class."""
+        return [channels[channel_class]]
+
+    mock_free_at_home.get_channels_by_class.side_effect = (
+        get_channels_by_class_side_effect
+    )
     hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
 
     entities_added = []
-    async_add_entities = MagicMock(
-        side_effect=lambda generator: entities_added.extend(list(generator))
-    )
+
+    def capture_entities(entity_generator):
+        """Capture entities from generator."""
+        entities_added.extend(list(entity_generator))
+
+    async_add_entities = MagicMock(side_effect=capture_entities)
     await async_setup_entry(hass, mock_config_entry, async_add_entities)
 
     assert len(entities_added) == 4
