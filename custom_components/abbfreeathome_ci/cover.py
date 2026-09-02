@@ -7,7 +7,6 @@ from abbfreeathome.channels.cover_actuator import (
     AtticWindowActuator,
     AwningActuator,
     BlindActuator,
-    CoverActuatorState,
     ShutterActuator,
 )
 
@@ -153,8 +152,10 @@ class FreeAtHomeCoverEntity(CoverEntity):
         return DeviceInfo(identifiers={(DOMAIN, self._channel.device_serial)})
 
     @property
-    def current_cover_position(self) -> int:
+    def current_cover_position(self) -> int | None:
         """Get current position."""
+        if self._channel.position is None:
+            return None
         return abs(self._channel.position - 100)
 
     @property
@@ -162,6 +163,8 @@ class FreeAtHomeCoverEntity(CoverEntity):
         """Get current tilt position."""
 
         if hasattr(self._channel, "tilt_position"):
+            if self._channel.tilt_position is None:
+                return None
             return abs(self._channel.tilt_position - 100)
         return None
 
@@ -171,19 +174,19 @@ class FreeAtHomeCoverEntity(CoverEntity):
         return f"{self._channel.device_serial}_{self._channel.channel_id}_{self.entity_description.key}"
 
     @property
-    def is_closed(self) -> bool:
+    def is_closed(self) -> bool | None:
         """If the cover is closed or not."""
-        return self._channel.position == 100
+        return self._channel.is_closed
 
     @property
     def is_closing(self) -> bool:
         """If the cover is closing or not."""
-        return self._channel.state == CoverActuatorState.closing.name
+        return self._channel.is_closing
 
     @property
     def is_opening(self) -> bool:
         """If the cover is opening or not."""
-        return self._channel.state == CoverActuatorState.opening.name
+        return self._channel.is_opening
 
     @property
     def supported_features(self) -> CoverEntityFeature:
