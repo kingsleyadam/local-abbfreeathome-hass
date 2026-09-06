@@ -214,7 +214,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if not _free_at_home.get_channels_by_device(_device.device_serial):
             continue
 
-        device_registry.async_get_or_create(
+        sysap_device = device_registry.async_get_or_create(
             config_entry_id=entry.entry_id,
             identifiers={(DOMAIN, _device.device_serial)},
             name=_device.display_name,
@@ -222,7 +222,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             serial_number=_device.device_serial,
             hw_version=_device.device_id,
             suggested_area=_device.room_name,
-            via_device=(DOMAIN, entry.data[CONF_SERIAL]),
+            via_device_id=sysap_device.id,
         )
 
     # Add the FreeAtHome object to hass data
