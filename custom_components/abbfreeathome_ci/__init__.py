@@ -198,7 +198,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     device_registry = dr.async_get(hass)
-    device_registry.async_get_or_create(
+    sysap_device = device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, entry.data[CONF_SERIAL])},
         manufacturer=MANUFACTURER,
@@ -214,7 +214,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if not _free_at_home.get_channels_by_device(_device.device_serial):
             continue
 
-        sysap_device = device_registry.async_get_or_create(
+        device_registry.async_get_or_create(
             config_entry_id=entry.entry_id,
             identifiers={(DOMAIN, _device.device_serial)},
             name=_device.display_name,
