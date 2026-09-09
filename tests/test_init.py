@@ -1,5 +1,6 @@
 """Test the ABB-free@home integration initialization."""
 
+import inspect
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from abbfreeathome.exceptions import BadRequestException
@@ -535,6 +536,141 @@ async def test_async_setup_entry_with_devices(
 
     assert result is True
     mock_service.assert_called_once()
+
+
+async def test_async_setup_entry_device_via_device_id(
+    hass: HomeAssistant, mock_config_entry, mock_free_at_home_settings
+) -> None:
+    """Test setup uses via_device_id when the device registry supports it."""
+    mock_config_entry.add_to_hass(hass)
+
+    # Create mock device with channels
+    mock_device = MagicMock()
+    mock_device.device_serial = "DEVICE123"
+    mock_device.display_name = "Test Device"
+    mock_device.device_id = "HW123"
+    mock_device.room_name = "Living Room"
+
+    mock_channel = MagicMock()
+
+    # Create FreeAtHome mock with device
+    async def ws_listen_coro():
+        pass
+
+    mock_fah = MagicMock()
+    mock_fah.get_config = AsyncMock()
+    mock_fah.load = AsyncMock()
+    mock_fah.get_devices = MagicMock(return_value={"DEVICE123": mock_device})
+    mock_fah.get_channels_by_device = MagicMock(return_value=[mock_channel])
+    mock_fah.ws_listen = MagicMock(return_value=ws_listen_coro())
+    mock_fah.ws_close = AsyncMock()
+
+    # Simulate an HA core whose device registry already exposes
+    # via_device_id by giving the mocked async_get_or_create a matching
+    # signature.
+    mock_device_registry = MagicMock()
+    mock_device_registry.async_get_or_create.__signature__ = inspect.signature(
+        lambda *, via_device_id=None, **kwargs: None
+    )
+
+    with (
+        patch(
+            "custom_components.abbfreeathome_ci.FreeAtHomeSettings",
+            return_value=mock_free_at_home_settings,
+        ),
+        patch(
+            "custom_components.abbfreeathome_ci.FreeAtHome",
+            return_value=mock_fah,
+        ),
+        patch("custom_components.abbfreeathome_ci.async_get_clientsession"),
+        patch(
+            "homeassistant.config_entries.ConfigEntries.async_forward_entry_setups",
+            return_value=AsyncMock(),
+        ),
+        patch("custom_components.abbfreeathome_ci.async_setup_service"),
+        patch(
+            "custom_components.abbfreeathome_ci.dr.async_get",
+            return_value=mock_device_registry,
+        ),
+    ):
+        result = await async_setup_entry(hass, mock_config_entry)
+
+    assert result is True
+
+    sysap_call, device_call = mock_device_registry.async_get_or_create.call_args_list
+    sysap_device = mock_device_registry.async_get_or_create.return_value
+
+    assert "via_device_id" not in sysap_call.kwargs
+    assert "via_device" not in sysap_call.kwargs
+    assert device_call.kwargs["via_device_id"] == sysap_device.id
+    assert "via_device" not in device_call.kwargs
+
+
+async def test_async_setup_entry_device_via_device_fallback(
+    hass: HomeAssistant, mock_config_entry, mock_free_at_home_settings
+) -> None:
+    """Test setup falls back to via_device on older device registries."""
+    mock_config_entry.add_to_hass(hass)
+
+    # Create mock device with channels
+    mock_device = MagicMock()
+    mock_device.device_serial = "DEVICE123"
+    mock_device.display_name = "Test Device"
+    mock_device.device_id = "HW123"
+    mock_device.room_name = "Living Room"
+
+    mock_channel = MagicMock()
+
+    # Create FreeAtHome mock with device
+    async def ws_listen_coro():
+        pass
+
+    mock_fah = MagicMock()
+    mock_fah.get_config = AsyncMock()
+    mock_fah.load = AsyncMock()
+    mock_fah.get_devices = MagicMock(return_value={"DEVICE123": mock_device})
+    mock_fah.get_channels_by_device = MagicMock(return_value=[mock_channel])
+    mock_fah.ws_listen = MagicMock(return_value=ws_listen_coro())
+    mock_fah.ws_close = AsyncMock()
+
+    # Simulate an older HA core whose device registry only knows
+    # via_device, by giving the mocked async_get_or_create a matching
+    # signature without via_device_id.
+    mock_device_registry = MagicMock()
+    mock_device_registry.async_get_or_create.__signature__ = inspect.signature(
+        lambda *, via_device=None, **kwargs: None
+    )
+
+    with (
+        patch(
+            "custom_components.abbfreeathome_ci.FreeAtHomeSettings",
+            return_value=mock_free_at_home_settings,
+        ),
+        patch(
+            "custom_components.abbfreeathome_ci.FreeAtHome",
+            return_value=mock_fah,
+        ),
+        patch("custom_components.abbfreeathome_ci.async_get_clientsession"),
+        patch(
+            "homeassistant.config_entries.ConfigEntries.async_forward_entry_setups",
+            return_value=AsyncMock(),
+        ),
+        patch("custom_components.abbfreeathome_ci.async_setup_service"),
+        patch(
+            "custom_components.abbfreeathome_ci.dr.async_get",
+            return_value=mock_device_registry,
+        ),
+    ):
+        result = await async_setup_entry(hass, mock_config_entry)
+
+    assert result is True
+
+    sysap_call, device_call = mock_device_registry.async_get_or_create.call_args_list
+
+    assert "via_device_id" not in sysap_call.kwargs
+    assert "via_device" not in sysap_call.kwargs
+    assert device_call.kwargs["via_device"] == (DOMAIN, "TEST123456")
+    assert "via_device_id" not in device_call.kwargs
 
 
 async def test_async_setup_entry_missing_orphan_channels_key(
