@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
 from urllib.parse import urlparse, urlunparse
 
@@ -198,7 +199,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     device_registry = dr.async_get(hass)
-    device_registry.async_get_or_create(
+    sysap_device = device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, entry.data[CONF_SERIAL])},
         manufacturer=MANUFACTURER,
@@ -209,6 +210,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hw_version=_free_at_home_settings.hardware_version,
         configuration_url=_configuration_url,
     )
+
+    # HA 2026.8 deprecated via_device in favor of via_device_id (removal
+    # planned for 2027.8.0). Since this integration supports a wide range of
+    # HA versions, detect at runtime which parameter is available instead of
+    # hard-coding a version cutoff - this keeps working unchanged before,
+    # during and after the transition.
+    if (
+        "via_device_id"
+        in inspect.signature(device_registry.async_get_or_create).parameters
+    ):
+        via_device_kwarg = {"via_device_id": sysap_device.id}
+    else:
+        via_device_kwarg = {"via_device": (DOMAIN, entry.data[CONF_SERIAL])}
 
     for _device in _free_at_home.get_devices().values():
         if not _free_at_home.get_channels_by_device(_device.device_serial):
@@ -222,7 +236,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             serial_number=_device.device_serial,
             hw_version=_device.device_id,
             suggested_area=_device.room_name,
-            via_device=(DOMAIN, entry.data[CONF_SERIAL]),
+            **via_device_kwarg,
         )
 
     # Add the FreeAtHome object to hass data
