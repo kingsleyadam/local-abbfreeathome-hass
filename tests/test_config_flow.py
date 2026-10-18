@@ -25,12 +25,12 @@ from custom_components.abbfreeathome_ci.const import (
     DOMAIN,
 )
 from homeassistant import config_entries
-from homeassistant.components import zeroconf
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 # Test constants
 TEST_HOST_HTTP = "http://192.168.1.100"
@@ -251,7 +251,7 @@ async def test_zeroconf_flow(
     mock_free_at_home_api: AsyncMock,
 ) -> None:
     """Test we can setup from zeroconf."""
-    discovery_info = zeroconf.ZeroconfServiceInfo(
+    discovery_info = ZeroconfServiceInfo(
         ip_address=IPv4Address("192.168.1.100"),
         ip_addresses=[IPv4Address("192.168.1.100")],
         hostname="sysap.local.",
@@ -292,7 +292,7 @@ async def test_zeroconf_already_configured(
     """Test we abort zeroconf if already configured."""
     await hass.config_entries.async_add(mock_config_entry)
 
-    discovery_info = zeroconf.ZeroconfServiceInfo(
+    discovery_info = ZeroconfServiceInfo(
         ip_address=IPv4Address("192.168.1.100"),
         ip_addresses=[IPv4Address("192.168.1.100")],
         hostname="sysap.local.",
@@ -490,7 +490,7 @@ async def test_zeroconf_ipv6_abort(
     mock_free_at_home_settings: AsyncMock,
 ) -> None:
     """Test we abort zeroconf for IPv6 addresses."""
-    discovery_info = zeroconf.ZeroconfServiceInfo(
+    discovery_info = ZeroconfServiceInfo(
         ip_address=IPv6Address("::1"),
         ip_addresses=[IPv6Address("::1")],
         hostname="sysap.local.",
@@ -539,7 +539,7 @@ async def test_zeroconf_https_existing_entry(
     )
     await hass.config_entries.async_add(https_entry)
 
-    discovery_info = zeroconf.ZeroconfServiceInfo(
+    discovery_info = ZeroconfServiceInfo(
         ip_address=IPv4Address("192.168.1.100"),
         ip_addresses=[IPv4Address("192.168.1.100")],
         hostname="sysap.local.",
@@ -815,7 +815,7 @@ async def test_zeroconf_confirm_with_settings_errors(
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
         context={"source": config_entries.SOURCE_ZEROCONF},
-        data=zeroconf.ZeroconfServiceInfo(
+        data=ZeroconfServiceInfo(
             ip_address=IPv4Address("192.168.1.100"),
             ip_addresses=[IPv4Address("192.168.1.100")],
             hostname="sysap.local.",
@@ -849,7 +849,7 @@ async def test_zeroconf_confirm_with_api_errors(
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
         context={"source": config_entries.SOURCE_ZEROCONF},
-        data=zeroconf.ZeroconfServiceInfo(
+        data=ZeroconfServiceInfo(
             ip_address=IPv4Address("192.168.1.100"),
             ip_addresses=[IPv4Address("192.168.1.100")],
             hostname="sysap.local.",
@@ -885,7 +885,7 @@ async def test_zeroconf_confirm_https_flow(
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
         context={"source": config_entries.SOURCE_ZEROCONF},
-        data=zeroconf.ZeroconfServiceInfo(
+        data=ZeroconfServiceInfo(
             ip_address=IPv4Address("192.168.1.100"),
             ip_addresses=[IPv4Address("192.168.1.100")],
             hostname="sysap.local.",
@@ -1004,7 +1004,7 @@ async def test_zeroconf_discovery_with_settings_errors(
         "http://192.168.1.100"
     )
 
-    discovery_info = zeroconf.ZeroconfServiceInfo(
+    discovery_info = ZeroconfServiceInfo(
         ip_address=IPv4Address("192.168.1.100"),
         ip_addresses=[IPv4Address("192.168.1.100")],
         hostname="sysap.local.",
@@ -1181,7 +1181,7 @@ async def test_zeroconf_confirm_non_https_continues_to_completion(
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
         context={"source": config_entries.SOURCE_ZEROCONF},
-        data=zeroconf.ZeroconfServiceInfo(
+        data=ZeroconfServiceInfo(
             ip_address=IPv4Address("192.168.1.100"),
             ip_addresses=[IPv4Address("192.168.1.100")],
             hostname="sysap.local.",
