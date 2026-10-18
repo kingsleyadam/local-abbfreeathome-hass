@@ -288,6 +288,7 @@ async def test_zeroconf_already_configured(
     hass: HomeAssistant,
     mock_free_at_home_settings: AsyncMock,
     mock_config_entry,
+    mock_setup_entry: AsyncMock,
 ) -> None:
     """Test we abort zeroconf if already configured."""
     await hass.config_entries.async_add(mock_config_entry)
@@ -392,6 +393,7 @@ async def test_reconfigure_flow(
     mock_free_at_home_settings: AsyncMock,
     mock_free_at_home_api: AsyncMock,
     mock_config_entry,
+    mock_setup_entry: AsyncMock,
 ) -> None:
     """Test reconfigure flow."""
     await hass.config_entries.async_add(mock_config_entry)
@@ -511,6 +513,7 @@ async def test_zeroconf_ipv6_abort(
 async def test_zeroconf_https_existing_entry(
     hass: HomeAssistant,
     mock_free_at_home_settings: AsyncMock,
+    mock_setup_entry: AsyncMock,
 ) -> None:
     """Test zeroconf discovery updates existing HTTPS entry."""
     # Create config entry with HTTPS host
@@ -562,6 +565,7 @@ async def test_reconfigure_with_errors(
     mock_free_at_home_settings: AsyncMock,
     mock_free_at_home_api: AsyncMock,
     mock_config_entry,
+    mock_setup_entry: AsyncMock,
 ) -> None:
     """Test reconfigure flow with validation errors."""
     await hass.config_entries.async_add(mock_config_entry)
@@ -593,6 +597,7 @@ async def test_reconfigure_with_api_errors(
     mock_free_at_home_settings: AsyncMock,
     mock_free_at_home_api: AsyncMock,
     mock_config_entry,
+    mock_setup_entry: AsyncMock,
 ) -> None:
     """Test reconfigure flow with API validation errors."""
     await hass.config_entries.async_add(mock_config_entry)
@@ -776,6 +781,7 @@ async def test_import_updates_existing_entry(
     hass: HomeAssistant,
     mock_config_entry,
     mock_free_at_home_settings: AsyncMock,
+    mock_setup_entry: AsyncMock,
 ) -> None:
     """Test import flow updates existing entry."""
     await hass.config_entries.async_add(mock_config_entry)
@@ -1023,7 +1029,9 @@ async def test_zeroconf_discovery_with_settings_errors(
 
 
 async def test_import_creates_new_entry(
-    hass: HomeAssistant, mock_free_at_home_settings: AsyncMock
+    hass: HomeAssistant,
+    mock_free_at_home_settings: AsyncMock,
+    mock_setup_entry: AsyncMock,
 ) -> None:
     """Test import flow creates new entry when one doesn't exist."""
     with (
@@ -1175,6 +1183,7 @@ async def test_zeroconf_confirm_non_https_continues_to_completion(
     hass: HomeAssistant,
     mock_free_at_home_settings: AsyncMock,
     mock_free_at_home_api: AsyncMock,
+    mock_setup_entry: AsyncMock,
 ) -> None:
     """Test zeroconf_confirm with HTTP host continues without SSL config (tests else branch)."""
     # Start a zeroconf flow first to set up the flow context
@@ -1215,7 +1224,9 @@ async def test_zeroconf_confirm_non_https_continues_to_completion(
 
 
 async def test_reconfigure_step_shows_correct_schema(
-    hass: HomeAssistant, mock_config_entry
+    hass: HomeAssistant,
+    mock_config_entry,
+    mock_setup_entry: AsyncMock,
 ) -> None:
     """Test reconfigure step uses correct schema (not ssl_config schema)."""
     await hass.config_entries.async_add(mock_config_entry)
