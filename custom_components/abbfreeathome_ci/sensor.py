@@ -23,18 +23,20 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    LIGHT_LUX,
-    PERCENTAGE,
-    UnitOfRatio,
-    UnitOfSpeed,
-    UnitOfTemperature,
-)
+from homeassistant.const import LIGHT_LUX, PERCENTAGE, UnitOfSpeed, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
+
+try:
+    from homeassistant.const import UnitOfRatio
+except ImportError:
+    # Older supported HA versions do not yet have UnitOfRatio.
+    from homeassistant.const import CONCENTRATION_PARTS_PER_MILLION as PARTS_PER_MILLION
+else:
+    PARTS_PER_MILLION = UnitOfRatio.PARTS_PER_MILLION
 
 SENSOR_DESCRIPTIONS = {
     "AirQualitySensorCO2": {
@@ -42,7 +44,7 @@ SENSOR_DESCRIPTIONS = {
         "value_attribute": "co2",
         "entity_description_kwargs": {
             "device_class": SensorDeviceClass.CO2,
-            "native_unit_of_measurement": UnitOfRatio.PARTS_PER_MILLION,
+            "native_unit_of_measurement": PARTS_PER_MILLION,
             "state_class": SensorStateClass.MEASUREMENT,
             "translation_key": "air_quality_sensor_co2",
         },
