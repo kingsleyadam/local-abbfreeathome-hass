@@ -51,16 +51,16 @@ mode: queued
 ## Installation and hardware validation
 
 Install both the updated Python library and the updated custom integration.
-Updating only the integration is insufficient because its new `Scene` import
-requires the library changes. The temporary Git dependency in `manifest.json`
-continues to reference the existing `virtual-dimming-actuator` branch; publish
-the library changes to that branch before installing the integration changes.
-Make sure Home Assistant installs the new library revision: its package version
-has not changed, so reloading the integration alone does not guarantee a fresh
-installation of the mutable Git dependency. Before an upstream PR, replace the
-Git requirement with a released, pinned PyPI version containing both the virtual
-dimmer and scene support. JSON cannot contain comments; this document explains
-the dependency requirement without adding invalid manifest fields.
+The integration requires a published `local-abbfreeathome` version containing
+both `Scene` and `VirtualDimmingActuator`. The manifest currently retains the
+upstream pin, `local-abbfreeathome==3.8.2`, which does not contain these classes
+and cannot load the new event platform. Keep the integration pull request in
+draft until the companion library changes are merged and released, then update
+the manifest to the published version before merging or installing it.
+
+For automated development tests before the library release, install a local
+checkout containing both library changes into the isolated test environment.
+See [Virtual dimmer hardware validation](HARDWARE_TEST.md) for setup commands.
 
 Reload the integration after creating new scenes to fetch their current names
 and channels. Place scenes on the floor plan or enable orphan channels. Existing

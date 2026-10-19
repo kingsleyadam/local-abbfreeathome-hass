@@ -1,23 +1,21 @@
-# Temporary VirtualDimmingActuator hardware test
+# Virtual dimmer hardware validation
 
-The Git dependency in `custom_components/abbfreeathome_ci/manifest.json` is
-**temporary and only intended for local development and hardware testing**:
+The virtual dimmer and scene event entities require a published
+`local-abbfreeathome` version that provides both `VirtualDimmingActuator` and
+`Scene`. The dependency in `custom_components/abbfreeathome_ci/manifest.json`
+retains the upstream pin, `local-abbfreeathome==3.8.2`, while the library changes
+are under review. This version does not contain the required classes and cannot
+load the new event platform.
 
-```text
-local-abbfreeathome@git+https://github.com/r9fhd6cjnr-debug/local-abbfreeathome.git@virtual-dimming-actuator
-```
-
-Before an upstream pull request, replace it with a released, pinned PyPI version
-that includes `VirtualDimmingActuator`. The released version `3.8.2` does not provide
-this class. JSON does not support comments, so this note documents the temporary
-manifest change without adding unsupported manifest fields.
+Keep the integration pull request in draft until the companion library changes
+are merged and released. Before merging or installing this integration, update
+the manifest to that published PyPI version. No fork dependency is required.
 
 On the test installation:
 
-- Confirm Home Assistant successfully installs the Git requirement and loads the
-  new class. The installation environment needs Git and access to GitHub. A branch
-  reference is mutable; record the tested library commit and verify the installed
-  revision when retesting after branch updates.
+- Confirm Home Assistant successfully installs the published library requirement
+  containing both new classes and loads the event platform. Record the tested
+  library and integration versions.
 - Enable virtual devices in the integration options. Place the channel on the
   SysAP floor plan or enable orphan channels as appropriate.
 - Confirm the SysAP configuration reports function `0012`, input pairing `1`
@@ -73,12 +71,15 @@ The two inputs produce separate state writes, even within one WebSocket message.
 
 ## Automated tests on a Linux development machine
 
-Use a separate Python 3.13 environment, as in the repository's CI workflow:
+Use a separate Python 3.13 environment, as in the repository's CI workflow.
+For development before the library release, place a checkout containing both
+library changes in a sibling directory named `local-abbfreeathome`. Run these
+commands from the integration repository:
 
 ```sh
 python3.13 -m venv .venv
 . .venv/bin/activate
-python -m pip install 'local-abbfreeathome@git+https://github.com/r9fhd6cjnr-debug/local-abbfreeathome.git@virtual-dimming-actuator'
+python -m pip install ../local-abbfreeathome
 python -m pip install -r dev-requirements.txt ruff
 python -m pytest -q
 python -m ruff check .
