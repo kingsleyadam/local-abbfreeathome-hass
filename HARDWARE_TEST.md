@@ -8,7 +8,7 @@ local-abbfreeathome@git+https://github.com/r9fhd6cjnr-debug/local-abbfreeathome.
 ```
 
 Before an upstream pull request, replace it with a released, pinned PyPI version
-that includes `VirtualDimmingActuator`. The previous pin, `3.8.1`, does not provide
+that includes `VirtualDimmingActuator`. The released version `3.8.2` does not provide
 this class. JSON does not support comments, so this note documents the temporary
 manifest change without adding unsupported manifest fields.
 

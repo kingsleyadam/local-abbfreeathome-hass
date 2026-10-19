@@ -10,7 +10,7 @@
   "loggers": ["abbfreeathome"],
   "requirements": ["local-abbfreeathome@git+https://github.com/r9fhd6cjnr-debug/local-abbfreeathome.git@virtual-dimming-actuator"],
   "ssdp": [],
-  "version": "1.14.0",
+  "version": "1.14.1",
   "zeroconf": [
     {
       "type": "_http._tcp.local.",

@@ -29,6 +29,8 @@ EVENT_DATA = {
 async def freeathome():
     """Load a scene through discovery, including its cached initial value."""
     api = AsyncMock(spec=FreeAtHomeApi)
+    # Test live requests after the reconnect snapshot has finished.
+    api.is_priming = False
     api.get_configuration.return_value = {
         "devices": {
             SERIAL: {

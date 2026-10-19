@@ -40,6 +40,8 @@ EVENT_TYPES = [
 def freeathome():
     """Load real virtual dimmer and switch channels through library mappings."""
     api = AsyncMock(spec=FreeAtHomeApi)
+    # Test live requests after the reconnect snapshot has finished.
+    api.is_priming = False
     device = Device(
         device_serial=SERIAL,
         device_id="test",
