@@ -105,6 +105,15 @@
       }
     },
     "event": {
+      "scene_request": {
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "scene_requested": "Scene requested"
+            }
+          }
+        }
+      },
       "blind_sensor": {
         "name": "Blind Event ({channel_id})",
         "state_attributes": {

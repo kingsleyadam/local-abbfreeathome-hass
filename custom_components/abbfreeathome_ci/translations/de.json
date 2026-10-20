@@ -105,6 +105,15 @@
       }
     },
     "event": {
+      "scene_request": {
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "scene_requested": "Szene angefordert"
+            }
+          }
+        }
+      },
       "blind_sensor": {
         "name": "Rollladen Ereignis ({channel_id})",
         "state_attributes": {

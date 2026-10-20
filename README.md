@@ -1,5 +1,9 @@
 # Home Assistant Integration - ABB-free@home
 
+Scene requests can trigger Home Assistant automations, including Hue scenes.
+See [Scene request events](SCENE_EVENTS.md) for event attributes, an automation
+example, installation requirements and hardware validation steps.
+
 [![Open in Dev Containers](https://img.shields.io/static/v1?label=Dev%20Containers&message=Open&color=blue)](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/kingsleyadam/local-abbfreeathome-hass)
 ![GitHub Release](https://img.shields.io/github/v/release/kingsleyadam/local-abbfreeathome-hass) ![hassfest](https://github.com/kingsleyadam/local-abbfreeathome-hass/actions/workflows/hassfest.yaml/badge.svg) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
