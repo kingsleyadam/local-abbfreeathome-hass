@@ -216,6 +216,21 @@
           }
         }
       },
+      "virtual_dimming_actuator": {
+        "name": "Virtual Dimming Event ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "On": "[%key:common::state::on%]",
+              "Off": "[%key:common::state::off%]",
+              "longpress_up": "Dimming Up",
+              "longpress_up_release": "Dimming Up Release",
+              "longpress_down": "Dimming Down",
+              "longpress_down_release": "Dimming Down Release"
+            }
+          }
+        }
+      },
       "virtual_switch_actuator_onoff": {
         "name": "Virtual Switch Event ({channel_id})",
         "state_attributes": {

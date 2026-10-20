@@ -216,6 +216,21 @@
           }
         }
       },
+      "virtual_dimming_actuator": {
+        "name": "Virtuelles Dimm-Ereignis ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "On": "Ein",
+              "Off": "Aus",
+              "longpress_up": "Aufdimmen",
+              "longpress_up_release": "Aufdimmen Loslassen",
+              "longpress_down": "Herunterdimmen",
+              "longpress_down_release": "Herunterdimmen Loslassen"
+            }
+          }
+        }
+      },
       "virtual_switch_actuator_onoff": {
         "name": "Virtuelles Schalt Ereignis ({channel_id})",
         "state_attributes": {

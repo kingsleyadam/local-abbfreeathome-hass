@@ -1,5 +1,6 @@
 """Create ABB-free@home event entities."""
 
+import logging
 from typing import Any
 
 from abbfreeathome import FreeAtHome
@@ -15,6 +16,9 @@ from abbfreeathome.channels.switch_sensor import (
     StaircaseLightSensor,
     SwitchSensor,
     SwitchSensorState,
+)
+from abbfreeathome.channels.virtual.virtual_dimming_actuator import (
+    VirtualDimmingActuator,
 )
 from abbfreeathome.channels.virtual.virtual_room_temperature_controller import (
     VirtualRoomTemperatureController,
@@ -33,6 +37,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
 from .helpers import async_get_via_device_kwargs
+
+_LOGGER = logging.getLogger(__name__)
 
 EVENT_DESCRIPTIONS = {
     "EventBlindSensorState": {
@@ -157,6 +163,26 @@ EVENT_DESCRIPTIONS = {
             "translation_key": "virtual_switch_actuator_onoff",
         },
     },
+    "EventVirtualDimmingActuator": {
+        "channel_class": VirtualDimmingActuator,
+        "event_type_callback": lambda requested_state: (
+            "On" if requested_state else "Off"
+        ),
+        "state_attribute": "requested_state",
+        "entity_description_kwargs": {
+            "device_class": EventDeviceClass.BUTTON,
+            "event_types": [
+                "On",
+                "Off",
+                *[
+                    state.name
+                    for state in DimmingSensorState
+                    if state is not DimmingSensorState.unknown
+                ],
+            ],
+            "translation_key": "virtual_dimming_actuator",
+        },
+    },
 }
 
 
@@ -169,8 +195,13 @@ async def async_setup_entry(
     free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
 
     for key, description in EVENT_DESCRIPTIONS.items():
+        entity_class = (
+            FreeAtHomeVirtualDimmingEventEntity
+            if description["channel_class"] is VirtualDimmingActuator
+            else FreeAtHomeEventEntity
+        )
         async_add_entities(
-            FreeAtHomeEventEntity(
+            entity_class(
                 channel,
                 state_attribute=description.get("state_attribute"),
                 entity_description_kwargs={"key": key}
@@ -300,3 +331,66 @@ class FreeAtHomeEventEntity(EventEntity):
     def unique_id(self) -> str | None:
         """Return a unique ID."""
         return f"{self._channel.device_serial}_{self._channel.channel_id}_{self.entity_description.key}"
+
+
+class FreeAtHomeVirtualDimmingEventEntity(FreeAtHomeEventEntity):
+    """Expose switching and dimming requests as events on one entity."""
+
+    _channel: VirtualDimmingActuator
+
+    @callback
+    def _async_handle_event(self) -> None:
+        """Emit switching requests, ignoring an uninitialized state."""
+        _LOGGER.debug(
+            "Virtual dimmer %s/%s: requested_state=%r -> %s",
+            self._channel.device_serial,
+            self._channel.channel_id,
+            self._channel.requested_state,
+            ("On" if self._channel.requested_state else "Off")
+            if self._channel.requested_state is not None
+            else "ignored",
+        )
+        if self._channel.requested_state is not None:
+            super()._async_handle_event()
+
+    @callback
+    def _async_handle_dimming_event(self) -> None:
+        """Emit this input's command immediately, before another input updates."""
+        event_type = self._channel.requested_dimming_state
+        if event_type in {
+            state.name
+            for state in DimmingSensorState
+            if state is not DimmingSensorState.unknown
+        }:
+            _LOGGER.debug(
+                "Virtual dimmer %s/%s: requested_dimming_state=%r -> event %s",
+                self._channel.device_serial,
+                self._channel.channel_id,
+                event_type,
+                event_type,
+            )
+            self._trigger_event(event_type, {"extra_data": None})
+            self.async_write_ha_state()
+        else:
+            _LOGGER.debug(
+                "Virtual dimmer %s/%s: requested_dimming_state=%r -> ignored",
+                self._channel.device_serial,
+                self._channel.channel_id,
+                event_type,
+            )
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe separately to switching and dimming requests."""
+        await super().async_added_to_hass()
+        self._channel.register_callback(
+            callback_attribute="requested_dimming_state",
+            callback=self._async_handle_dimming_event,
+        )
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove both subscriptions when the entity is unloaded."""
+        await super().async_will_remove_from_hass()
+        self._channel.remove_callback(
+            callback_attribute="requested_dimming_state",
+            callback=self._async_handle_dimming_event,
+        )
