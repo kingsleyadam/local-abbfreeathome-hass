@@ -18,7 +18,6 @@ from abbfreeathome.api import (
 from aiohttp import ClientSession
 import voluptuous as vol
 
-from homeassistant.components import zeroconf
 from homeassistant.config_entries import (
     CONN_CLASS_LOCAL_PUSH,
     ConfigFlow,
@@ -27,6 +26,7 @@ from homeassistant.config_entries import (
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 from .const import (
     CONF_CREATE_SUBDEVICES,
@@ -356,7 +356,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         return self._async_create_entry()
 
     async def async_step_zeroconf(
-        self, discovery_info: zeroconf.ZeroconfServiceInfo
+        self, discovery_info: ZeroconfServiceInfo
     ) -> ConfigFlowResult:
         """Handle zeroconf discovery."""
         if not isinstance(discovery_info.ip_address, IPv4Address):
