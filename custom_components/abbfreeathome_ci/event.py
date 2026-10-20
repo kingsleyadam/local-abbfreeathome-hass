@@ -10,7 +10,6 @@ from abbfreeathome.channels.force_on_off_sensor import (
     ForceOnOffSensor,
     ForceOnOffSensorState,
 )
-from abbfreeathome.channels.scene import Scene
 from abbfreeathome.channels.switch_sensor import (
     DimmingSensor,
     DimmingSensorState,
@@ -42,17 +41,6 @@ from .helpers import async_get_via_device_kwargs
 _LOGGER = logging.getLogger(__name__)
 
 EVENT_DESCRIPTIONS = {
-    # Subscribe to the scene itself so requests from any source use one entity.
-    "EventSceneRequested": {
-        "channel_class": Scene,
-        "event_type_callback": lambda scene_control: "scene_requested",
-        "state_attribute": "scene_control",
-        "entity_description_kwargs": {
-            "event_types": ["scene_requested"],
-            "translation_key": "scene_request",
-            "icon": "mdi:palette",
-        },
-    },
     "EventBlindSensorState": {
         "channel_class": BlindSensor,
         "event_type_callback": lambda state: state,
@@ -207,13 +195,11 @@ async def async_setup_entry(
     free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
 
     for key, description in EVENT_DESCRIPTIONS.items():
-        # Scene events carry the scene identity alongside the raw telegram value.
-        if description["channel_class"] is Scene:
-            entity_class = FreeAtHomeSceneEventEntity
-        elif description["channel_class"] is VirtualDimmingActuator:
-            entity_class = FreeAtHomeVirtualDimmingEventEntity
-        else:
-            entity_class = FreeAtHomeEventEntity
+        entity_class = (
+            FreeAtHomeVirtualDimmingEventEntity
+            if description["channel_class"] is VirtualDimmingActuator
+            else FreeAtHomeEventEntity
+        )
         async_add_entities(
             entity_class(
                 channel,
@@ -243,7 +229,6 @@ class FreeAtHomeEventEntity(EventEntity):
         | DimmingSensor
         | ForceOnOffSensor
         | StaircaseLightSensor
-        | Scene
         | SwitchSensor
         | VirtualSwitchActuator,
         state_attribute: str,
@@ -346,36 +331,6 @@ class FreeAtHomeEventEntity(EventEntity):
     def unique_id(self) -> str | None:
         """Return a unique ID."""
         return f"{self._channel.device_serial}_{self._channel.channel_id}_{self.entity_description.key}"
-
-
-class FreeAtHomeSceneEventEntity(FreeAtHomeEventEntity):
-    """Expose each live scene request as an automation-friendly event."""
-
-    _channel: Scene
-
-    @callback
-    def _async_handle_event(self) -> None:
-        """Emit the request immediately, including identical repeated telegrams."""
-        if self._channel.scene_control is None:
-            return
-        _LOGGER.debug(
-            "Scene %s/%s (%s): scene_control=%r -> scene_requested",
-            self._channel.device_serial,
-            self._channel.channel_id,
-            self._channel.channel_name,
-            self._channel.scene_control,
-        )
-        # Keep the raw value separate from the stable scene/device identifier.
-        self._trigger_event(
-            "scene_requested",
-            {
-                "scene_id": self._channel.device_serial,
-                "channel_id": self._channel.channel_id,
-                "scene_name": self._channel.channel_name,
-                "scene_control": self._channel.scene_control,
-            },
-        )
-        self.async_write_ha_state()
 
 
 class FreeAtHomeVirtualDimmingEventEntity(FreeAtHomeEventEntity):

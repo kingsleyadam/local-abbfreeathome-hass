@@ -1,20 +1,20 @@
 # Virtual dimmer hardware validation
 
-The virtual dimmer and scene event entities require a published
-`local-abbfreeathome` version that provides both `VirtualDimmingActuator` and
-`Scene`. The dependency in `custom_components/abbfreeathome_ci/manifest.json`
-retains the upstream pin, `local-abbfreeathome==3.8.2`, while the library changes
-are under review. This version does not contain the required classes and cannot
-load the new event platform.
+The virtual dimmer event entity requires a published `local-abbfreeathome`
+version that provides `VirtualDimmingActuator`. The manifest retains the upstream
+pin, `local-abbfreeathome==3.8.2`, while the library changes are under review.
+This version does not contain the required class and cannot load the new event
+platform.
 
-Keep the integration pull request in draft until the companion library changes
-are merged and released. Before merging or installing this integration, update
-the manifest to that published PyPI version. No fork dependency is required.
+Keep the integration pull request in draft until the virtual dimmer library
+changes in [library PR #268](https://github.com/kingsleyadam/local-abbfreeathome/pull/268)
+are merged and released. Update the manifest to that published PyPI version
+before merging or installing this integration.
 
 On the test installation:
 
 - Confirm Home Assistant successfully installs the published library requirement
-  containing both new classes and loads the event platform. Record the tested
+  containing the new class and loads the event platform. Record the tested
   library and integration versions.
 - Enable virtual devices in the integration options. Place the channel on the
   SysAP floor plan or enable orphan channels as appropriate.
@@ -72,7 +72,7 @@ The two inputs produce separate state writes, even within one WebSocket message.
 ## Automated tests on a Linux development machine
 
 Use a separate Python 3.13 environment, as in the repository's CI workflow.
-For development before the library release, place a checkout containing both
+For development before the library release, place a checkout containing the virtual dimmer
 library changes in a sibling directory named `local-abbfreeathome`. Run these
 commands from the integration repository:
 
