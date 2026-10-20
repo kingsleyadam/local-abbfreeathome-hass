@@ -22,6 +22,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util.color import brightness_to_value, value_to_brightness
 
 from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
+from .helpers import async_get_via_device_kwargs
 
 BRIGHTNESS_SCALE = (1, 100)
 
@@ -122,7 +123,11 @@ class FreeAtHomeLightEntity(LightEntity):
                 serial_number=f"{self._channel.device_serial}_{self._channel.channel_id}",
                 hw_version=f"{self._channel.device.device_id} (sub)",
                 suggested_area=self._channel.room_name,
-                via_device=(DOMAIN, self._channel.device_serial),
+                **async_get_via_device_kwargs(
+                    self.hass,
+                    self.platform.config_entry.entry_id,
+                    self._channel.device_serial,
+                ),
             )
 
         return DeviceInfo(identifiers={(DOMAIN, self._channel.device_serial)})
