@@ -1,6 +1,6 @@
 """Test ABB-free@home valve."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from abbfreeathome.channels.valve_actuator import (
     CoolingActuator,
@@ -302,13 +302,21 @@ async def test_valve_entity_with_subdevices(hass: HomeAssistant) -> None:
     )
 
     # Test device info for subdevice
-    device_info = entity.device_info
+    entity.platform = MagicMock()
+    with patch(
+        "custom_components.abbfreeathome_ci.valve.async_get_via_device_kwargs",
+        return_value={"via_device_id": "parent_device_id"},
+    ) as mock_via_device_kwargs:
+        device_info = entity.device_info
     assert device_info["identifiers"] == {(DOMAIN, "ABB7F57FFFE12345_ch0005")}
     assert device_info["name"] == "Multi Zone Heating (ch0005)"
     assert device_info["serial_number"] == "ABB7F57FFFE12345_ch0005"
     assert device_info["hw_version"] == "5678 (sub)"
     assert device_info["suggested_area"] == "Zone 1"
-    assert device_info["via_device"] == (DOMAIN, "ABB7F57FFFE12345")
+    mock_via_device_kwargs.assert_called_once_with(
+        entity.hass, entity.platform.config_entry.entry_id, "ABB7F57FFFE12345"
+    )
+    assert device_info["via_device_id"] == "parent_device_id"
 
 
 async def test_valve_entity_callbacks(hass: HomeAssistant) -> None:

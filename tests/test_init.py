@@ -598,8 +598,11 @@ async def test_async_setup_entry_device_via_device_id(
     assert result is True
 
     sysap_call, device_call = mock_device_registry.async_get_or_create.call_args_list
-    sysap_device = mock_device_registry.async_get_or_create.return_value
+    sysap_device = mock_device_registry.async_get_device_by_identifier.return_value
 
+    mock_device_registry.async_get_device_by_identifier.assert_called_once_with(
+        (DOMAIN, mock_config_entry.data[CONF_SERIAL]), mock_config_entry.entry_id
+    )
     assert "via_device_id" not in sysap_call.kwargs
     assert "via_device" not in sysap_call.kwargs
     assert device_call.kwargs["via_device_id"] == sysap_device.id

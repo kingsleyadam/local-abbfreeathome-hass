@@ -25,12 +25,12 @@ from custom_components.abbfreeathome_ci.const import (
     DOMAIN,
 )
 from homeassistant import config_entries
-from homeassistant.components import zeroconf
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 # Test constants
 TEST_HOST_HTTP = "http://192.168.1.100"
@@ -251,7 +251,7 @@ async def test_zeroconf_flow(
     mock_free_at_home_api: AsyncMock,
 ) -> None:
     """Test we can setup from zeroconf."""
-    discovery_info = zeroconf.ZeroconfServiceInfo(
+    discovery_info = ZeroconfServiceInfo(
         ip_address=IPv4Address("192.168.1.100"),
         ip_addresses=[IPv4Address("192.168.1.100")],
         hostname="sysap.local.",
@@ -288,11 +288,12 @@ async def test_zeroconf_already_configured(
     hass: HomeAssistant,
     mock_free_at_home_settings: AsyncMock,
     mock_config_entry,
+    mock_setup_entry: AsyncMock,
 ) -> None:
     """Test we abort zeroconf if already configured."""
     await hass.config_entries.async_add(mock_config_entry)
 
-    discovery_info = zeroconf.ZeroconfServiceInfo(
+    discovery_info = ZeroconfServiceInfo(
         ip_address=IPv4Address("192.168.1.100"),
         ip_addresses=[IPv4Address("192.168.1.100")],
         hostname="sysap.local.",
@@ -392,6 +393,7 @@ async def test_reconfigure_flow(
     mock_free_at_home_settings: AsyncMock,
     mock_free_at_home_api: AsyncMock,
     mock_config_entry,
+    mock_setup_entry: AsyncMock,
 ) -> None:
     """Test reconfigure flow."""
     await hass.config_entries.async_add(mock_config_entry)
@@ -490,7 +492,7 @@ async def test_zeroconf_ipv6_abort(
     mock_free_at_home_settings: AsyncMock,
 ) -> None:
     """Test we abort zeroconf for IPv6 addresses."""
-    discovery_info = zeroconf.ZeroconfServiceInfo(
+    discovery_info = ZeroconfServiceInfo(
         ip_address=IPv6Address("::1"),
         ip_addresses=[IPv6Address("::1")],
         hostname="sysap.local.",
@@ -511,6 +513,7 @@ async def test_zeroconf_ipv6_abort(
 async def test_zeroconf_https_existing_entry(
     hass: HomeAssistant,
     mock_free_at_home_settings: AsyncMock,
+    mock_setup_entry: AsyncMock,
 ) -> None:
     """Test zeroconf discovery updates existing HTTPS entry."""
     # Create config entry with HTTPS host
@@ -539,7 +542,7 @@ async def test_zeroconf_https_existing_entry(
     )
     await hass.config_entries.async_add(https_entry)
 
-    discovery_info = zeroconf.ZeroconfServiceInfo(
+    discovery_info = ZeroconfServiceInfo(
         ip_address=IPv4Address("192.168.1.100"),
         ip_addresses=[IPv4Address("192.168.1.100")],
         hostname="sysap.local.",
@@ -562,6 +565,7 @@ async def test_reconfigure_with_errors(
     mock_free_at_home_settings: AsyncMock,
     mock_free_at_home_api: AsyncMock,
     mock_config_entry,
+    mock_setup_entry: AsyncMock,
 ) -> None:
     """Test reconfigure flow with validation errors."""
     await hass.config_entries.async_add(mock_config_entry)
@@ -593,6 +597,7 @@ async def test_reconfigure_with_api_errors(
     mock_free_at_home_settings: AsyncMock,
     mock_free_at_home_api: AsyncMock,
     mock_config_entry,
+    mock_setup_entry: AsyncMock,
 ) -> None:
     """Test reconfigure flow with API validation errors."""
     await hass.config_entries.async_add(mock_config_entry)
@@ -776,6 +781,7 @@ async def test_import_updates_existing_entry(
     hass: HomeAssistant,
     mock_config_entry,
     mock_free_at_home_settings: AsyncMock,
+    mock_setup_entry: AsyncMock,
 ) -> None:
     """Test import flow updates existing entry."""
     await hass.config_entries.async_add(mock_config_entry)
@@ -815,7 +821,7 @@ async def test_zeroconf_confirm_with_settings_errors(
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
         context={"source": config_entries.SOURCE_ZEROCONF},
-        data=zeroconf.ZeroconfServiceInfo(
+        data=ZeroconfServiceInfo(
             ip_address=IPv4Address("192.168.1.100"),
             ip_addresses=[IPv4Address("192.168.1.100")],
             hostname="sysap.local.",
@@ -849,7 +855,7 @@ async def test_zeroconf_confirm_with_api_errors(
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
         context={"source": config_entries.SOURCE_ZEROCONF},
-        data=zeroconf.ZeroconfServiceInfo(
+        data=ZeroconfServiceInfo(
             ip_address=IPv4Address("192.168.1.100"),
             ip_addresses=[IPv4Address("192.168.1.100")],
             hostname="sysap.local.",
@@ -885,7 +891,7 @@ async def test_zeroconf_confirm_https_flow(
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
         context={"source": config_entries.SOURCE_ZEROCONF},
-        data=zeroconf.ZeroconfServiceInfo(
+        data=ZeroconfServiceInfo(
             ip_address=IPv4Address("192.168.1.100"),
             ip_addresses=[IPv4Address("192.168.1.100")],
             hostname="sysap.local.",
@@ -1004,7 +1010,7 @@ async def test_zeroconf_discovery_with_settings_errors(
         "http://192.168.1.100"
     )
 
-    discovery_info = zeroconf.ZeroconfServiceInfo(
+    discovery_info = ZeroconfServiceInfo(
         ip_address=IPv4Address("192.168.1.100"),
         ip_addresses=[IPv4Address("192.168.1.100")],
         hostname="sysap.local.",
@@ -1023,7 +1029,9 @@ async def test_zeroconf_discovery_with_settings_errors(
 
 
 async def test_import_creates_new_entry(
-    hass: HomeAssistant, mock_free_at_home_settings: AsyncMock
+    hass: HomeAssistant,
+    mock_free_at_home_settings: AsyncMock,
+    mock_setup_entry: AsyncMock,
 ) -> None:
     """Test import flow creates new entry when one doesn't exist."""
     with (
@@ -1175,13 +1183,14 @@ async def test_zeroconf_confirm_non_https_continues_to_completion(
     hass: HomeAssistant,
     mock_free_at_home_settings: AsyncMock,
     mock_free_at_home_api: AsyncMock,
+    mock_setup_entry: AsyncMock,
 ) -> None:
     """Test zeroconf_confirm with HTTP host continues without SSL config (tests else branch)."""
     # Start a zeroconf flow first to set up the flow context
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
         context={"source": config_entries.SOURCE_ZEROCONF},
-        data=zeroconf.ZeroconfServiceInfo(
+        data=ZeroconfServiceInfo(
             ip_address=IPv4Address("192.168.1.100"),
             ip_addresses=[IPv4Address("192.168.1.100")],
             hostname="sysap.local.",
@@ -1215,7 +1224,9 @@ async def test_zeroconf_confirm_non_https_continues_to_completion(
 
 
 async def test_reconfigure_step_shows_correct_schema(
-    hass: HomeAssistant, mock_config_entry
+    hass: HomeAssistant,
+    mock_config_entry,
+    mock_setup_entry: AsyncMock,
 ) -> None:
     """Test reconfigure step uses correct schema (not ssl_config schema)."""
     await hass.config_entries.async_add(mock_config_entry)

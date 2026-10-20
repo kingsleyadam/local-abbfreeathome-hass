@@ -12,6 +12,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
+from .helpers import async_get_via_device_kwargs
 
 
 async def async_setup_entry(
@@ -84,7 +85,11 @@ class FreeAtHomeLockEntity(LockEntity):
                 serial_number=f"{self._channel.device_serial}_{self._channel.channel_id}",
                 hw_version=f"{self._channel.device.device_id} (sub)",
                 suggested_area=self._channel.room_name,
-                via_device=(DOMAIN, self._channel.device_serial),
+                **async_get_via_device_kwargs(
+                    self.hass,
+                    self.platform.config_entry.entry_id,
+                    self._channel.device_serial,
+                ),
             )
 
         return DeviceInfo(identifiers={(DOMAIN, self._channel.device_serial)})
