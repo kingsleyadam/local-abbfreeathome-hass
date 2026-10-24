@@ -191,10 +191,10 @@ When adding the integration it'll automatically add devices to different `Areas`
 
 ## Device and Channel Parameters
 
-Each physical device with included channels and at least one parameter gets a
-read-only **Parameters** diagnostic sensor, enabled by default. Its state is the
-total number of exposed parameters, without a unit or statistics. Settings appear
-as attributes, rather than individual entities:
+By default, each physical device with included channels and at least one parameter
+gets a read-only **Parameters** diagnostic sensor, enabled by default. Its state is
+the number of parameters exposed by that sensor, without a unit or statistics.
+Settings appear as attributes, rather than individual entities:
 
 ```yaml
 device_parameters:
@@ -219,10 +219,40 @@ the library's `get_parameter_name()`, falling back to raw IDs for unknown
 parameters. Values are preserved as supplied by the library. Enum names are not
 localized and templates referencing them must be updated if a library release
 renames a parameter or gives a previously unknown ID a name. Only channels
-included by the integration's device/channel filters are exposed. The sensor
-always belongs to the physical parent device, even when **Create Sub-Devices** is
-enabled. Changes received over the websocket update its attributes automatically.
+included by the integration's device/channel filters are exposed. Empty
+`device_parameters` and `channel_parameters` groups are omitted.
+Changes received over the websocket update the attributes automatically.
 Parameters cannot be changed through the SysAP local API.
+
+With **Create Sub-Devices** enabled for a multi-device:
+
+- The physical parent's Parameters sensor contains only `device_parameters`.
+- Each included channel sub-device gets its own Parameters sensor containing
+  only that channel's `channel_parameters`, using the same nested structure above.
+- No sensor is created for a parent or channel with no parameters. Device-level
+  parameters are not copied onto the sub-devices.
+
+For example, a parent with one device parameter has a sensor state of `1`:
+
+```yaml
+device_parameters:
+  PID_CHANNEL_SELECTOR_8_GANG: "1"
+```
+
+A channel sub-device with two parameters has a separate sensor state of `2`:
+
+```yaml
+channel_parameters:
+  ch000c:
+    name: Terrace light
+    parameters:
+      PID_DELAY_TIME: "60"
+      PID_SWITCH_ACTUATOR_BEHAVIOR_ON_MALFUNCTION: "1"
+```
+
+When sub-devices are disabled, or the device is not a multi-device, parameters
+remain aggregated on the physical parent. The parent sensor retains its unique
+ID when switching modes; channel sensors have separate, channel-specific IDs.
 
 To expose an individual parameter using a template helper:
 

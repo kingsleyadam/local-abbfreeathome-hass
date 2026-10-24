@@ -1,6 +1,8 @@
 """Tests for parameter diagnostic sensors."""
 
 import logging
+from runpy import run_path
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from abbfreeathome.channels.base import Base
@@ -8,12 +10,14 @@ from abbfreeathome.channels.temperature_sensor import TemperatureSensor
 from abbfreeathome.device import Device
 import pytest
 
-from custom_components.abbfreeathome_ci.const import DOMAIN
+from custom_components.abbfreeathome_ci import sensor as sensor_platform
+from custom_components.abbfreeathome_ci.const import DOMAIN, MANUFACTURER
 from custom_components.abbfreeathome_ci.sensor import (
     FreeAtHomeParametersSensor,
     FreeAtHomeSensorEntity,
     async_setup_entry,
 )
+from homeassistant import const
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_component import EntityComponent
 
@@ -225,11 +229,15 @@ async def test_parameter_state_updates_in_hass(hass, parameter_device):
     assert hass.states.get(entity.entity_id) is removed_state
 
 
-@pytest.mark.parametrize("create_subdevices", [False, True])
+@pytest.mark.parametrize(
+    ("create_subdevices", "multi_device"), [(False, True), (True, False)]
+)
 async def test_setup_parameter_sensors(
-    hass, mock_config_entry, parameter_device, create_subdevices
+    hass, mock_config_entry, parameter_device, create_subdevices, multi_device
 ):
-    """Only expose included channels and keep the aggregate on the parent."""
+    """Aggregate unless both sub-device creation and multi-device detection apply."""
+    if not multi_device:
+        parameter_device._floor = "01"
     mock_config_entry.add_to_hass(hass)
     hass.config_entries.async_update_entry(
         mock_config_entry,
@@ -259,6 +267,170 @@ async def test_setup_parameter_sensors(
         parameter_device.channels["ch0001"].update_parameter("par0015", "70")
         write_state.assert_not_called()
         await entity.async_will_remove_from_hass()
+
+
+@pytest.mark.parametrize("has_device_parameters", [False, True])
+async def test_setup_split_parameter_sensors(
+    hass, mock_config_entry, parameter_device, has_device_parameters
+):
+    """Give the parent device parameters and each included child its own parameters."""
+    if not has_device_parameters:
+        parameter_device.parameters.clear()
+    mock_config_entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(
+        mock_config_entry,
+        data={**mock_config_entry.data, "create_subdevices": True},
+    )
+    api = Mock()
+    api.get_devices.return_value = {parameter_device.device_serial: parameter_device}
+    api.get_channels_by_class.return_value = []
+    # The second populated channel is excluded by the integration's filters.
+    api.get_channels_by_device.return_value = [
+        parameter_device.channels["ch0000"],
+        parameter_device.channels["ch0002"],
+    ]
+    hass.data[DOMAIN] = {mock_config_entry.entry_id: api}
+    entities = []
+
+    await async_setup_entry(hass, mock_config_entry, entities.extend)
+
+    assert len(entities) == 1 + has_device_parameters
+    child = entities[-1]
+    assert child.unique_id == "ABB123456_ch0000_parameters"
+    assert child.native_value == 1
+    assert child.extra_state_attributes == {
+        "channel_parameters": {
+            "ch0000": {
+                "name": "Living room ceiling light",
+                "parameters": {"PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "130"},
+            }
+        }
+    }
+    child.hass = hass
+    child.platform = Mock(config_entry=mock_config_entry)
+    with patch(
+        "custom_components.abbfreeathome_ci.sensor.async_get_via_device_kwargs",
+        return_value={"via_device": (DOMAIN, "ABB123456")},
+    ) as parent_link:
+        info = child.device_info
+    assert info["identifiers"] == {(DOMAIN, "ABB123456_ch0000")}
+    assert info["name"] == "Living room actuator (ch0000)"
+    assert info["via_device"] == (DOMAIN, "ABB123456")
+    parent_link.assert_called_once_with(hass, mock_config_entry.entry_id, "ABB123456")
+
+    with patch.object(child, "async_write_ha_state") as child_write:
+        await child.async_added_to_hass()
+        parameter_device.update_parameter("par0001", "1")
+        parameter_device.channels["ch0001"].update_parameter("par0015", "70")
+        child_write.assert_not_called()
+        parameter_device.channels["ch0000"].update_parameter("par0015", "140")
+        child_write.assert_called_once()
+        await child.async_will_remove_from_hass()
+        parameter_device.channels["ch0000"].update_parameter("par0015", "150")
+        child_write.assert_called_once()
+
+    if has_device_parameters:
+        parent = entities[0]
+        assert parent.unique_id == "ABB123456_parameters"
+        assert parent.device_info == {"identifiers": {(DOMAIN, "ABB123456")}}
+        assert parent.native_value == 1
+        assert parent.extra_state_attributes == {
+            "device_parameters": {"PID_LED_DAY_BRIGHTNESS": "1"}
+        }
+        with patch.object(parent, "async_write_ha_state") as parent_write:
+            await parent.async_added_to_hass()
+            parameter_device.channels["ch0000"].update_parameter("par0015", "160")
+            parent_write.assert_not_called()
+            parameter_device.update_parameter("par0001", "2")
+            parent_write.assert_called_once()
+            await parent.async_will_remove_from_hass()
+            parameter_device.update_parameter("par0001", "3")
+            parent_write.assert_called_once()
+
+
+@pytest.mark.parametrize("scope", ["device", "channel", "neither"])
+def test_empty_parameter_groups_are_omitted(parameter_device, scope):
+    """Only publish nonempty parameter groups."""
+    if scope != "device":
+        parameter_device.parameters.clear()
+    if scope != "channel":
+        for channel in parameter_device.channels.values():
+            channel.parameters.clear()
+    entity = FreeAtHomeParametersSensor(
+        parameter_device, list(parameter_device.channels.values())
+    )
+
+    assert ("device_parameters" in entity.extra_state_attributes) == (scope == "device")
+    assert ("channel_parameters" in entity.extra_state_attributes) == (
+        scope == "channel"
+    )
+
+
+@pytest.mark.parametrize("create_subdevices", [False, True])
+async def test_combined_actuator_parameter_counts(
+    hass, mock_config_entry, create_subdevices
+):
+    """Match the reported device's six contact and eight actuator channels."""
+    device = Device(
+        device_serial="TEST_COMBINED",
+        device_id="B008",
+        display_name="Combined actuator",
+        api=Mock(),
+        parameters={"par0026": "1"},
+    )
+    for index in range(16):
+        parameters = (
+            {"par0010": "2"} if index < 6 else {"par0028": "60", "par0027": "1"}
+        )
+        channel_id = f"ch{index:04x}"
+        device.channels[channel_id] = Base(
+            device=device,
+            channel_id=channel_id,
+            channel_name=f"Channel {index}",
+            inputs={},
+            outputs={},
+            parameters=parameters,
+        )
+    # Two unused channels are filtered out upstream, not by their display name.
+    included_channels = [
+        channel
+        for index, channel in enumerate(device.channels.values())
+        if index not in (6, 7)
+    ]
+    mock_config_entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(
+        mock_config_entry,
+        data={**mock_config_entry.data, "create_subdevices": create_subdevices},
+    )
+    api = Mock()
+    api.get_devices.return_value = {device.device_serial: device}
+    api.get_channels_by_class.return_value = []
+    api.get_channels_by_device.return_value = included_channels
+    hass.data[DOMAIN] = {mock_config_entry.entry_id: api}
+    entities = []
+
+    await async_setup_entry(hass, mock_config_entry, entities.extend)
+
+    assert sum(entity.native_value for entity in entities) == 23
+    if create_subdevices:
+        assert len(entities) == 15
+        assert [entity.native_value for entity in entities] == [
+            1,
+            *([1] * 6),
+            *([2] * 8),
+        ]
+        assert entities[0].extra_state_attributes == {
+            "device_parameters": {"PID_CHANNEL_SELECTOR_8_GANG": "1"}
+        }
+        for entity, channel in zip(entities[1:], included_channels, strict=True):
+            assert entity.unique_id == f"TEST_COMBINED_{channel.channel_id}_parameters"
+            assert set(entity.extra_state_attributes) == {"channel_parameters"}
+            assert list(entity.extra_state_attributes["channel_parameters"]) == [
+                channel.channel_id
+            ]
+    else:
+        assert len(entities) == 1
+        assert len(entities[0].extra_state_attributes["channel_parameters"]) == 14
 
 
 @pytest.mark.parametrize(
@@ -342,3 +514,100 @@ async def test_setup_preserves_measurement_sensors(
     assert isinstance(entities[0], FreeAtHomeSensorEntity)
     assert entities[0].native_value == 21
     assert isinstance(entities[1], FreeAtHomeParametersSensor)
+
+
+@pytest.mark.parametrize("modern_units", [False, True])
+def test_parts_per_million_compatibility(monkeypatch, modern_units):
+    """Use the modern unit when available, otherwise use the legacy constant."""
+    monkeypatch.setattr(
+        const, "CONCENTRATION_PARTS_PER_MILLION", "legacy_ppm", raising=False
+    )
+    if modern_units:
+        monkeypatch.setattr(
+            const,
+            "UnitOfRatio",
+            SimpleNamespace(PARTS_PER_MILLION="modern_ppm"),
+            raising=False,
+        )
+    else:
+        monkeypatch.delattr(const, "UnitOfRatio", raising=False)
+
+    sensor = run_path(
+        sensor_platform.__file__, run_name="custom_components.abbfreeathome_ci.sensor"
+    )
+    expected_unit = "modern_ppm" if modern_units else "legacy_ppm"
+
+    assert sensor["PARTS_PER_MILLION"] == expected_unit
+    assert (
+        sensor["SENSOR_DESCRIPTIONS"]["AirQualitySensorCO2"][
+            "entity_description_kwargs"
+        ]["native_unit_of_measurement"]
+        == expected_unit
+    )
+
+
+@pytest.mark.parametrize(
+    ("create_subdevices", "multi_device"), [(False, True), (True, False), (True, True)]
+)
+async def test_measurement_sensor_properties_and_callbacks(
+    hass, mock_config_entry, parameter_device, create_subdevices, multi_device
+):
+    """Preserve measurement state, device placement and callback lifecycle."""
+    if not multi_device:
+        parameter_device._floor = "01"
+    channel = Mock(
+        spec=TemperatureSensor,
+        device=parameter_device,
+        device_serial=parameter_device.device_serial,
+        device_name=parameter_device.display_name,
+        channel_id="ch0003",
+        channel_name="Living room temperature",
+        room_name="Living room",
+        state=21,
+    )
+    entity = FreeAtHomeSensorEntity(
+        channel,
+        value_attribute="state",
+        entity_description_kwargs={"key": "TemperatureSensor"},
+        sysap_serial_number="SYSAP123",
+        create_subdevices=create_subdevices,
+    )
+    assert entity.unique_id == "ABB123456_ch0003_TemperatureSensor"
+    assert entity.native_value == 21
+    channel.state = None
+    assert entity.native_value is None
+    assert entity.should_poll is False
+    assert entity.name == "Living room temperature"
+
+    entity.hass = hass
+    entity.platform = Mock(config_entry=mock_config_entry)
+    with patch(
+        "custom_components.abbfreeathome_ci.sensor.async_get_via_device_kwargs",
+        return_value={"via_device": (DOMAIN, "ABB123456")},
+    ) as parent_link:
+        info = entity.device_info
+    if create_subdevices and multi_device:
+        assert info == {
+            "identifiers": {(DOMAIN, "ABB123456_ch0003")},
+            "name": "Living room actuator (ch0003)",
+            "manufacturer": MANUFACTURER,
+            "serial_number": "ABB123456_ch0003",
+            "hw_version": "test (sub)",
+            "suggested_area": "Living room",
+            "via_device": (DOMAIN, "ABB123456"),
+        }
+        parent_link.assert_called_once_with(
+            hass, mock_config_entry.entry_id, "ABB123456"
+        )
+    else:
+        assert info == {"identifiers": {(DOMAIN, "ABB123456")}}
+        parent_link.assert_not_called()
+
+    await entity.async_added_to_hass()
+    channel.register_callback.assert_called_once_with(
+        callback_attribute="state", callback=entity.async_write_ha_state
+    )
+    await entity.async_will_remove_from_hass()
+    channel.remove_callback.assert_called_once_with(
+        callback_attribute="state", callback=entity.async_write_ha_state
+    )

@@ -42,14 +42,6 @@ except ImportError:
 else:
     PARTS_PER_MILLION = UnitOfRatio.PARTS_PER_MILLION
 
-try:
-    from homeassistant.const import UnitOfRatio
-except ImportError:
-    # Older supported HA versions do not yet have UnitOfRatio.
-    from homeassistant.const import CONCENTRATION_PARTS_PER_MILLION as PARTS_PER_MILLION
-else:
-    PARTS_PER_MILLION = UnitOfRatio.PARTS_PER_MILLION
-
 SENSOR_DESCRIPTIONS = {
     "AirQualitySensorCO2": {
         "channel_class": AirQualitySensor,
@@ -180,15 +172,23 @@ async def async_setup_entry(
     parameter_entities = []
     for device in free_at_home.get_devices().values():
         channels = free_at_home.get_channels_by_device(device.device_serial)
-        if channels and (
-            device.parameters or any(channel.parameters for channel in channels)
-        ):
+        if not channels:
+            continue
+        if entry.data[CONF_CREATE_SUBDEVICES] and device.is_multi_device:
+            if device.parameters:
+                parameter_entities.append(FreeAtHomeParametersSensor(device, []))
+            parameter_entities.extend(
+                FreeAtHomeParametersSensor(None, [channel])
+                for channel in channels
+                if channel.parameters
+            )
+        elif device.parameters or any(channel.parameters for channel in channels):
             parameter_entities.append(FreeAtHomeParametersSensor(device, channels))
     async_add_entities(parameter_entities)
 
 
 class FreeAtHomeParametersSensor(SensorEntity):
-    """Expose device and channel parameters on the physical parent device."""
+    """Expose parameters belonging to a physical device or channel sub-device."""
 
     _attr_should_poll = False
     _attr_has_entity_name = True
@@ -196,34 +196,59 @@ class FreeAtHomeParametersSensor(SensorEntity):
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_icon = "mdi:tune"
 
-    def __init__(self, device: Device, channels: list[Base]) -> None:
+    def __init__(self, device: Device | None, channels: list[Base]) -> None:
         """Initialize the parameter aggregate."""
         super().__init__()
         self._device = device
         self._channels = channels
-        self._attr_unique_id = f"{device.device_serial}_parameters"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, device.device_serial)}
+        serial = (
+            device.device_serial
+            if device is not None
+            else f"{channels[0].device_serial}_{channels[0].channel_id}"
+        )
+        self._attr_unique_id = f"{serial}_parameters"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Attach to the same physical device or sub-device as operational entities."""
+        if self._device is not None:
+            return DeviceInfo(identifiers={(DOMAIN, self._device.device_serial)})
+
+        channel = self._channels[0]
+        serial = f"{channel.device_serial}_{channel.channel_id}"
+        return DeviceInfo(
+            identifiers={(DOMAIN, serial)},
+            name=f"{channel.device_name} ({channel.channel_id})",
+            manufacturer=MANUFACTURER,
+            serial_number=serial,
+            hw_version=f"{channel.device.device_id} (sub)",
+            suggested_area=channel.room_name,
+            **async_get_via_device_kwargs(
+                self.hass,
+                self.platform.config_entry.entry_id,
+                channel.device_serial,
+            ),
         )
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to device and included channel parameter changes."""
-        self._device.register_parameter_callback(self.async_write_ha_state)
+        if self._device is not None:
+            self._device.register_parameter_callback(self.async_write_ha_state)
         for channel in self._channels:
             channel.register_parameter_callback(self.async_write_ha_state)
 
     async def async_will_remove_from_hass(self) -> None:
         """Unsubscribe from parameter changes."""
-        self._device.remove_parameter_callback(self.async_write_ha_state)
+        if self._device is not None:
+            self._device.remove_parameter_callback(self.async_write_ha_state)
         for channel in self._channels:
             channel.remove_parameter_callback(self.async_write_ha_state)
 
     @property
     def native_value(self) -> int:
         """Return the number of exposed parameters, not a measurement."""
-        return len(self._device.parameters) + sum(
-            len(channel.parameters) for channel in self._channels
-        )
+        device_count = len(self._device.parameters) if self._device is not None else 0
+        return device_count + sum(len(channel.parameters) for channel in self._channels)
 
     @staticmethod
     def _named_parameters(source: Device | Base) -> dict[str, Any]:
@@ -236,17 +261,20 @@ class FreeAtHomeParametersSensor(SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return independent snapshots so library updates cannot mutate HA state."""
-        return {
-            "device_parameters": self._named_parameters(self._device),
-            "channel_parameters": {
-                channel.channel_id: {
-                    "name": channel.channel_name,
-                    "parameters": self._named_parameters(channel),
-                }
-                for channel in self._channels
-                if channel.parameters
-            },
+        attributes = {}
+        if self._device is not None and self._device.parameters:
+            attributes["device_parameters"] = self._named_parameters(self._device)
+        channel_parameters = {
+            channel.channel_id: {
+                "name": channel.channel_name,
+                "parameters": self._named_parameters(channel),
+            }
+            for channel in self._channels
+            if channel.parameters
         }
+        if channel_parameters:
+            attributes["channel_parameters"] = channel_parameters
+        return attributes
 
 
 class FreeAtHomeSensorEntity(SensorEntity):
