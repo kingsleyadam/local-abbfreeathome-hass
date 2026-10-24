@@ -4,6 +4,7 @@ from typing import Any
 
 from abbfreeathome import FreeAtHome
 from abbfreeathome.channels.air_quality_sensor import AirQualitySensor
+from abbfreeathome.channels.base import Base
 from abbfreeathome.channels.brightness_sensor import BrightnessSensor
 from abbfreeathome.channels.movement_detector import (
     BlockableMovementDetector,
@@ -15,6 +16,7 @@ from abbfreeathome.channels.window_door_sensor import (
     WindowDoorSensor,
     WindowDoorSensorPosition,
 )
+from abbfreeathome.device import Device
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -26,10 +28,19 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import LIGHT_LUX, PERCENTAGE, UnitOfSpeed, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
 from .helpers import async_get_via_device_kwargs
+
+try:
+    from homeassistant.const import UnitOfRatio
+except ImportError:
+    # Older supported HA versions do not yet have UnitOfRatio.
+    from homeassistant.const import CONCENTRATION_PARTS_PER_MILLION as PARTS_PER_MILLION
+else:
+    PARTS_PER_MILLION = UnitOfRatio.PARTS_PER_MILLION
 
 try:
     from homeassistant.const import UnitOfRatio
@@ -165,6 +176,77 @@ async def async_setup_entry(
             )
             if getattr(channel, description.get("value_attribute")) is not None
         )
+
+    parameter_entities = []
+    for device in free_at_home.get_devices().values():
+        channels = free_at_home.get_channels_by_device(device.device_serial)
+        if channels and (
+            device.parameters or any(channel.parameters for channel in channels)
+        ):
+            parameter_entities.append(FreeAtHomeParametersSensor(device, channels))
+    async_add_entities(parameter_entities)
+
+
+class FreeAtHomeParametersSensor(SensorEntity):
+    """Expose device and channel parameters on the physical parent device."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_translation_key = "parameters"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:tune"
+
+    def __init__(self, device: Device, channels: list[Base]) -> None:
+        """Initialize the parameter aggregate."""
+        super().__init__()
+        self._device = device
+        self._channels = channels
+        self._attr_unique_id = f"{device.device_serial}_parameters"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, device.device_serial)}
+        )
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to device and included channel parameter changes."""
+        self._device.register_parameter_callback(self.async_write_ha_state)
+        for channel in self._channels:
+            channel.register_parameter_callback(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Unsubscribe from parameter changes."""
+        self._device.remove_parameter_callback(self.async_write_ha_state)
+        for channel in self._channels:
+            channel.remove_parameter_callback(self.async_write_ha_state)
+
+    @property
+    def native_value(self) -> int:
+        """Return the number of exposed parameters, not a measurement."""
+        return len(self._device.parameters) + sum(
+            len(channel.parameters) for channel in self._channels
+        )
+
+    @staticmethod
+    def _named_parameters(source: Device | Base) -> dict[str, Any]:
+        """Snapshot parameter values using names, or IDs for unknown parameters."""
+        return {
+            source.get_parameter_name(parameter_id) or parameter_id: value
+            for parameter_id, value in source.parameters.items()
+        }
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return independent snapshots so library updates cannot mutate HA state."""
+        return {
+            "device_parameters": self._named_parameters(self._device),
+            "channel_parameters": {
+                channel.channel_id: {
+                    "name": channel.channel_name,
+                    "parameters": self._named_parameters(channel),
+                }
+                for channel in self._channels
+                if channel.parameters
+            },
+        }
 
 
 class FreeAtHomeSensorEntity(SensorEntity):

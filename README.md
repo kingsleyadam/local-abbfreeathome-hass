@@ -189,6 +189,53 @@ Each time Home Assistant is loaded, the `configuration.yaml` entry for `abbfreea
 
 When adding the integration it'll automatically add devices to different `Areas` in Home Assistant. The areas will be pulled from your ABB-free@home Configuration/Floorplan. When prompted to add the devices double check the area for each.
 
+## Device and Channel Parameters
+
+Each physical device with included channels and at least one parameter gets a
+read-only **Parameters** diagnostic sensor, enabled by default. Its state is the
+total number of exposed parameters, without a unit or statistics. Settings appear
+as attributes, rather than individual entities:
+
+```yaml
+device_parameters:
+  PID_LED_DAY_BRIGHTNESS: "0"
+channel_parameters:
+  ch0000:
+    name: Living room ceiling light
+    parameters:
+      PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION: "130"
+  ch0001:
+    name: Living room wall light
+    parameters:
+      PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION: "60"
+      parffff: "unknown parameter value"
+```
+
+The names and values above are illustrative. Channels keep their IDs as stable
+keys and include their free@home display name alongside a `parameters` mapping.
+Duplicate channel names do not collide, and renaming a channel does not change
+its key. Parameter keys use the enum names returned by
+the library's `get_parameter_name()`, falling back to raw IDs for unknown
+parameters. Values are preserved as supplied by the library. Enum names are not
+localized and templates referencing them must be updated if a library release
+renames a parameter or gives a previously unknown ID a name. Only channels
+included by the integration's device/channel filters are exposed. The sensor
+always belongs to the physical parent device, even when **Create Sub-Devices** is
+enabled. Changes received over the websocket update its attributes automatically.
+Parameters cannot be changed through the SysAP local API.
+
+To expose an individual parameter using a template helper:
+
+```jinja
+{{ state_attr('sensor.living_room_actuator_parameters', 'channel_parameters')
+   ['ch0000']['parameters']['PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION'] }}
+```
+
+Replace the entity ID, channel ID and parameter key with those from your device. Add numeric
+conversion and a unit only if you know the parameter's meaning. A change to any
+parameter records the aggregate sensor's full attributes in Recorder; exclude
+the sensor from Recorder if this history is not wanted.
+
 ## Events
 
 ### Switch Sensor

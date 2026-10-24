@@ -318,6 +318,9 @@
       }
     },
     "sensor": {
+      "parameters": {
+        "name": "Parameter"
+      },
       "air_quality_sensor_co2": {
         "name": "CO2"
       },
