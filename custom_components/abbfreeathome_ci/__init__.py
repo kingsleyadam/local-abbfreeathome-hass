@@ -40,6 +40,7 @@ from .const import (
     MANUFACTURER,
     VIRTUAL_DEVICE,
 )
+from .coordinator import FreeAtHomeDeviceStatusCoordinator
 from .helpers import async_get_via_device_kwargs
 
 VIRTUALDEVICE_SCHEMA = (
@@ -232,6 +233,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Add the FreeAtHome object to hass data
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = _free_at_home
+
+    # Poll the device status flags, the websocket does not push them.
+    # A failure here must not keep the entry from loading, the entities just
+    # stay unavailable until a later refresh succeeds.
+    _device_status_coordinator = FreeAtHomeDeviceStatusCoordinator(
+        hass, entry, _free_at_home
+    )
+    await _device_status_coordinator.async_refresh()
+    entry.runtime_data = _device_status_coordinator
 
     # Setup platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

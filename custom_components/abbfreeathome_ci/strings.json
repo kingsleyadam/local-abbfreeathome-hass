@@ -85,6 +85,9 @@
       "carbon_monoxide_sensor": {
         "name": "[%key:component::binary_sensor::entity_component::carbon_monoxide::name%]"
       },
+      "device_connectivity": {
+        "name": "Connectivity"
+      },
       "movement_detector_motion": {
         "name": "[%key:component::binary_sensor::entity_component::motion::name%]"
       },

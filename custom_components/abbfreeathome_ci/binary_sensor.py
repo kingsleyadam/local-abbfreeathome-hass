@@ -15,6 +15,7 @@ from abbfreeathome.channels.smoke_detector import SmokeDetector
 from abbfreeathome.channels.temperature_sensor import TemperatureSensor
 from abbfreeathome.channels.wind_sensor import WindSensor
 from abbfreeathome.channels.window_door_sensor import WindowDoorSensor
+from abbfreeathome.device import Device
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -22,11 +23,14 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
+from .coordinator import FreeAtHomeDeviceStatusCoordinator
 from .helpers import async_get_via_device_kwargs
 
 SENSOR_DESCRIPTIONS = {
@@ -145,6 +149,17 @@ async def async_setup_entry(
             if getattr(channel, description.get("value_attribute")) is not None
         )
 
+    # One connectivity sensor per device. A device that stops answering, for
+    # example because its battery is empty, is reported by the SysAP as
+    # unresponsive. free@home does not expose a battery level over this api.
+    _device_status_coordinator: FreeAtHomeDeviceStatusCoordinator = entry.runtime_data
+
+    async_add_entities(
+        FreeAtHomeDeviceConnectivityEntity(_device_status_coordinator, device)
+        for device in free_at_home.get_devices().values()
+        if free_at_home.get_channels_by_device(device.device_serial)
+    )
+
 
 class FreeAtHomeBinarySensorEntity(BinarySensorEntity):
     """Defines a free@home binary sensor entity."""
@@ -242,3 +257,58 @@ class FreeAtHomeBinarySensorEntity(BinarySensorEntity):
     def unique_id(self) -> str | None:
         """Return a unique ID."""
         return f"{self._channel.device_serial}_{self._channel.channel_id}_{self.entity_description.key}"
+
+
+class FreeAtHomeDeviceConnectivityEntity(
+    CoordinatorEntity[FreeAtHomeDeviceStatusCoordinator], BinarySensorEntity
+):
+    """Defines a free@home device connectivity entity.
+
+    This is the closest the local api gets to a battery warning: a device that
+    stops answering the SysAP is flagged as unresponsive.
+    """
+
+    _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_has_entity_name = True
+    _attr_translation_key = "device_connectivity"
+
+    def __init__(
+        self,
+        coordinator: FreeAtHomeDeviceStatusCoordinator,
+        device: Device,
+    ) -> None:
+        """Initialize the device connectivity sensor."""
+        super().__init__(coordinator)
+        self._device = device
+        self._attr_unique_id = f"{device.device_serial}_connectivity"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, device.device_serial)}
+        )
+
+    @property
+    def _status(self) -> dict[str, Any] | None:
+        """Return the status flags of this device, if the api reported any."""
+        return (self.coordinator.data or {}).get(self._device.device_serial)
+
+    @property
+    def available(self) -> bool:
+        """Return whether the api still reports this device."""
+        return super().available and self._status is not None
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return whether the device is answering the SysAP."""
+        if (_status := self._status) is None:
+            return None
+        return not _status["unresponsive"]
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return the remaining status flags of the device."""
+        if (_status := self._status) is None:
+            return None
+        return {
+            "unresponsive_counter": _status["unresponsive_counter"],
+            "defect": _status["defect"],
+        }

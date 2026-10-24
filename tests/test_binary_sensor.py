@@ -6,10 +6,12 @@ from abbfreeathome.channels.window_door_sensor import WindowDoorSensor
 
 from custom_components.abbfreeathome_ci.binary_sensor import (
     FreeAtHomeBinarySensorEntity,
+    FreeAtHomeDeviceConnectivityEntity,
     async_setup_entry,
 )
 from custom_components.abbfreeathome_ci.const import DOMAIN
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 
 
@@ -22,12 +24,14 @@ async def test_async_setup_entry_no_sensors(
     mock_free_at_home = MagicMock()
     mock_free_at_home.get_channels_by_class.return_value = []
     hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
+    mock_free_at_home.get_devices.return_value = {}
+    mock_config_entry.runtime_data = MagicMock()
 
     async_add_entities = MagicMock()
     await async_setup_entry(hass, mock_config_entry, async_add_entities)
 
-    # Should be called 11 times (once per sensor description) even if with empty lists
-    assert async_add_entities.call_count == 11
+    # 11 sensor descriptions plus the per device connectivity sensor
+    assert async_add_entities.call_count == 12
 
 
 async def test_async_setup_entry_with_window_sensor(
@@ -58,6 +62,8 @@ async def test_async_setup_entry_with_window_sensor(
         get_channels_by_class_side_effect
     )
     hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
+    mock_free_at_home.get_devices.return_value = {}
+    mock_config_entry.runtime_data = MagicMock()
 
     entities_added = []
 
@@ -250,6 +256,8 @@ async def test_binary_sensor_filters_none_values(
         get_channels_by_class_side_effect
     )
     hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
+    mock_free_at_home.get_devices.return_value = {}
+    mock_config_entry.runtime_data = MagicMock()
 
     entities_added = []
 
@@ -328,3 +336,116 @@ async def test_binary_sensor_translation_key_with_attr(hass: HomeAssistant) -> N
 
     # Restore for cleanup
     entity.entity_description = entity_description_backup
+
+
+async def test_connectivity_sensor_created_per_device(
+    hass: HomeAssistant, mock_config_entry
+) -> None:
+    """Test a connectivity sensor is created for every device with channels."""
+    mock_config_entry.add_to_hass(hass)
+
+    device_with_channels = MagicMock()
+    device_with_channels.device_serial = "ABB700CF0EFC"
+    device_without_channels = MagicMock()
+    device_without_channels.device_serial = "FFFF48000009"
+
+    mock_free_at_home = MagicMock()
+    mock_free_at_home.get_channels_by_class.return_value = []
+    mock_free_at_home.get_devices.return_value = {
+        "ABB700CF0EFC": device_with_channels,
+        "FFFF48000009": device_without_channels,
+    }
+    mock_free_at_home.get_channels_by_device.side_effect = lambda serial: (
+        ["ch0000"] if serial == "ABB700CF0EFC" else []
+    )
+    hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
+    mock_config_entry.runtime_data = MagicMock()
+
+    entities_added = []
+    async_add_entities = MagicMock(
+        side_effect=lambda generator: entities_added.extend(list(generator))
+    )
+    await async_setup_entry(hass, mock_config_entry, async_add_entities)
+
+    connectivity = [
+        entity
+        for entity in entities_added
+        if isinstance(entity, FreeAtHomeDeviceConnectivityEntity)
+    ]
+    assert len(connectivity) == 1
+    assert connectivity[0].unique_id == "ABB700CF0EFC_connectivity"
+
+
+def _connectivity_entity(data) -> FreeAtHomeDeviceConnectivityEntity:
+    """Build a connectivity entity over a coordinator holding the given data."""
+    coordinator = MagicMock()
+    coordinator.data = data
+    coordinator.last_update_success = True
+
+    device = MagicMock()
+    device.device_serial = "ABB700CF0EFC"
+
+    return FreeAtHomeDeviceConnectivityEntity(coordinator, device)
+
+
+async def test_connectivity_sensor_reports_a_responsive_device() -> None:
+    """Test a device answering the SysAP is reported as connected."""
+    entity = _connectivity_entity(
+        {
+            "ABB700CF0EFC": {
+                "unresponsive": False,
+                "unresponsive_counter": 0,
+                "defect": False,
+            }
+        }
+    )
+
+    assert entity.device_class == BinarySensorDeviceClass.CONNECTIVITY
+    assert entity.entity_category == EntityCategory.DIAGNOSTIC
+    assert entity.available is True
+    assert entity.is_on is True
+    assert entity.extra_state_attributes == {
+        "unresponsive_counter": 0,
+        "defect": False,
+    }
+
+
+async def test_connectivity_sensor_reports_an_unresponsive_device() -> None:
+    """Test a device that stopped answering, the empty battery case."""
+    entity = _connectivity_entity(
+        {
+            "ABB7F630796A": {
+                "unresponsive": False,
+                "unresponsive_counter": 0,
+                "defect": False,
+            },
+            "ABB700CF0EFC": {
+                "unresponsive": True,
+                "unresponsive_counter": 7,
+                "defect": True,
+            },
+        }
+    )
+
+    assert entity.is_on is False
+    assert entity.extra_state_attributes == {
+        "unresponsive_counter": 7,
+        "defect": True,
+    }
+
+
+async def test_connectivity_sensor_unavailable_for_an_unknown_device() -> None:
+    """Test a device the api no longer reports becomes unavailable."""
+    entity = _connectivity_entity({"ABB7F630796A": {"unresponsive": False}})
+
+    assert entity.available is False
+    assert entity.is_on is None
+    assert entity.extra_state_attributes is None
+
+
+async def test_connectivity_sensor_handles_a_failed_first_refresh() -> None:
+    """Test no coordinator data at all does not raise."""
+    entity = _connectivity_entity(None)
+
+    assert entity.available is False
+    assert entity.is_on is None

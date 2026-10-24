@@ -85,6 +85,9 @@
       "carbon_monoxide_sensor": {
         "name": "Kohlenmonoxid"
       },
+      "device_connectivity": {
+        "name": "Verbindung"
+      },
       "movement_detector_motion": {
         "name": "Bewegung"
       },
