@@ -1,6 +1,6 @@
 """Test ABB-free@home climate."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from abbfreeathome.bin.function import Function
 from abbfreeathome.bin.pairing import Pairing
@@ -16,7 +16,9 @@ from custom_components.abbfreeathome_ci.climate import (
     async_setup_entry,
 )
 from custom_components.abbfreeathome_ci.const import DOMAIN
+from homeassistant.components.climate import ClimateEntityFeature
 from homeassistant.components.climate.const import HVACAction, HVACMode
+from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 
 
@@ -350,3 +352,193 @@ def test_library_maps_the_radiator_function() -> None:
         FUNCTION_CHANNEL_MAPPING[Function.FID_RADIATOR_ACTUATOR_MASTER]
         is RadiatorActuator
     )
+
+
+def _mock_rtc_channel() -> MagicMock:
+    """Build a mocked room temperature controller channel."""
+    channel = MagicMock(spec=RoomTemperatureController)
+    channel.channel_name = "Wohnzimmer"
+    channel.channel_id = "ch0000"
+    channel.device_serial = "ABB7F57FFFE12345"
+    channel.device_name = "Wohnzimmer RTC"
+    channel.room_name = "Wohnzimmer"
+    channel.device.is_multi_device = False
+    channel.device.device_id = "1234"
+    channel.state = True
+    channel.current_temperature = 21.3
+    channel.target_temperature = 21.0
+    channel.eco_mode = False
+    channel.heating = 0
+    channel.cooling = 0
+    channel.turn_on = AsyncMock()
+    channel.turn_off = AsyncMock()
+    channel.eco_on = AsyncMock()
+    channel.eco_off = AsyncMock()
+    channel.set_temperature = AsyncMock()
+    channel.refresh_state = AsyncMock()
+
+    return channel
+
+
+def _rtc_entity(channel, *, create_subdevices: bool = False) -> FreeAtHomeClimateEntity:
+    """Build a room temperature controller entity."""
+    return FreeAtHomeClimateEntity(
+        channel,
+        sysap_serial_number="TEST123456",
+        create_subdevices=create_subdevices,
+    )
+
+
+def test_rtc_entity_static_properties() -> None:
+    """Test the fixed properties of the room temperature controller entity."""
+    entity = _rtc_entity(_mock_rtc_channel())
+
+    assert entity.temperature_unit == UnitOfTemperature.CELSIUS
+    assert entity.target_temperature_step == 0.5
+    assert entity.min_temp == 7.0
+    assert entity.max_temp == 35.0
+    assert entity.current_temperature == 21.3
+    assert entity.supported_features == (
+        ClimateEntityFeature.TARGET_TEMPERATURE
+        | ClimateEntityFeature.PRESET_MODE
+        | ClimateEntityFeature.TURN_OFF
+        | ClimateEntityFeature.TURN_ON
+    )
+    assert entity.extra_state_attributes == {"heating": 0, "cooling": 0}
+
+
+def test_rtc_entity_device_info() -> None:
+    """Test a single channel device is linked to the device itself."""
+    entity = _rtc_entity(_mock_rtc_channel())
+
+    assert entity.device_info == {"identifiers": {(DOMAIN, "ABB7F57FFFE12345")}}
+
+
+def test_rtc_entity_device_info_with_subdevices() -> None:
+    """Test a multi channel device gets a sub device per channel."""
+    channel = _mock_rtc_channel()
+    channel.device.is_multi_device = True
+    entity = _rtc_entity(channel, create_subdevices=True)
+    entity.platform = MagicMock()
+
+    with patch(
+        "custom_components.abbfreeathome_ci.climate.async_get_via_device_kwargs",
+        return_value={"via_device_id": "parent_device_id"},
+    ) as mock_via_device_kwargs:
+        device_info = entity.device_info
+
+    assert device_info["identifiers"] == {(DOMAIN, "ABB7F57FFFE12345_ch0000")}
+    assert device_info["name"] == "Wohnzimmer RTC (ch0000)"
+    assert device_info["serial_number"] == "ABB7F57FFFE12345_ch0000"
+    assert device_info["hw_version"] == "1234 (sub)"
+    assert device_info["suggested_area"] == "Wohnzimmer"
+    assert device_info["via_device_id"] == "parent_device_id"
+    mock_via_device_kwargs.assert_called_once_with(
+        entity.hass, entity.platform.config_entry.entry_id, "ABB7F57FFFE12345"
+    )
+
+
+def test_rtc_entity_hvac_mode_and_state() -> None:
+    """Test the controller reports HEAT_COOL when on and OFF when off."""
+    channel = _mock_rtc_channel()
+    entity = _rtc_entity(channel)
+
+    assert entity.hvac_mode == HVACMode.HEAT_COOL
+    assert entity.state == HVACMode.HEAT_COOL
+    assert entity.target_temperature == 21.0
+
+    channel.state = False
+    assert entity.hvac_mode == HVACMode.OFF
+    assert entity.state == HVACMode.OFF
+    assert entity.target_temperature is None
+
+
+def test_rtc_entity_hvac_action() -> None:
+    """Test the action follows the heating and cooling actuating values."""
+    channel = _mock_rtc_channel()
+    entity = _rtc_entity(channel)
+
+    assert entity.hvac_action == HVACAction.IDLE
+
+    channel.heating = 40
+    assert entity.hvac_action == HVACAction.HEATING
+
+    channel.heating = 0
+    channel.cooling = 40
+    assert entity.hvac_action == HVACAction.COOLING
+
+    channel.state = False
+    assert entity.hvac_action == HVACAction.OFF
+
+
+def test_rtc_entity_preset_mode() -> None:
+    """Test the preset follows the channel's eco mode."""
+    channel = _mock_rtc_channel()
+    entity = _rtc_entity(channel)
+
+    assert entity.preset_modes == ["none", "eco"]
+    assert entity.preset_mode is None
+
+    channel.eco_mode = True
+    assert entity.preset_mode == "eco"
+
+
+async def test_rtc_entity_set_hvac_mode() -> None:
+    """Test setting the hvac mode switches the controller."""
+    channel = _mock_rtc_channel()
+    entity = _rtc_entity(channel)
+
+    await entity.async_set_hvac_mode(HVACMode.HEAT_COOL)
+    channel.turn_on.assert_awaited_once()
+
+    await entity.async_set_hvac_mode(HVACMode.OFF)
+    channel.turn_off.assert_awaited_once()
+
+    # HEAT is not offered by the controller and must not switch it on
+    channel.turn_on.reset_mock()
+    await entity.async_set_hvac_mode(HVACMode.HEAT)
+    channel.turn_on.assert_not_awaited()
+
+
+async def test_rtc_entity_turn_on_and_off() -> None:
+    """Test turning the controller on and off."""
+    channel = _mock_rtc_channel()
+    entity = _rtc_entity(channel)
+
+    await entity.async_turn_on()
+    channel.turn_on.assert_awaited_once()
+
+    await entity.async_turn_off()
+    channel.turn_off.assert_awaited_once()
+
+
+async def test_rtc_entity_set_preset_mode() -> None:
+    """Test the eco preset toggles the channel's eco mode."""
+    channel = _mock_rtc_channel()
+    entity = _rtc_entity(channel)
+
+    await entity.async_set_preset_mode("eco")
+    channel.eco_on.assert_awaited_once()
+
+    await entity.async_set_preset_mode("none")
+    channel.eco_off.assert_awaited_once()
+
+
+async def test_rtc_entity_set_temperature() -> None:
+    """Test setting the target temperature."""
+    channel = _mock_rtc_channel()
+    entity = _rtc_entity(channel)
+
+    await entity.async_set_temperature(**{ATTR_TEMPERATURE: 22.5})
+
+    channel.set_temperature.assert_awaited_once_with(22.5)
+
+
+async def test_rtc_entity_update() -> None:
+    """Test a manual update refreshes the channel state."""
+    channel = _mock_rtc_channel()
+    entity = _rtc_entity(channel)
+
+    await entity.async_update()
+
+    channel.refresh_state.assert_awaited_once()
