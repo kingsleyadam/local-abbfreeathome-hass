@@ -74,3 +74,14 @@ def test_every_icon_entry_has_a_default(icons) -> None:
     for platform, keys in icons["entity"].items():
         for key, entry in keys.items():
             assert "default" in entry, f"{platform}.{key}"
+
+
+def test_binary_sensor_icons_keep_an_active_state(icons) -> None:
+    """Test every binary sensor icon still changes when the sensor turns on.
+
+    Every binary sensor of this integration has a device class whose default
+    icon is state aware. An entry with only a default would replace that with
+    a static icon and hide whether the alarm is active.
+    """
+    for key, entry in icons["entity"].get("binary_sensor", {}).items():
+        assert "on" in entry.get("state", {}), f"binary_sensor.{key}"

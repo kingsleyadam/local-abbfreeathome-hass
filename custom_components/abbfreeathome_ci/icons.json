@@ -2,10 +2,16 @@
   "entity": {
     "binary_sensor": {
       "air_quality_sensor_co2_alert": {
-        "default": "mdi:molecule-co2"
+        "default": "mdi:molecule-co2",
+        "state": {
+          "on": "mdi:weather-hazy"
+        }
       },
       "air_quality_sensor_voc_alert": {
-        "default": "mdi:air-filter"
+        "default": "mdi:air-filter",
+        "state": {
+          "on": "mdi:smog"
+        }
       },
       "rain_sensor": {
         "default": "mdi:weather-rainy",
