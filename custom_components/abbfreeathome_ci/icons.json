@@ -1,0 +1,152 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "air_quality_sensor_co2_alert": {
+        "default": "mdi:molecule-co2",
+        "state": {
+          "on": "mdi:cloud-alert"
+        }
+      },
+      "air_quality_sensor_voc_alert": {
+        "default": "mdi:scent",
+        "state": {
+          "on": "mdi:smog"
+        }
+      },
+      "rain_sensor": {
+        "default": "mdi:weather-rainy",
+        "state": {
+          "on": "mdi:weather-pouring"
+        }
+      },
+      "wind_sensor": {
+        "default": "mdi:weather-windy-variant",
+        "state": {
+          "on": "mdi:weather-windy"
+        }
+      }
+    },
+    "event": {
+      "blind_sensor": {
+        "default": "mdi:window-shutter"
+      },
+      "dimming_sensor": {
+        "default": "mdi:brightness-6"
+      },
+      "force_on_off_sensor": {
+        "default": "mdi:electric-switch"
+      },
+      "staircase_light_sensor": {
+        "default": "mdi:timer-outline"
+      },
+      "virtual_room_temperature_controller_ecoonoff": {
+        "default": "mdi:leaf"
+      },
+      "virtual_room_temperature_controller_onoff": {
+        "default": "mdi:thermostat"
+      },
+      "virtual_room_temperature_controller_target_temperature": {
+        "default": "mdi:thermometer"
+      },
+      "virtual_switch_actuator_onoff": {
+        "default": "mdi:toggle-switch-outline"
+      }
+    },
+    "number": {
+      "virtual_energy_battery_soc": {
+        "default": "mdi:battery"
+      }
+    },
+    "select": {
+      "cover_actuator": {
+        "default": "mdi:lock-open-variant-outline",
+        "state": {
+          "forced_closed": "mdi:arrow-down-bold-box",
+          "forced_open": "mdi:arrow-up-bold-box"
+        }
+      },
+      "dimming_actuator": {
+        "default": "mdi:lock-open-variant-outline",
+        "state": {
+          "forced_off": "mdi:lightbulb-off",
+          "forced_on": "mdi:lightbulb-on"
+        }
+      },
+      "switch_actuator": {
+        "default": "mdi:lock-open-variant-outline",
+        "state": {
+          "forced_off": "mdi:flash-off",
+          "forced_on": "mdi:flash"
+        }
+      }
+    },
+    "sensor": {
+      "wind_sensor_force": {
+        "default": "mdi:windsock"
+      },
+      "window_position": {
+        "default": "mdi:window-closed",
+        "state": {
+          "closed": "mdi:window-closed",
+          "open": "mdi:window-open",
+          "tilted": "mdi:window-open-variant",
+          "unknown": "mdi:window-closed-variant"
+        }
+      }
+    },
+    "switch": {
+      "movement_detector_block": {
+        "default": "mdi:motion-sensor",
+        "state": {
+          "on": "mdi:motion-sensor-off"
+        }
+      },
+      "sensor_led": {
+        "default": "mdi:led-off",
+        "state": {
+          "on": "mdi:led-on"
+        }
+      },
+      "virtual_brightness_sensor": {
+        "default": "mdi:brightness-5"
+      },
+      "virtual_rain_sensor": {
+        "default": "mdi:weather-rainy"
+      },
+      "virtual_rtc": {
+        "default": "mdi:thermostat"
+      },
+      "virtual_rtc_eco": {
+        "default": "mdi:leaf"
+      },
+      "virtual_temperature_sensor": {
+        "default": "mdi:snowflake-alert"
+      },
+      "virtual_wind_sensor": {
+        "default": "mdi:weather-windy"
+      },
+      "welcome_ip_mute_actuator": {
+        "default": "mdi:volume-high",
+        "state": {
+          "on": "mdi:volume-off"
+        }
+      }
+    },
+    "valve": {
+      "cooling_actuator": {
+        "default": "mdi:snowflake-off",
+        "state": {
+          "closed": "mdi:snowflake-off",
+          "open": "mdi:snowflake"
+        }
+      },
+      "heating_actuator": {
+        "default": "mdi:radiator-disabled",
+        "state": {
+          "closed": "mdi:radiator-off",
+          "open": "mdi:radiator"
+        }
+      }
+    }
+  }
+}
