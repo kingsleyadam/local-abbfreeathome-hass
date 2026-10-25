@@ -4,11 +4,11 @@
       "air_quality_sensor_co2_alert": {
         "default": "mdi:molecule-co2",
         "state": {
-          "on": "mdi:weather-hazy"
+          "on": "mdi:cloud-alert"
         }
       },
       "air_quality_sensor_voc_alert": {
-        "default": "mdi:air-filter",
+        "default": "mdi:scent",
         "state": {
           "on": "mdi:smog"
         }
