@@ -16,12 +16,26 @@ jobs:
       id-token: write # IMPORTANT: mandatory for sigstore
 
     steps:
+      - name: Check out tagged release
+        uses: actions/checkout@v4
+
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: >-
-          gh release create
-          '${{ github.ref_name }}'
-          --repo '${{ github.repository }}'
-          --generate-notes
-          ${{ (contains(github.ref_name, 'a') || contains(github.ref_name, 'b')) && '--prerelease' || '' }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_REPOSITORY: ${{ github.repository }}
+          IS_PRERELEASE: ${{ contains(github.ref_name, 'a') || contains(github.ref_name, 'b') }}
+        run: |
+          args=(
+            "$RELEASE_TAG"
+            --repo "$RELEASE_REPOSITORY"
+            --generate-notes
+          )
+          notes_file=".github/release-notes/${RELEASE_TAG}.md"
+          if [[ -f "$notes_file" ]]; then
+            args+=(--notes-file "$notes_file")
+          fi
+          if [[ "$IS_PRERELEASE" == "true" ]]; then
+            args+=(--prerelease)
+          fi
+          gh release create "${args[@]}"
