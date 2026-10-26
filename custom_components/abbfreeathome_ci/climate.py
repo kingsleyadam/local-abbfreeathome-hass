@@ -3,7 +3,10 @@
 from typing import Any
 
 from abbfreeathome import FreeAtHome
-from abbfreeathome.channels.room_temperature_controller import RoomTemperatureController
+from abbfreeathome.channels.room_temperature_controller import (
+    RadiatorActuator,
+    RoomTemperatureController,
+)
 
 from homeassistant.components.climate import (
     ClimateEntity,
@@ -40,11 +43,23 @@ async def async_setup_entry(
         )
     )
 
+    async_add_entities(
+        FreeAtHomeRadiatorClimateEntity(
+            channel,
+            sysap_serial_number=entry.data[CONF_SERIAL],
+            create_subdevices=entry.data[CONF_CREATE_SUBDEVICES],
+        )
+        for channel in free_at_home.get_channels_by_class(
+            channel_class=RadiatorActuator
+        )
+    )
+
 
 class FreeAtHomeClimateEntity(ClimateEntity):
     """Defines a free@home climate entity."""
 
     _attr_should_poll: bool = False
+    _entity_description_key: str = "RoomTemperatureController"
     _callback_attributes: list[str] = [
         "state",
         "current_temperature",
@@ -67,7 +82,7 @@ class FreeAtHomeClimateEntity(ClimateEntity):
         self._create_subdevices = create_subdevices
 
         self.entity_description = ClimateEntityDescription(
-            key="RoomTemperatureController",
+            key=self._entity_description_key,
             name=channel.channel_name,
         )
 
@@ -239,3 +254,65 @@ class FreeAtHomeClimateEntity(ClimateEntity):
     async def async_update(self, **kwargs: Any) -> None:
         """Update the switch state."""
         await self._channel.refresh_state()
+
+
+class FreeAtHomeRadiatorClimateEntity(FreeAtHomeClimateEntity):
+    """Defines a free@home radiator thermostat climate entity.
+
+    A radiator thermostat only heats, so it offers HEAT instead of HEAT_COOL
+    and derives its action from the thermostat's own heating state.
+    """
+
+    _entity_description_key: str = "RadiatorActuator"
+    # Same as the room temperature controller, plus the radiator heating state
+    _callback_attributes: list[str] = [
+        "state",
+        "current_temperature",
+        "heating",
+        "cooling",
+        "target_temperature",
+        "eco_mode",
+        "heating_active",
+    ]
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return device specific state attributes."""
+        return {
+            "heating": self._channel.heating,
+            "heating_active": self._channel.heating_active,
+        }
+
+    @property
+    def hvac_mode(self) -> HVACMode | None:
+        """Return the current mode."""
+        if not self._channel.state:
+            return HVACMode.OFF
+        return HVACMode.HEAT
+
+    @property
+    def hvac_modes(self) -> list | None:
+        """Return the list of available hvac modes."""
+        return [HVACMode.HEAT, HVACMode.OFF]
+
+    @property
+    def hvac_action(self) -> HVACAction | None:
+        """Return the current action."""
+        if self.hvac_mode == HVACMode.OFF:
+            return HVACAction.OFF
+        if self._channel.heating_active:
+            return HVACAction.HEATING
+        return HVACAction.IDLE
+
+    @property
+    def state(self) -> HVACMode | None:
+        """Return the current operation."""
+        return self.hvac_mode
+
+    async def async_set_hvac_mode(self, hvac_mode) -> None:
+        """Set new target operation mode."""
+        if hvac_mode == HVACMode.HEAT:
+            await self._channel.turn_on()
+
+        if hvac_mode == HVACMode.OFF:
+            await self._channel.turn_off()
