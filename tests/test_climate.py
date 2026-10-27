@@ -1,5 +1,6 @@
 """Test ABB-free@home climate."""
 
+from runpy import run_path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from abbfreeathome.bin.function import Function
@@ -9,17 +10,21 @@ from abbfreeathome.channels.room_temperature_controller import (
     RoomTemperatureController,
 )
 from abbfreeathome.const import FUNCTION_CHANNEL_MAPPING
+import pytest
 
+from custom_components.abbfreeathome_ci import climate as climate_platform
 from custom_components.abbfreeathome_ci.climate import (
     FreeAtHomeClimateEntity,
     FreeAtHomeRadiatorClimateEntity,
     async_setup_entry,
 )
 from custom_components.abbfreeathome_ci.const import DOMAIN
-from homeassistant.components.climate import ClimateEntityFeature
+from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature
 from homeassistant.components.climate.const import HVACAction, HVACMode
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
+from homeassistant.setup import async_setup_component
+from homeassistant.util.unit_system import METRIC_SYSTEM, US_CUSTOMARY_SYSTEM
 
 
 def _radiator_outputs(
@@ -211,7 +216,7 @@ def test_radiator_entity_reports_heat_instead_of_heat_cool() -> None:
     assert entity.hvac_mode == HVACMode.OFF
     assert entity.state == HVACMode.OFF
     assert entity.hvac_action == HVACAction.OFF
-    assert entity.target_temperature is None
+    assert entity.native_target_temperature is None
 
 
 def test_radiator_entity_extra_state_attributes() -> None:
@@ -393,11 +398,11 @@ def test_rtc_entity_static_properties() -> None:
     """Test the fixed properties of the room temperature controller entity."""
     entity = _rtc_entity(_mock_rtc_channel())
 
-    assert entity.temperature_unit == UnitOfTemperature.CELSIUS
+    assert entity.native_temperature_unit == UnitOfTemperature.CELSIUS
     assert entity.target_temperature_step == 0.5
     assert entity.min_temp == 7.0
     assert entity.max_temp == 35.0
-    assert entity.current_temperature == 21.3
+    assert entity.native_current_temperature == 21.3
     assert entity.supported_features == (
         ClimateEntityFeature.TARGET_TEMPERATURE
         | ClimateEntityFeature.PRESET_MODE
@@ -445,12 +450,12 @@ def test_rtc_entity_hvac_mode_and_state() -> None:
 
     assert entity.hvac_mode == HVACMode.HEAT_COOL
     assert entity.state == HVACMode.HEAT_COOL
-    assert entity.target_temperature == 21.0
+    assert entity.native_target_temperature == 21.0
 
     channel.state = False
     assert entity.hvac_mode == HVACMode.OFF
     assert entity.state == HVACMode.OFF
-    assert entity.target_temperature is None
+    assert entity.native_target_temperature is None
 
 
 def test_rtc_entity_hvac_action() -> None:
@@ -542,3 +547,97 @@ async def test_rtc_entity_update() -> None:
     await entity.async_update()
 
     channel.refresh_state.assert_awaited_once()
+
+
+@pytest.mark.parametrize("native_api", [False, True])
+@pytest.mark.parametrize(
+    ("entity_class", "channel_factory"),
+    [
+        ("FreeAtHomeClimateEntity", _mock_rtc_channel),
+        ("FreeAtHomeRadiatorClimateEntity", _mock_radiator_entity_channel),
+    ],
+)
+def test_temperature_api_compatibility(
+    monkeypatch, native_api, entity_class, channel_factory
+) -> None:
+    """Expose legacy aliases only when HA lacks the native temperature API."""
+    properties = (
+        "temperature_unit",
+        "current_temperature",
+        "target_temperature",
+    )
+    for name in properties:
+        if native_api:
+            monkeypatch.setattr(
+                ClimateEntity,
+                f"native_{name}",
+                property(lambda self: None),
+                raising=False,
+            )
+        else:
+            monkeypatch.delattr(ClimateEntity, f"native_{name}", raising=False)
+
+    platform = run_path(climate_platform.__file__, run_name=climate_platform.__name__)
+    channel = channel_factory()
+    entity = platform[entity_class](
+        channel, sysap_serial_number="TEST123456", create_subdevices=False
+    )
+    base_class = platform["FreeAtHomeClimateEntity"]
+
+    for name in properties:
+        assert (name in base_class.__dict__) is not native_api
+        if not native_api:
+            assert getattr(entity, name) == getattr(entity, f"native_{name}")
+
+    assert entity.native_temperature_unit == UnitOfTemperature.CELSIUS
+    assert entity.native_current_temperature == channel.current_temperature
+    assert entity.native_target_temperature == channel.target_temperature
+
+    channel.current_temperature = 19.5
+    channel.target_temperature = 22.5
+    assert entity.native_current_temperature == 19.5
+    assert entity.native_target_temperature == 22.5
+    if not native_api:
+        assert entity.current_temperature == 19.5
+        assert entity.target_temperature == 22.5
+
+    channel.state = False
+    assert entity.native_target_temperature is None
+    if not native_api:
+        assert entity.target_temperature is None
+
+    channel.current_temperature = None
+    assert entity.native_current_temperature is None
+
+
+@pytest.mark.parametrize(
+    ("unit_system", "current_temperature", "target_temperature"),
+    [(METRIC_SYSTEM, 21.3, 21.0), (US_CUSTOMARY_SYSTEM, 70.3, 69.8)],
+)
+async def test_temperature_state_and_service_unit_conversion(
+    hass: HomeAssistant, unit_system, current_temperature, target_temperature
+) -> None:
+    """Keep display and service temperature conversion working on older HA."""
+    channel = _mock_rtc_channel()
+    entity = _rtc_entity(channel)
+    entity.entity_id = "climate.test_controller"
+    entity._attr_precision = 0.1
+    hass.config.units = unit_system
+
+    assert await async_setup_component(hass, "climate", {})
+    await hass.data["climate"].async_add_entities([entity])
+    state = hass.states.get(entity.entity_id)
+    assert state.attributes["current_temperature"] == current_temperature
+    assert state.attributes[ATTR_TEMPERATURE] == target_temperature
+
+    await hass.services.async_call(
+        "climate",
+        "set_temperature",
+        {"entity_id": entity.entity_id, ATTR_TEMPERATURE: target_temperature},
+        blocking=True,
+    )
+    channel.set_temperature.assert_awaited_once_with(pytest.approx(21.0))
+
+    channel.state = False
+    entity.async_write_ha_state()
+    assert hass.states.get(entity.entity_id).attributes[ATTR_TEMPERATURE] is None

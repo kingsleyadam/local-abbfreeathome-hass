@@ -133,7 +133,7 @@ class FreeAtHomeClimateEntity(ClimateEntity):
         return f"{self._channel.device_serial}_{self._channel.channel_id}_climate"
 
     @property
-    def temperature_unit(self) -> str | None:
+    def native_temperature_unit(self) -> str:
         """Return the temperature unit."""
         return UnitOfTemperature.CELSIUS
 
@@ -158,7 +158,7 @@ class FreeAtHomeClimateEntity(ClimateEntity):
         return {"heating": self._channel.heating, "cooling": self._channel.cooling}
 
     @property
-    def current_temperature(self) -> float | None:
+    def native_current_temperature(self) -> float | None:
         """Return the current temperature."""
         return self._channel.current_temperature
 
@@ -183,11 +183,18 @@ class FreeAtHomeClimateEntity(ClimateEntity):
         return HVACAction.IDLE
 
     @property
-    def target_temperature(self) -> float | None:
+    def native_target_temperature(self) -> float | None:
         """Return the target temperature."""
         if self.hvac_mode == HVACMode.OFF:
             return None
         return self._channel.target_temperature
+
+    if not hasattr(ClimateEntity, "native_temperature_unit"):
+        # HA Core 2026.11 introduced native_*; legacy names are removed in 2027.11.
+        # Keep these aliases only for HA versions older than 2026.11.
+        temperature_unit = native_temperature_unit
+        current_temperature = native_current_temperature
+        target_temperature = native_target_temperature
 
     @property
     def supported_features(self) -> int | None:
