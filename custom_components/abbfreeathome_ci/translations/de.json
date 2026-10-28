@@ -216,6 +216,40 @@
           }
         }
       },
+      "virtual_dimming_actuator_onoff": {
+        "name": "Virtuelle Dimmer-Schaltanforderung ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "on": "Ein",
+              "off": "Aus"
+            }
+          }
+        }
+      },
+      "virtual_dimming_actuator_dimming": {
+        "name": "Virtuelle Dimmer-Dimmanforderung ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "longpress_up": "Hochdimmen",
+              "longpress_up_release": "Hochdimmen losgelassen",
+              "longpress_down": "Herunterdimmen",
+              "longpress_down_release": "Herunterdimmen losgelassen"
+            }
+          }
+        }
+      },
+      "virtual_dimming_actuator_brightness": {
+        "name": "Virtuelle Dimmer-Helligkeitsanforderung ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "requested_brightness": "Angeforderte Helligkeit"
+            }
+          }
+        }
+      },
       "virtual_switch_actuator_onoff": {
         "name": "Virtuelles Schalt Ereignis ({channel_id})",
         "state_attributes": {

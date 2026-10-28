@@ -48,6 +48,15 @@
       "virtual_room_temperature_controller_target_temperature": {
         "default": "mdi:thermometer"
       },
+      "virtual_dimming_actuator_onoff": {
+        "default": "mdi:toggle-switch-outline"
+      },
+      "virtual_dimming_actuator_dimming": {
+        "default": "mdi:brightness-6"
+      },
+      "virtual_dimming_actuator_brightness": {
+        "default": "mdi:brightness-percent"
+      },
       "virtual_switch_actuator_onoff": {
         "default": "mdi:toggle-switch-outline"
       }

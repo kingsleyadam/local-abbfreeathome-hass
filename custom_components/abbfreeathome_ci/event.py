@@ -16,6 +16,9 @@ from abbfreeathome.channels.switch_sensor import (
     SwitchSensor,
     SwitchSensorState,
 )
+from abbfreeathome.channels.virtual.virtual_dimming_actuator import (
+    VirtualDimmingActuator,
+)
 from abbfreeathome.channels.virtual.virtual_room_temperature_controller import (
     VirtualRoomTemperatureController,
 )
@@ -35,6 +38,50 @@ from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
 from .helpers import async_get_via_device_kwargs
 
 EVENT_DESCRIPTIONS = {
+    "EventVirtualDimmingActuatorOnOff": {
+        "channel_class": VirtualDimmingActuator,
+        "event_type_callback": lambda state: (
+            ("on" if state else "off") if state is not None else None
+        ),
+        "state_attribute": "requested_state",
+        "entity_description_kwargs": {
+            # Repeated commands may share the same millisecond event timestamp.
+            "force_update": True,
+            "device_class": EventDeviceClass.BUTTON,
+            "event_types": ["on", "off"],
+            "translation_key": "virtual_dimming_actuator_onoff",
+        },
+    },
+    "EventVirtualDimmingActuatorDimming": {
+        "channel_class": VirtualDimmingActuator,
+        "event_type_callback": lambda state: (
+            state if state != DimmingSensorState.unknown.name else None
+        ),
+        "state_attribute": "requested_dimming_state",
+        "entity_description_kwargs": {
+            "force_update": True,
+            "device_class": EventDeviceClass.BUTTON,
+            "event_types": [
+                state.name
+                for state in DimmingSensorState
+                if state is not DimmingSensorState.unknown
+            ],
+            "translation_key": "virtual_dimming_actuator_dimming",
+        },
+    },
+    "EventVirtualDimmingActuatorBrightness": {
+        "channel_class": VirtualDimmingActuator,
+        "event_type_callback": lambda brightness: (
+            "requested_brightness" if brightness is not None else None
+        ),
+        "state_attribute": "requested_brightness",
+        "entity_description_kwargs": {
+            "force_update": True,
+            "event_types": ["requested_brightness"],
+            "translation_key": "virtual_dimming_actuator_brightness",
+        },
+        "extra_data": "requested_brightness",
+    },
     "EventBlindSensorState": {
         "channel_class": BlindSensor,
         "event_type_callback": lambda state: state,
@@ -199,6 +246,7 @@ class FreeAtHomeEventEntity(EventEntity):
         | ForceOnOffSensor
         | StaircaseLightSensor
         | SwitchSensor
+        | VirtualDimmingActuator
         | VirtualSwitchActuator,
         state_attribute: str,
         entity_description_kwargs: dict[str, Any],
@@ -233,6 +281,9 @@ class FreeAtHomeEventEntity(EventEntity):
             )
         else:
             event_type = self._event_type_callback()
+
+        if event_type is None:
+            return
 
         _extra_data = None
 

@@ -7,6 +7,9 @@ from abbfreeathome.channels.dimming_actuator import (
     ColorTemperatureActuator,
     DimmingActuator,
 )
+from abbfreeathome.channels.virtual.virtual_dimming_actuator import (
+    VirtualDimmingActuator,
+)
 
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
@@ -35,24 +38,21 @@ async def async_setup_entry(
     """Set up lights."""
     free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
 
-    async_add_entities(
-        FreeAtHomeLightEntity(
-            channel,
-            sysap_serial_number=entry.data[CONF_SERIAL],
-            create_subdevices=entry.data[CONF_CREATE_SUBDEVICES],
+    for channel_class in (
+        DimmingActuator,
+        ColorTemperatureActuator,
+        VirtualDimmingActuator,
+    ):
+        async_add_entities(
+            FreeAtHomeLightEntity(
+                channel,
+                sysap_serial_number=entry.data[CONF_SERIAL],
+                create_subdevices=entry.data[CONF_CREATE_SUBDEVICES],
+            )
+            for channel in free_at_home.get_channels_by_class(
+                channel_class=channel_class
+            )
         )
-        for channel in free_at_home.get_channels_by_class(channel_class=DimmingActuator)
-    )
-    async_add_entities(
-        FreeAtHomeLightEntity(
-            channel,
-            sysap_serial_number=entry.data[CONF_SERIAL],
-            create_subdevices=entry.data[CONF_CREATE_SUBDEVICES],
-        )
-        for channel in free_at_home.get_channels_by_class(
-            channel_class=ColorTemperatureActuator
-        )
-    )
 
 
 class FreeAtHomeLightEntity(LightEntity):
@@ -66,7 +66,7 @@ class FreeAtHomeLightEntity(LightEntity):
 
     def __init__(
         self,
-        channel: DimmingActuator | ColorTemperatureActuator,
+        channel: DimmingActuator | ColorTemperatureActuator | VirtualDimmingActuator,
         sysap_serial_number: str,
         create_subdevices: bool,
     ) -> None:
@@ -142,11 +142,15 @@ class FreeAtHomeLightEntity(LightEntity):
         """Return the current brightness."""
         if self._channel.brightness is None:
             return None
+        if self._channel.brightness == 0:
+            return 0
         return value_to_brightness(BRIGHTNESS_SCALE, self._channel.brightness)
 
     @property
     def color_temp_kelvin(self) -> int | None:
         """Return the color temperature in Kelvin."""
+        if not hasattr(self._channel, "color_temperature"):
+            return None
         color_temperature = self._channel.color_temperature
         warmest = self._channel.color_temperature_warmest
         coolest = self._channel.color_temperature_coolest
@@ -181,9 +185,11 @@ class FreeAtHomeLightEntity(LightEntity):
             await self._channel.set_brightness(
                 int(brightness_to_value(BRIGHTNESS_SCALE, kwargs[ATTR_BRIGHTNESS]))
             )
-            return
+            # Virtual brightness feedback does not update switching feedback.
+            if not isinstance(self._channel, VirtualDimmingActuator):
+                return
 
-        if ATTR_COLOR_TEMP_KELVIN in kwargs:
+        elif ATTR_COLOR_TEMP_KELVIN in kwargs:
             if hasattr(self._channel, "color_temperature"):
                 warmest = self._channel.color_temperature_warmest
                 coolest = self._channel.color_temperature_coolest
@@ -206,10 +212,14 @@ class FreeAtHomeLightEntity(LightEntity):
             return
 
         await self._channel.turn_on()
+        if isinstance(self._channel, VirtualDimmingActuator):
+            self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the light off."""
         await self._channel.turn_off()
+        if isinstance(self._channel, VirtualDimmingActuator):
+            self.async_write_ha_state()
 
     async def async_update(self, **kwargs: Any) -> None:
         """Update the light state."""
