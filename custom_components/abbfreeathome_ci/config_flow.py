@@ -18,11 +18,7 @@ from abbfreeathome.api import (
 from aiohttp import ClientSession
 import voluptuous as vol
 
-from homeassistant.config_entries import (
-    CONN_CLASS_LOCAL_PUSH,
-    ConfigFlow,
-    ConfigFlowResult,
-)
+from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -174,7 +170,6 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
     MINOR_VERSION = 5
-    CONNECTION_CLASS = CONN_CLASS_LOCAL_PUSH
 
     def __init__(self) -> None:
         """Initialize."""
