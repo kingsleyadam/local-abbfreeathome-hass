@@ -345,6 +345,14 @@
       "wind_sensor_speed": {
         "name": "Wind speed"
       },
+      "heating_cooling_sensor": {
+        "name": "Heating/Cooling Mode",
+        "state": {
+          "heating": "Heating",
+          "cooling": "Cooling",
+          "unknown": "Unknown"
+        }
+      },
       "window_position": {
         "name": "Window Position",
         "state": {

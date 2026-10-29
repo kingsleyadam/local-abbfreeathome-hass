@@ -6,6 +6,10 @@ from abbfreeathome import FreeAtHome
 from abbfreeathome.channels.air_quality_sensor import AirQualitySensor
 from abbfreeathome.channels.base import Base
 from abbfreeathome.channels.brightness_sensor import BrightnessSensor
+from abbfreeathome.channels.heating_cooling_sensor import (
+    HeatingCoolingSensor,
+    HeatingCoolingSensorState,
+)
 from abbfreeathome.channels.movement_detector import (
     BlockableMovementDetector,
     MovementDetector,
@@ -80,6 +84,15 @@ SENSOR_DESCRIPTIONS = {
             "native_unit_of_measurement": LIGHT_LUX,
             "state_class": SensorStateClass.MEASUREMENT,
             "translation_key": "brightness_sensor",
+        },
+    },
+    "HeatingCoolingSensor": {
+        "channel_class": HeatingCoolingSensor,
+        "value_attribute": "state",
+        "entity_description_kwargs": {
+            "device_class": SensorDeviceClass.ENUM,
+            "options": [state.name for state in HeatingCoolingSensorState],
+            "translation_key": "heating_cooling_sensor",
         },
     },
     "MovementDetectorBrightness": {
@@ -286,6 +299,7 @@ class FreeAtHomeSensorEntity(SensorEntity):
         self,
         channel: AirQualitySensor
         | BrightnessSensor
+        | HeatingCoolingSensor
         | MovementDetector
         | TemperatureSensor
         | WindSensor,
