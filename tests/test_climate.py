@@ -488,6 +488,9 @@ def test_rtc_entity_hvac_action() -> None:
         (True, True, 0, 0, HVACAction.IDLE),
         (False, True, 0, 100, HVACAction.COOLING),
         (False, True, 0, 0, HVACAction.IDLE),
+        # The indicated mode wins over a larger opposite actuating value.
+        (True, True, 10, 100, HVACAction.HEATING),
+        (False, True, 100, 10, HVACAction.COOLING),
     ],
 )
 def test_rtc_entity_hvac_action_from_state_indication(
@@ -506,6 +509,44 @@ def test_rtc_entity_hvac_action_from_state_indication(
     entity = _rtc_entity(channel)
 
     assert entity.hvac_action == expected
+
+
+async def test_rtc_entity_hvac_action_follows_state_indication_updates(
+    hass: HomeAssistant,
+) -> None:
+    """Test a state indication push updates the action without a value update."""
+    device = MagicMock()
+    channel = RoomTemperatureController(
+        device=device,
+        channel_id="ch0000",
+        channel_name="RT Andi",
+        inputs={},
+        outputs={
+            "odp0000": {
+                "pairingID": Pairing.AL_ACTUATING_VALUE_HEATING.value,
+                "value": "20",
+            },
+            "odp0001": {
+                "pairingID": Pairing.AL_ACTUATING_VALUE_COOLING.value,
+                "value": "100",
+            },
+            "odp0008": {"pairingID": Pairing.AL_CONTROLLER_ON_OFF.value, "value": "1"},
+            "odp0009": {"pairingID": Pairing.AL_STATE_INDICATION.value, "value": "65"},
+        },
+        parameters={},
+    )
+    entity = _rtc_entity(channel)
+    entity.entity_id = "climate.rt_andi"
+
+    assert await async_setup_component(hass, "climate", {})
+    await hass.data["climate"].async_add_entities([entity])
+    assert hass.states.get(entity.entity_id).attributes["hvac_action"] == "idle"
+
+    channel.update_channel("AL_STATE_INDICATION/odp0009", "33")
+    assert hass.states.get(entity.entity_id).attributes["hvac_action"] == "heating"
+
+    channel.update_channel("AL_STATE_INDICATION/odp0009", "1")
+    assert hass.states.get(entity.entity_id).attributes["hvac_action"] == "cooling"
 
 
 def test_rtc_entity_preset_mode() -> None:
