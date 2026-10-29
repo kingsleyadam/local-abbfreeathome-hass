@@ -208,7 +208,7 @@ async def test_request_events(
 
 async def test_invalid_requests(channel, events):
     """Ignore uninitialized and unknown requests rather than inventing events."""
-    channel._requested_state = None
+    channel.update_channel("idp0000", None)
     for entity in events.values():
         entity.async_write_ha_state = Mock()
         await entity.async_added_to_hass()
@@ -221,6 +221,31 @@ async def test_invalid_requests(channel, events):
 
     for entity in events.values():
         entity.async_write_ha_state.assert_not_called()
+
+
+@pytest.mark.parametrize("value", [None, "", "invalid", "2", "-1", "true"])
+async def test_invalid_switching_telegrams(channel, events, value):
+    """Malformed switching requests neither emit off nor replay a prior command."""
+    entity = events[ONOFF_KEY]
+    entity.async_write_ha_state = Mock()
+    await entity.async_added_to_hass()
+
+    with patch.object(entity, "_trigger_event", wraps=entity._trigger_event) as trigger:
+        for valid_value, event_type in (("1", "on"), ("0", "off"), ("1", "on")):
+            channel.update_channel("idp0000", valid_value)
+            assert channel.requested_state is (valid_value == "1")
+            trigger.assert_called_once_with(event_type, {"extra_data": None})
+            entity.async_write_ha_state.assert_called_once()
+            trigger.reset_mock()
+            entity.async_write_ha_state.reset_mock()
+
+            channel.update_channel("idp0000", value)
+            assert channel.requested_state is None
+            trigger.assert_not_called()
+            entity.async_write_ha_state.assert_not_called()
+
+    assert channel.state is False
+    channel.device.api.set_datapoint.assert_not_awaited()
 
 
 async def test_feedback_callbacks_and_cleanup(channel, light, events):
