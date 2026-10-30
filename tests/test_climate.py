@@ -375,6 +375,8 @@ def _mock_rtc_channel() -> MagicMock:
     channel.eco_mode = False
     channel.heating = 0
     channel.cooling = 0
+    channel.heating_mode = None
+    channel.heating_cooling_active = None
     channel.turn_on = AsyncMock()
     channel.turn_off = AsyncMock()
     channel.eco_on = AsyncMock()
@@ -474,6 +476,77 @@ def test_rtc_entity_hvac_action() -> None:
 
     channel.state = False
     assert entity.hvac_action == HVACAction.OFF
+
+
+@pytest.mark.parametrize(
+    ("heating_mode", "active", "heating", "cooling", "expected"),
+    [
+        # Heating mode, room too warm: the cooling value is not carried out.
+        (False, False, 0, 100, HVACAction.IDLE),
+        (True, False, 0, 100, HVACAction.IDLE),
+        (True, True, 18, 0, HVACAction.HEATING),
+        (True, True, 0, 0, HVACAction.IDLE),
+        (False, True, 0, 100, HVACAction.COOLING),
+        (False, True, 0, 0, HVACAction.IDLE),
+        # The indicated mode wins over a larger opposite actuating value.
+        (True, True, 10, 100, HVACAction.HEATING),
+        (False, True, 100, 10, HVACAction.COOLING),
+    ],
+)
+def test_rtc_entity_hvac_action_from_state_indication(
+    heating_mode: bool,
+    active: bool,
+    heating: int,
+    cooling: int,
+    expected: HVACAction,
+) -> None:
+    """Test the action honours the indicated heating/cooling mode and activity."""
+    channel = _mock_rtc_channel()
+    channel.heating_mode = heating_mode
+    channel.heating_cooling_active = active
+    channel.heating = heating
+    channel.cooling = cooling
+    entity = _rtc_entity(channel)
+
+    assert entity.hvac_action == expected
+
+
+async def test_rtc_entity_hvac_action_follows_state_indication_updates(
+    hass: HomeAssistant,
+) -> None:
+    """Test a state indication push updates the action without a value update."""
+    device = MagicMock()
+    channel = RoomTemperatureController(
+        device=device,
+        channel_id="ch0000",
+        channel_name="RT Andi",
+        inputs={},
+        outputs={
+            "odp0000": {
+                "pairingID": Pairing.AL_ACTUATING_VALUE_HEATING.value,
+                "value": "20",
+            },
+            "odp0001": {
+                "pairingID": Pairing.AL_ACTUATING_VALUE_COOLING.value,
+                "value": "100",
+            },
+            "odp0008": {"pairingID": Pairing.AL_CONTROLLER_ON_OFF.value, "value": "1"},
+            "odp0009": {"pairingID": Pairing.AL_STATE_INDICATION.value, "value": "65"},
+        },
+        parameters={},
+    )
+    entity = _rtc_entity(channel)
+    entity.entity_id = "climate.rt_andi"
+
+    assert await async_setup_component(hass, "climate", {})
+    await hass.data["climate"].async_add_entities([entity])
+    assert hass.states.get(entity.entity_id).attributes["hvac_action"] == "idle"
+
+    channel.update_channel("AL_STATE_INDICATION/odp0009", "33")
+    assert hass.states.get(entity.entity_id).attributes["hvac_action"] == "heating"
+
+    channel.update_channel("AL_STATE_INDICATION/odp0009", "1")
+    assert hass.states.get(entity.entity_id).attributes["hvac_action"] == "cooling"
 
 
 def test_rtc_entity_preset_mode() -> None:

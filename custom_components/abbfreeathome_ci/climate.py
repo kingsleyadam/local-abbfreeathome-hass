@@ -67,6 +67,8 @@ class FreeAtHomeClimateEntity(ClimateEntity):
         "cooling",
         "target_temperature",
         "eco_mode",
+        "heating_mode",
+        "heating_cooling_active",
     ]
 
     def __init__(
@@ -174,6 +176,16 @@ class FreeAtHomeClimateEntity(ClimateEntity):
         """Return the current action."""
         if self.hvac_mode == HVACMode.OFF:
             return HVACAction.OFF
+
+        # The controller can report an actuating value for the opposite mode
+        # (e.g. cooling while the system is in heating mode), so prefer the
+        # indicated mode and activity when available.
+        if self._channel.heating_cooling_active is False:
+            return HVACAction.IDLE
+        if self._channel.heating_mode is True:
+            return HVACAction.HEATING if self._channel.heating else HVACAction.IDLE
+        if self._channel.heating_mode is False:
+            return HVACAction.COOLING if self._channel.cooling else HVACAction.IDLE
 
         if self._channel.heating > self._channel.cooling:
             return HVACAction.HEATING
