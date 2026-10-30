@@ -1,32 +1,71 @@
 virtual_device:
   fields:
-    serial:
-      required: true
-      example: my-virtual-serial
+    config_entry_id:
+      required: false
       selector:
-        text:
+        config_entry:
+          integration: abbfreeathome_ci
     type:
       required: true
-      example: BinarySensor
+      default: SwitchingActuator
+      example: SwitchingActuator
+      selector:
+        select:
+          mode: dropdown
+          custom_value: true
+          translation_key: virtual_device_type
+          options:
+            - SwitchingActuator
+            - DimActuator
+            - WindowSensor
+            - RTC
+            - WeatherStation
+            - Weather-BrightnessSensor
+            - Weather-RainSensor
+            - Weather-TemperatureSensor
+            - Weather-WindSensor
+            - AirQualityTemperature
+            - EnergyMeterv2
+    displayname:
+      required: false
+      example: Virtual switch
+      selector:
+        text:
+    serial:
+      required: true
+      example: ha-virtual-switch-01
       selector:
         text:
     ttl:
-      required: true
-      example: 180
-      selector:
-        number:
-          min: -1
-          max: 86400
-          mode: box
-    displayname:
       required: false
+      default: "-1"
+      example: "-1"
       selector:
-        text:
-    flavor:
-      required: false
-      selector:
-        text:
-    capabilities:
-      required: false
-      selector:
-        object:
+        select:
+          mode: dropdown
+          custom_value: true
+          translation_key: virtual_device_lifetime
+          options:
+            - "-1"
+            - "0"
+            - "180"
+            - "300"
+            - "3600"
+            - "86400"
+    energy_meter:
+      collapsed: true
+      fields:
+        flavor:
+          required: false
+          example: E
+          selector:
+            select:
+              options:
+                - E
+              custom_value: true
+              mode: dropdown
+        capabilities:
+          required: false
+          example: [16, 17, 18, 19, 22, 28]
+          selector:
+            object:
