@@ -476,7 +476,7 @@
   "services": {
     "virtual_device": {
       "name": "Virtuelles Gerät",
-      "description": "Ein virtuelles Free@home-Gerät erstellen oder aktualisieren. Aktivieren Sie virtuelle Geräte in den Integrationseinstellungen, platzieren Sie neue Geräte im Free@home-Grundriss und laden Sie die Integration neu. Verknüpfen Sie tatsächliche Home-Assistant-Entitäten über Automationen.",
+      "description": "Virtuelles Free@home-Gerät erstellen oder aktualisieren. In den Einstellungen aktivieren, neue Geräte im Grundriss platzieren und die Integration neu laden.",
       "sections": {
         "energy_meter": {
           "name": "Erweiterte Energiezähler-Einstellungen"

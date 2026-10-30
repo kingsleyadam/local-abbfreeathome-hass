@@ -476,7 +476,7 @@
   "services": {
     "virtual_device": {
       "name": "Virtual device",
-      "description": "Create or update a Free@home virtual device. Enable virtual devices in the integration settings, place new devices on the Free@home floorplan, then reload the integration. Link real Home Assistant entities using automations.",
+      "description": "Create or update a Free@home virtual device. Enable virtual devices in settings, place new devices in Free@home, then reload the integration.",
       "sections": {
         "energy_meter": {
           "name": "Advanced energy meter settings"
