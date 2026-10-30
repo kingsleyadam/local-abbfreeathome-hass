@@ -152,8 +152,8 @@ async def test_async_setup_entry_no_devices(
 
     await async_setup_entry(hass, mock_config_entry, async_add_entities)
 
-    # Should be called twice (once for DimmingActuator, once for ColorTemperatureActuator)
-    assert async_add_entities.call_count == 2
+    # One call for each supported actuator class, including virtual dimmers.
+    assert async_add_entities.call_count == 3
 
 
 async def test_async_setup_entry_with_devices(
@@ -171,8 +171,8 @@ async def test_async_setup_entry_with_devices(
 
     await async_setup_entry(hass, mock_config_entry, async_add_entities)
 
-    # Should be called twice (once for each actuator class)
-    assert async_add_entities.call_count == 2
+    # One call for each supported actuator class.
+    assert async_add_entities.call_count == 3
 
 
 async def test_simple_light_is_on(mock_simple_light_channel):

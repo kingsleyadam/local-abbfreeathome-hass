@@ -216,6 +216,40 @@
           }
         }
       },
+      "virtual_dimming_actuator_onoff": {
+        "name": "Virtual Dimmer Switch Request ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "on": "[%key:common::state::on%]",
+              "off": "[%key:common::state::off%]"
+            }
+          }
+        }
+      },
+      "virtual_dimming_actuator_dimming": {
+        "name": "Virtual Dimmer Dimming Request ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "longpress_up": "Dimming Up",
+              "longpress_up_release": "Dimming Up Release",
+              "longpress_down": "Dimming Down",
+              "longpress_down_release": "Dimming Down Release"
+            }
+          }
+        }
+      },
+      "virtual_dimming_actuator_brightness": {
+        "name": "Virtual Dimmer Brightness Request ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "requested_brightness": "Requested Brightness"
+            }
+          }
+        }
+      },
       "virtual_switch_actuator_onoff": {
         "name": "Virtual Switch Event ({channel_id})",
         "state_attributes": {
