@@ -71,33 +71,6 @@
       }
     }
   },
-  "selector": {
-    "virtual_device_lifetime": {
-      "options": {
-        "-1": "Unlimited",
-        "0": "Mark offline (manual deletion)",
-        "180": "3 minutes",
-        "300": "5 minutes",
-        "3600": "1 hour",
-        "86400": "1 day"
-      }
-    },
-    "virtual_device_type": {
-      "options": {
-        "SwitchingActuator": "Switch",
-        "DimActuator": "Dimmer",
-        "WindowSensor": "Window/door sensor",
-        "RTC": "Room thermostat",
-        "WeatherStation": "Weather station",
-        "Weather-BrightnessSensor": "Brightness sensor",
-        "Weather-RainSensor": "Rain sensor",
-        "Weather-TemperatureSensor": "Temperature sensor",
-        "Weather-WindSensor": "Wind sensor",
-        "AirQualityTemperature": "Temperature sensor (air quality)",
-        "EnergyMeterv2": "Energy meter"
-      }
-    }
-  },
   "entity": {
     "binary_sensor": {
       "air_quality_sensor_co2_alert": {

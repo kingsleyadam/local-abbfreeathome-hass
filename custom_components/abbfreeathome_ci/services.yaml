@@ -13,19 +13,29 @@ virtual_device:
         select:
           mode: dropdown
           custom_value: true
-          translation_key: virtual_device_type
           options:
-            - SwitchingActuator
-            - DimActuator
-            - WindowSensor
-            - RTC
-            - WeatherStation
-            - Weather-BrightnessSensor
-            - Weather-RainSensor
-            - Weather-TemperatureSensor
-            - Weather-WindSensor
-            - AirQualityTemperature
-            - EnergyMeterv2
+            - value: SwitchingActuator
+              label: Switch
+            - value: DimActuator
+              label: Dimmer
+            - value: WindowSensor
+              label: Window/door sensor
+            - value: RTC
+              label: Room thermostat
+            - value: WeatherStation
+              label: Weather station
+            - value: Weather-BrightnessSensor
+              label: Brightness sensor
+            - value: Weather-RainSensor
+              label: Rain sensor
+            - value: Weather-TemperatureSensor
+              label: Temperature sensor
+            - value: Weather-WindSensor
+              label: Wind sensor
+            - value: AirQualityTemperature
+              label: Temperature sensor (air quality)
+            - value: EnergyMeterv2
+              label: Energy meter
     displayname:
       required: false
       example: Virtual switch
@@ -44,14 +54,19 @@ virtual_device:
         select:
           mode: dropdown
           custom_value: true
-          translation_key: virtual_device_lifetime
           options:
-            - "-1"
-            - "0"
-            - "180"
-            - "300"
-            - "3600"
-            - "86400"
+            - value: "-1"
+              label: Unlimited
+            - value: "0"
+              label: Mark offline (manual deletion)
+            - value: "180"
+              label: 3 minutes
+            - value: "300"
+              label: 5 minutes
+            - value: "3600"
+              label: 1 hour
+            - value: "86400"
+              label: 1 day
     energy_meter:
       collapsed: true
       fields:
