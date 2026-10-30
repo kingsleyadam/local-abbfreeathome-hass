@@ -84,6 +84,13 @@
       "wind_sensor_force": {
         "default": "mdi:windsock"
       },
+      "heating_cooling_sensor": {
+        "default": "mdi:sun-snowflake-variant",
+        "state": {
+          "heating": "mdi:fire",
+          "cooling": "mdi:snowflake"
+        }
+      },
       "window_position": {
         "default": "mdi:window-closed",
         "state": {

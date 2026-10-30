@@ -345,6 +345,14 @@
       "wind_sensor_force": {
         "name": "Windstärke"
       },
+      "heating_cooling_sensor": {
+        "name": "Heiz-/Kühlmodus",
+        "state": {
+          "heating": "Heizen",
+          "cooling": "Kühlen",
+          "unknown": "Unbekannt"
+        }
+      },
       "window_position": {
         "name": "Fensterposition",
         "state": {

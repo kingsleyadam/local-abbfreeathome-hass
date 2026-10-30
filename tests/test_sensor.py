@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from abbfreeathome.channels.base import Base
+from abbfreeathome.channels.heating_cooling_sensor import HeatingCoolingSensor
 from abbfreeathome.channels.temperature_sensor import TemperatureSensor
 from abbfreeathome.device import Device
 import pytest
@@ -18,6 +19,7 @@ from custom_components.abbfreeathome_ci.sensor import (
     async_setup_entry,
 )
 from homeassistant import const
+from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_component import EntityComponent
 
@@ -514,6 +516,37 @@ async def test_setup_preserves_measurement_sensors(
     assert isinstance(entities[0], FreeAtHomeSensorEntity)
     assert entities[0].native_value == 21
     assert isinstance(entities[1], FreeAtHomeParametersSensor)
+
+
+async def test_setup_heating_cooling_sensor(hass, mock_config_entry):
+    """Expose the heating/cooling changeover as an enum sensor."""
+    channel = HeatingCoolingSensor(
+        device=Mock(spec=Device),
+        channel_id="ch0000",
+        channel_name="Umschalten Heizen / Kühlen",
+        inputs={},
+        outputs={"odp0007": {"pairingID": 309, "value": "0"}},
+        parameters={},
+    )
+    api = Mock()
+    api.get_devices.return_value = {}
+    api.get_channels_by_class.side_effect = lambda channel_class: (
+        [channel] if channel_class is HeatingCoolingSensor else []
+    )
+    hass.data[DOMAIN] = {mock_config_entry.entry_id: api}
+    entities = []
+
+    await async_setup_entry(hass, mock_config_entry, entities.extend)
+
+    assert len(entities) == 1
+    entity = entities[0]
+    assert entity.device_class == SensorDeviceClass.ENUM
+    assert entity.options == ["unknown", "heating", "cooling"]
+    assert entity.translation_key == "heating_cooling_sensor"
+    assert entity.native_value == "heating"
+
+    channel.update_channel("AL_HEATING_COOLING/odp0007", "1")
+    assert entity.native_value == "cooling"
 
 
 @pytest.mark.parametrize("modern_units", [False, True])

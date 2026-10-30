@@ -39,6 +39,7 @@ The current list of supported devices by function are:
 | FID_DIMMING_SENSOR\*                               | `Event`, `Switch`         |
 | FID_FORCE_ON_OFF_SENSOR                            | `Event`                   |
 | FID_HEATING_ACTUATOR                               | `Valve`                   |
+| FID_HEATING_COOLING_SENSOR                         | `Sensor`                  |
 | FID_MOVEMENT_DETECTOR                              | `Binary Sensor`, `Sensor` |
 | FID_MOVEMENT_DETECTOR_PYCUSTOM0                    | `Binary Sensor`, `Sensor` |
 | FID_RAIN_SENSOR                                    | `Binary Sensor`           |
