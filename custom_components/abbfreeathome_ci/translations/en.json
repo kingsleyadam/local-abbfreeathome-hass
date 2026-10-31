@@ -435,34 +435,54 @@
       }
     }
   },
+  "exceptions": {
+    "virtual_device_sysap_required": {
+      "message": "Select a System Access Point when multiple ABB-free@home integrations are configured."
+    },
+    "virtual_device_sysap_invalid": {
+      "message": "The selected configuration entry is not a configured ABB-free@home System Access Point."
+    },
+    "virtual_device_sysap_unavailable": {
+      "message": "The System Access Point is unavailable. Set up or reload its ABB-free@home integration and try again."
+    }
+  },
   "services": {
     "virtual_device": {
-      "name": "Virtual Device Maintenance",
-      "description": "Interact with the vitualdevice REST-endpoint, to create or modify virtual devices.",
+      "name": "Virtual device",
+      "description": "Create or update a Free@home virtual device. Enable virtual devices in settings, place new devices in Free@home, then reload the integration.",
+      "sections": {
+        "energy_meter": {
+          "name": "Advanced energy meter settings"
+        }
+      },
       "fields": {
+        "config_entry_id": {
+          "name": "System Access Point",
+          "description": "Choose the ABB-free@home integration to use. Optional when only one is configured; required when several are configured."
+        },
         "serial": {
-          "name": "Serial of virtual device",
-          "description": "A unique serial of the virtual device to identify."
+          "name": "Virtual device ID",
+          "description": "The original nativeId, not the generated 6000... device serial. Choose 1-64 letters, numbers, underscores, or hyphens, for example ha-virtual-switch-01. Reuse the same ID to update that device."
         },
         "type": {
-          "name": "Type of virtual device",
-          "description": "The type of the virtual device to maintain."
+          "name": "Device type",
+          "description": "Select a device type or enter a custom API type. Weather stations need no extra creation settings."
         },
         "ttl": {
-          "name": "Lifetime of virtual device",
-          "description": "The lifetime of the virtual device in seconds before a keepalive needs to be received. -1=unlimited, 0=unresponsive or 180-86400."
+          "name": "Lifetime",
+          "description": "Choose a preset or enter custom seconds. Defaults to -1 (unlimited). 0 only marks the device unresponsive; delete it manually in the Free@home app. Timed lifetimes must be 180-86400 seconds and require keepalive calls."
         },
         "displayname": {
-          "name": "Displayname of virtual device",
-          "description": "Name of the virtual device, which will be displayed."
+          "name": "Device name",
+          "description": "Display name in Free@home. Set this when creating a device; omit it when updating to leave the name unchanged."
         },
         "flavor": {
-          "name": "Flavor of energymeter",
-          "description": "Flavor of the virtual energymeter to create."
+          "name": "Energy meter flavor",
+          "description": "For EnergyMeterv2 only. Defaults to E when omitted, including on updates. Set this explicitly to keep a custom flavor."
         },
         "capabilities": {
-          "name": "Capabilities of energymeter",
-          "description": "Capabilities of the virtual energymeter to create as a list of integers."
+          "name": "Energy meter capability IDs",
+          "description": "For EnergyMeterv2 only. Defaults to [16, 17, 18, 19, 22, 28], creating meter, battery, and inverter channels, including on updates. Set a list of integers to keep custom capabilities; an empty list is preserved."
         }
       }
     }

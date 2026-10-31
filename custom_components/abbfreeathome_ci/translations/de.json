@@ -435,34 +435,54 @@
       }
     }
   },
+  "exceptions": {
+    "virtual_device_sysap_required": {
+      "message": "Wählen Sie einen System Access Point aus, wenn mehrere ABB-free@home-Integrationen eingerichtet sind."
+    },
+    "virtual_device_sysap_invalid": {
+      "message": "Der ausgewählte Konfigurationseintrag ist kein eingerichteter ABB-free@home System Access Point."
+    },
+    "virtual_device_sysap_unavailable": {
+      "message": "Der System Access Point ist nicht verfügbar. Richten Sie seine ABB-free@home-Integration ein oder laden Sie diese neu und versuchen Sie es erneut."
+    }
+  },
   "services": {
     "virtual_device": {
-      "name": "Virtuelle Geräte Wartung",
-      "description": "Interagiert mit dem virtualdevice REST-Endpunkt, um virtuelle Geräte zu erzeugen oder zu modifizieren.",
+      "name": "Virtuelles Gerät",
+      "description": "Virtuelles Free@home-Gerät erstellen oder aktualisieren. In den Einstellungen aktivieren, neue Geräte im Grundriss platzieren und die Integration neu laden.",
+      "sections": {
+        "energy_meter": {
+          "name": "Erweiterte Energiezähler-Einstellungen"
+        }
+      },
       "fields": {
+        "config_entry_id": {
+          "name": "System Access Point",
+          "description": "Wählen Sie die zu verwendende ABB-free@home-Integration aus. Optional, wenn nur eine eingerichtet ist; erforderlich bei mehreren Integrationen."
+        },
         "serial": {
-          "name": "Seriennummer des virtuellen Geräts",
-          "description": "Eine einzigartie Seriennummer um das virtuelle Gerät zu identifizieren."
+          "name": "Virtuelle Geräte-ID",
+          "description": "Die ursprüngliche nativeId, nicht die erzeugte Geräteseriennummer 6000.... Verwenden Sie 1-64 Buchstaben, Ziffern, Unterstriche oder Bindestriche, zum Beispiel ha-virtual-switch-01. Verwenden Sie dieselbe ID, um dieses Gerät zu aktualisieren."
         },
         "type": {
-          "name": "Typ des virtuellen Geräts",
-          "description": "Der Type des virtuellen Geräts, welches bearbeitet werden soll."
+          "name": "Gerätetyp",
+          "description": "Wählen Sie einen Gerätetyp oder geben Sie einen eigenen API-Typ ein. Wetterstationen benötigen keine weiteren Einstellungen zur Erstellung."
         },
         "ttl": {
-          "name": "Lebensdauer des virtuellen Geräts",
-          "description": "Die Lebensdauer des virtuellen Geräts in Sekunden bevor ein Keepalive empfangen werden muss. -1=unbegrenzt, 0=nicht reagierend oder 180-86400."
+          "name": "Lebensdauer",
+          "description": "Wählen Sie eine Vorgabe oder geben Sie Sekunden ein. Standardwert: -1 (unbegrenzt). 0 markiert das Gerät nur als nicht erreichbar; löschen Sie es manuell in der Free@home-App. Befristete Lebensdauern müssen 180-86400 Sekunden betragen und benötigen regelmäßige Keepalive-Aufrufe."
         },
         "displayname": {
-          "name": "Anzeigename des virtuellen Geräts",
-          "description": "Name des virtuellen Geräts, welche angezeigt wird."
+          "name": "Gerätename",
+          "description": "Anzeigename in Free@home. Beim Erstellen angeben; beim Aktualisieren weglassen, um den Namen unverändert zu lassen."
         },
         "flavor": {
-          "name": "Flavor",
-          "description": "Flavor des virtuellen Energiemessers, welcher erzeugt werden soll."
+          "name": "Energiezähler-Variante",
+          "description": "Nur für EnergyMeterv2. Standardwert bei fehlender Angabe: E, auch bei Aktualisierungen. Geben Sie eine eigene Variante explizit an, um diese beizubehalten."
         },
         "capabilities": {
-          "name": "Capabilities",
-          "description": "Fähigkeiten des virtuellen Energiemessers, welcher erzeugt werden soll, als eine Liste von Integern."
+          "name": "Energiezähler-Funktions-IDs",
+          "description": "Nur für EnergyMeterv2. Standardwert: [16, 17, 18, 19, 22, 28]. Dieser erzeugt Zähler-, Batterie- und Wechselrichterkanäle, auch bei Aktualisierungen. Eigene Fähigkeiten als Liste ganzer Zahlen angeben, um diese beizubehalten; eine leere Liste bleibt erhalten."
         }
       }
     }

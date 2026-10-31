@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from abbfreeathome.exceptions import BadRequestException
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+import voluptuous as vol
 
 from custom_components.abbfreeathome_ci import (
     async_migrate_entry,
@@ -25,7 +26,7 @@ from custom_components.abbfreeathome_ci.const import (
     DOMAIN,
     VIRTUAL_DEVICE,
 )
-from homeassistant.config_entries import SOURCE_IMPORT
+from homeassistant.config_entries import SOURCE_IGNORE, SOURCE_IMPORT
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant, ServiceValidationError
 
@@ -936,7 +937,7 @@ async def test_virtual_device_service(hass: HomeAssistant) -> None:
     hass.data[DOMAIN] = {entry.entry_id: mock_fah}
 
     # Setup the service
-    await async_setup_service(hass, entry)
+    await async_setup_service(hass)
 
     # Test successful service call
     result = await hass.services.async_call(
@@ -978,8 +979,14 @@ async def test_virtual_device_service(hass: HomeAssistant) -> None:
     assert "Invalid request" in str(exc_info.value)
 
 
-async def test_virtual_device_service_minimal_data(hass: HomeAssistant) -> None:
-    """Test virtual_device service with minimal data (no optional fields)."""
+@pytest.mark.parametrize(
+    "ttl",
+    [None, -1, 0, 180, 600, 86400, "-1", "0", "180", "300", "3600", "86400", "181"],
+)
+async def test_virtual_device_service_minimal_data(
+    hass: HomeAssistant, ttl: int | str | None
+) -> None:
+    """Test virtual_device defaults TTL without overriding explicit values."""
     # Create a mock entry and add to hass
     entry = MockConfigEntry(
         version=1,
@@ -1009,7 +1016,7 @@ async def test_virtual_device_service_minimal_data(hass: HomeAssistant) -> None:
     hass.data[DOMAIN] = {entry.entry_id: mock_fah}
 
     # Setup the service
-    await async_setup_service(hass, entry)
+    await async_setup_service(hass)
 
     # Test service call with only required fields
     result = await hass.services.async_call(
@@ -1018,7 +1025,7 @@ async def test_virtual_device_service_minimal_data(hass: HomeAssistant) -> None:
         {
             "serial": "DEVICE456",
             "type": "switch",
-            "ttl": 600,
+            **({"ttl": ttl} if ttl is not None else {}),
         },
         blocking=True,
         return_response=True,
@@ -1030,11 +1037,277 @@ async def test_virtual_device_service_minimal_data(hass: HomeAssistant) -> None:
     call_args = mock_fah.api.virtualdevice.call_args
     assert call_args[1]["serial"] == "DEVICE456"
     assert call_args[1]["data"]["type"] == "switch"
-    assert call_args[1]["data"]["properties"]["ttl"] == 600
+    assert call_args[1]["data"]["properties"]["ttl"] == (
+        -1 if ttl is None else int(ttl)
+    )
     # Optional fields should not be in data
     assert "displayname" not in call_args[1]["data"]["properties"]
     assert "flavor" not in call_args[1]["data"]["properties"]
     assert "capabilities" not in call_args[1]["data"]["properties"]
+
+
+@pytest.mark.parametrize(
+    ("device_type", "overrides", "energy_properties"),
+    [
+        (
+            "EnergyMeterv2",
+            {},
+            {"flavor": "E", "capabilities": [16, 17, 18, 19, 22, 28]},
+        ),
+        (
+            "EnergyMeterv2",
+            {"flavor": "custom"},
+            {"flavor": "custom", "capabilities": [16, 17, 18, 19, 22, 28]},
+        ),
+        (
+            "EnergyMeterv2",
+            {"capabilities": [16]},
+            {"flavor": "E", "capabilities": [16]},
+        ),
+        (
+            "EnergyMeterv2",
+            {"flavor": "custom", "capabilities": []},
+            {"flavor": "custom", "capabilities": []},
+        ),
+        ("WeatherStation", {}, {}),
+        ("SwitchingActuator", {}, {}),
+        ("DimActuator", {}, {}),
+        ("BinarySensor", {}, {}),
+        ("WindowSensor", {}, {}),
+        ("RTC", {}, {}),
+        ("Weather-BrightnessSensor", {}, {}),
+        ("Weather-RainSensor", {}, {}),
+        ("Weather-TemperatureSensor", {}, {}),
+        ("Weather-WindSensor", {}, {}),
+        ("AirQualityTemperature", {}, {}),
+        ("custom", {}, {}),
+    ],
+)
+async def test_virtual_device_service_type_defaults(
+    hass: HomeAssistant, mock_config_entry, device_type, overrides, energy_properties
+) -> None:
+    """Apply energy presets only to energy meters and preserve explicit overrides."""
+    mock_config_entry.add_to_hass(hass)
+    original_data = dict(mock_config_entry.data)
+    mock_fah = MagicMock()
+    mock_fah.api.virtualdevice = AsyncMock(return_value={"DEVICE123": "VIRTUAL123"})
+    hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_fah}
+    await async_setup_service(hass)
+
+    result = await hass.services.async_call(
+        DOMAIN,
+        "virtual_device",
+        {"serial": "DEVICE123", "type": device_type, **overrides},
+        blocking=True,
+        return_response=True,
+    )
+
+    assert result == {"DEVICE123": "VIRTUAL123"}
+    mock_fah.api.virtualdevice.assert_awaited_once_with(
+        serial="DEVICE123",
+        data={"type": device_type, "properties": {"ttl": -1, **energy_properties}},
+    )
+    assert mock_config_entry.data == original_data
+
+
+@pytest.fixture
+async def virtual_device_service(
+    hass: HomeAssistant, mock_config_entry, mock_free_at_home
+):
+    """Register the service with one configured, available SysAP."""
+    mock_config_entry.add_to_hass(hass)
+    mock_free_at_home.api.virtualdevice.return_value = {"status": "ok"}
+    hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
+    await async_setup_service(hass)
+    return mock_free_at_home
+
+
+@pytest.mark.parametrize("native_id", ["x", "A" * 64, "ha-Virtual_switch-01"])
+async def test_virtual_device_accepts_native_id_boundaries(
+    hass: HomeAssistant, virtual_device_service, native_id: str
+) -> None:
+    """Forward valid original IDs unchanged, including the minimum and maximum lengths."""
+    await hass.services.async_call(
+        DOMAIN,
+        VIRTUAL_DEVICE,
+        {"serial": native_id, "type": "SwitchingActuator"},
+        blocking=True,
+        return_response=True,
+    )
+    assert (
+        virtual_device_service.api.virtualdevice.await_args.kwargs["serial"]
+        == native_id
+    )
+
+
+@pytest.mark.parametrize(
+    "native_id", ["", "a" * 65, "with space", "path/id", "ha_test\n", "h\u00e4_test"]
+)
+async def test_virtual_device_rejects_invalid_native_ids(
+    hass: HomeAssistant, virtual_device_service, native_id: str
+) -> None:
+    """Reject IDs outside the API's nativeId format before making an upsert."""
+    with pytest.raises(vol.Invalid, match="Virtual device ID"):
+        await hass.services.async_call(
+            DOMAIN,
+            VIRTUAL_DEVICE,
+            {"serial": native_id, "type": "SwitchingActuator"},
+            blocking=True,
+            return_response=True,
+        )
+    virtual_device_service.api.virtualdevice.assert_not_awaited()
+
+
+@pytest.mark.parametrize("ttl", [-2, 1, 179, 86401, "1", "179", "invalid"])
+async def test_virtual_device_rejects_invalid_lifetimes(
+    hass: HomeAssistant, virtual_device_service, ttl: int | str
+) -> None:
+    """Custom dropdown values must still satisfy the API's lifetime ranges."""
+    with pytest.raises(vol.Invalid):
+        await hass.services.async_call(
+            DOMAIN,
+            VIRTUAL_DEVICE,
+            {"serial": "ha-test", "type": "SwitchingActuator", "ttl": ttl},
+            blocking=True,
+            return_response=True,
+        )
+    virtual_device_service.api.virtualdevice.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    ("target", "unload_first"), [("first", False), ("second", False), ("second", True)]
+)
+async def test_virtual_device_routes_to_selected_sysap(
+    hass: HomeAssistant,
+    mock_config_entry,
+    virtual_device_service,
+    target: str,
+    unload_first: bool,
+) -> None:
+    """Route at call time, even after the SysAP that registered the service unloads."""
+    second_entry = MockConfigEntry(domain=DOMAIN, title="Second SysAP", data={})
+    second_entry.add_to_hass(hass)
+    second_client = MagicMock()
+    second_client.api.virtualdevice = AsyncMock(return_value={"status": "second"})
+    hass.data[DOMAIN][second_entry.entry_id] = second_client
+    if unload_first:
+        hass.data[DOMAIN].pop(mock_config_entry.entry_id)
+    selected_entry = mock_config_entry if target == "first" else second_entry
+    selected_client = virtual_device_service if target == "first" else second_client
+    other_client = second_client if target == "first" else virtual_device_service
+
+    result = await hass.services.async_call(
+        DOMAIN,
+        VIRTUAL_DEVICE,
+        {
+            "config_entry_id": selected_entry.entry_id,
+            "serial": "ha-test",
+            "type": "SwitchingActuator",
+        },
+        blocking=True,
+        return_response=True,
+    )
+
+    assert result == {"status": "ok" if target == "first" else "second"}
+    selected_client.api.virtualdevice.assert_awaited_once_with(
+        serial="ha-test", data={"type": "SwitchingActuator", "properties": {"ttl": -1}}
+    )
+    other_client.api.virtualdevice.assert_not_awaited()
+
+
+@pytest.mark.parametrize("second_loaded", [False, True])
+async def test_virtual_device_requires_sysap_for_multiple_entries(
+    hass: HomeAssistant, virtual_device_service, second_loaded: bool
+) -> None:
+    """Never silently choose another configured SysAP when one is unavailable."""
+    second_entry = MockConfigEntry(domain=DOMAIN, title="Second SysAP", data={})
+    second_entry.add_to_hass(hass)
+    second_client = MagicMock()
+    second_client.api.virtualdevice = AsyncMock()
+    if second_loaded:
+        hass.data[DOMAIN][second_entry.entry_id] = second_client
+    with pytest.raises(ServiceValidationError) as exc_info:
+        await hass.services.async_call(
+            DOMAIN,
+            VIRTUAL_DEVICE,
+            {"serial": "ha-test", "type": "SwitchingActuator"},
+            blocking=True,
+            return_response=True,
+        )
+    assert exc_info.value.translation_key == "virtual_device_sysap_required"
+    virtual_device_service.api.virtualdevice.assert_not_awaited()
+    second_client.api.virtualdevice.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    ("target", "error"),
+    [
+        ("missing", "virtual_device_sysap_invalid"),
+        ("foreign", "virtual_device_sysap_invalid"),
+        ("unloaded", "virtual_device_sysap_unavailable"),
+    ],
+)
+async def test_virtual_device_rejects_invalid_or_unavailable_sysap(
+    hass: HomeAssistant, virtual_device_service, target: str, error: str
+) -> None:
+    """Reject invalid selections rather than falling back to an available SysAP."""
+    entry_id = "missing"
+    if target != "missing":
+        entry = MockConfigEntry(
+            domain="other_integration" if target == "foreign" else DOMAIN,
+            title="Another integration",
+            data={},
+        )
+        entry.add_to_hass(hass)
+        entry_id = entry.entry_id
+    with pytest.raises(ServiceValidationError) as exc_info:
+        await hass.services.async_call(
+            DOMAIN,
+            VIRTUAL_DEVICE,
+            {
+                "config_entry_id": entry_id,
+                "serial": "ha-test",
+                "type": "SwitchingActuator",
+            },
+            blocking=True,
+            return_response=True,
+        )
+    assert exc_info.value.translation_key == error
+    virtual_device_service.api.virtualdevice.assert_not_awaited()
+
+
+async def test_virtual_device_after_all_sysaps_unload(
+    hass: HomeAssistant, virtual_device_service
+) -> None:
+    """Report unavailability instead of raising a stale-entry lookup error."""
+    hass.data.pop(DOMAIN)
+    with pytest.raises(ServiceValidationError) as exc_info:
+        await hass.services.async_call(
+            DOMAIN,
+            VIRTUAL_DEVICE,
+            {"serial": "ha-test", "type": "SwitchingActuator"},
+            blocking=True,
+            return_response=True,
+        )
+    assert exc_info.value.translation_key == "virtual_device_sysap_unavailable"
+    virtual_device_service.api.virtualdevice.assert_not_awaited()
+
+
+async def test_virtual_device_ignores_ignored_discoveries(
+    hass: HomeAssistant, virtual_device_service
+) -> None:
+    """An ignored discovery is not another configured target requiring selection."""
+    ignored = MockConfigEntry(domain=DOMAIN, source=SOURCE_IGNORE, data={})
+    ignored.add_to_hass(hass)
+    result = await hass.services.async_call(
+        DOMAIN,
+        VIRTUAL_DEVICE,
+        {"serial": "ha-test", "type": "SwitchingActuator"},
+        blocking=True,
+        return_response=True,
+    )
+    assert result == {"status": "ok"}
+    virtual_device_service.api.virtualdevice.assert_awaited_once()
 
 
 async def test_async_setup_entry_device_without_channels(
