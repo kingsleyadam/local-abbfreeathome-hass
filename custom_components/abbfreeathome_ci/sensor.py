@@ -41,7 +41,7 @@ from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
 from .entity import (
     ChannelGetter,
     FreeAtHomeEntity,
-    async_entity_is_loaded,
+    async_release_removed_entities,
     async_setup_platform_entities,
     signal_channels_added,
 )
@@ -223,8 +223,8 @@ def _async_setup_parameter_entities(
 
             for entity in candidates:
                 existing = parameter_entities.get(entity.unique_id)
-                if existing is not None and async_entity_is_loaded(hass, existing):
-                    # A channel placed later extends an existing device aggregate.
+                if existing is not None:
+                    # A channel placed later extends the device's existing aggregate.
                     existing.async_update_channels(entity.channels)
                     continue
                 parameter_entities[entity.unique_id] = entity
@@ -244,6 +244,7 @@ def _async_setup_parameter_entities(
             hass, signal_channels_added(entry.entry_id), _async_channels_added
         )
     )
+    async_release_removed_entities(hass, entry, parameter_entities)
 
 
 class FreeAtHomeParametersSensor(FreeAtHomeEntity, SensorEntity):
@@ -260,6 +261,7 @@ class FreeAtHomeParametersSensor(FreeAtHomeEntity, SensorEntity):
         super().__init__()
         self._device = device
         self._channels = channels
+        self._subscribed = False
         serial = (
             device.device_serial
             if device is not None
@@ -281,15 +283,18 @@ class FreeAtHomeParametersSensor(FreeAtHomeEntity, SensorEntity):
 
     @callback
     def async_update_channels(self, channels: list[Base]) -> None:
-        """Include channels that became visible after the entity was added."""
+        """Include channels that became visible after the entity was created."""
         new_channels = [
             channel for channel in channels if channel not in self._channels
         ]
         if not new_channels:
             return
+        self._channels = [*self._channels, *new_channels]
+        # A pending entity subscribes to all of its channels once it is added.
+        if not self._subscribed:
+            return
         for channel in new_channels:
             channel.register_parameter_callback(self.async_write_ha_state)
-        self._channels = [*self._channels, *new_channels]
         self.async_write_ha_state()
 
     @property
@@ -321,9 +326,11 @@ class FreeAtHomeParametersSensor(FreeAtHomeEntity, SensorEntity):
             self._device.register_parameter_callback(self.async_write_ha_state)
         for channel in self._channels:
             channel.register_parameter_callback(self.async_write_ha_state)
+        self._subscribed = True
 
     async def async_will_remove_from_hass(self) -> None:
         """Unsubscribe from parameter changes."""
+        self._subscribed = False
         if self._device is not None:
             self._device.remove_parameter_callback(self.async_write_ha_state)
         for channel in self._channels:

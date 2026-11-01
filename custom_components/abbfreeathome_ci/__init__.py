@@ -45,7 +45,7 @@ from .const import (
     MANUFACTURER,
     VIRTUAL_DEVICE,
 )
-from .entity import signal_channels_added
+from .entity import signal_channels_added, signal_devices_removed
 from .helpers import async_get_via_device_kwargs
 
 VIRTUALDEVICE_SCHEMA = (
@@ -328,6 +328,9 @@ def _async_handle_devices_changed(
     """Apply device additions and removals reported by the SysAP."""
     if event.removed_device_serials:
         _async_remove_devices(hass, entry, event.removed_device_serials)
+        async_dispatcher_send(
+            hass, signal_devices_removed(entry.entry_id), event.removed_device_serials
+        )
 
     # Channels placed later can belong to a device without a registry entry yet.
     _devices = {_device.device_serial: _device for _device in event.added_devices}

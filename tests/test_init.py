@@ -1,5 +1,6 @@
 """Test the ABB-free@home integration initialization."""
 
+import asyncio
 import inspect
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -29,6 +30,7 @@ from custom_components.abbfreeathome_ci.const import (
     DOMAIN,
     VIRTUAL_DEVICE,
 )
+from custom_components.abbfreeathome_ci.entity import FreeAtHomeEntity
 from custom_components.abbfreeathome_ci.helpers import async_get_via_device_kwargs
 from homeassistant.config_entries import SOURCE_IGNORE, SOURCE_IMPORT
 from homeassistant.const import (
@@ -1664,6 +1666,92 @@ async def test_runtime_device_adds_parameter_sensor(
     assert attributes["channel_parameters"]["ch0000"]["parameters"] == {
         "PID_LED_DAY_BRIGHTNESS": "0"
     }
+
+
+async def test_runtime_channels_while_addition_pending(
+    hass: HomeAssistant,
+    mock_config_entry,
+    loaded_free_at_home,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test notifications arriving before entities are added create no duplicates."""
+    entity_registry = er.async_get(hass)
+    device = _device()
+    first = _trigger(device, "ch0000", parameters={"par0001": "0"})
+    second = _trigger(device, "ch0001", parameters={"par0002": "1"})
+    loaded_free_at_home.channels.append(first)
+
+    release = asyncio.Event()
+    added_to_hass = FreeAtHomeEntity.async_added_to_hass
+
+    async def _delayed_added_to_hass(entity: FreeAtHomeEntity) -> None:
+        await release.wait()
+        await added_to_hass(entity)
+
+    with patch.object(FreeAtHomeEntity, "async_added_to_hass", _delayed_added_to_hass):
+        for channels in ((first,), (first,), (second,)):
+            if channels == (second,):
+                loaded_free_at_home.channels.append(second)
+            _devices_changed(
+                loaded_free_at_home, DevicesChangedEvent(added_channels=channels)
+            )
+            for _ in range(5):
+                await asyncio.sleep(0)
+        release.set()
+        await hass.async_block_till_done()
+
+    assert "does not generate unique IDs" not in caplog.text
+    assert "already exists" not in caplog.text
+    assert sorted(
+        entry.unique_id
+        for entry in er.async_entries_for_config_entry(
+            entity_registry, mock_config_entry.entry_id
+        )
+    ) == [
+        "ABB700000001_ch0000_button",
+        "ABB700000001_ch0001_button",
+        "ABB700000001_parameters",
+    ]
+    sensor_id = entity_registry.async_get_entity_id(
+        "sensor", DOMAIN, "ABB700000001_parameters"
+    )
+    assert set(hass.states.get(sensor_id).attributes["channel_parameters"]) == {
+        "ch0000",
+        "ch0001",
+    }
+
+    # Channels extended while pending are subscribed once the sensor is added.
+    second.update_parameter("par0002", "5")
+    await hass.async_block_till_done()
+    assert hass.states.get(sensor_id).attributes["channel_parameters"]["ch0001"][
+        "parameters"
+    ] == {"PID_LED_NIGHT_BRIGHTNESS": "5"}
+
+    # Removing an unrelated device keeps the tracked entities.
+    _devices_changed(
+        loaded_free_at_home,
+        DevicesChangedEvent(removed_device_serials=("ABB700000002",)),
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get(sensor_id) is not None
+
+    # A removed device's entities are created again when it returns.
+    _devices_changed(
+        loaded_free_at_home,
+        DevicesChangedEvent(
+            removed_device_serials=("ABB700000001",), added_channels=(first, second)
+        ),
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get(sensor_id) is not None
+    assert (
+        len(
+            er.async_entries_for_config_entry(
+                entity_registry, mock_config_entry.entry_id
+            )
+        )
+        == 3
+    )
 
 
 async def test_runtime_channel_extends_parameter_sensor(

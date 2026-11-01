@@ -17,7 +17,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 
 type ChannelGetter = Callable[[type[Base]], list[Base]]
-type EntityBuilder = Callable[[ChannelGetter], Iterable[Entity]]
+type EntityBuilder = Callable[[ChannelGetter], Iterable[FreeAtHomeEntity]]
 
 
 @callback
@@ -27,10 +27,29 @@ def signal_channels_added(entry_id: str) -> str:
 
 
 @callback
-def async_entity_is_loaded(hass: HomeAssistant, entity: Entity) -> bool:
-    """Return True if the entity is currently added to Home Assistant."""
-    return (
-        entity.entity_id is not None and hass.states.get(entity.entity_id) is not None
+def signal_devices_removed(entry_id: str) -> str:
+    """Return the dispatcher signal for devices removed at runtime."""
+    return f"{DOMAIN}_{entry_id}_devices_removed"
+
+
+@callback
+def async_release_removed_entities(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    entities: dict[str | None, FreeAtHomeEntity],
+) -> None:
+    """Forget tracked entities of removed devices so they can be added again."""
+
+    @callback
+    def _async_devices_removed(device_serials: tuple[str, ...]) -> None:
+        for unique_id, entity in list(entities.items()):
+            if entity.device_serial in device_serials:
+                del entities[unique_id]
+
+    entry.async_on_unload(
+        async_dispatcher_connect(
+            hass, signal_devices_removed(entry.entry_id), _async_devices_removed
+        )
     )
 
 
@@ -47,13 +66,14 @@ def async_setup_platform_entities(
     so the same platform logic is used at startup and for runtime additions.
     """
     free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
-    entities: dict[str | None, Entity] = {}
+    # Reserved when queued, so a repeat notification before the entity has been
+    # added to Home Assistant cannot queue a duplicate.
+    entities: dict[str | None, FreeAtHomeEntity] = {}
 
-    def _track(new_entities: Iterable[Entity]) -> list[Entity]:
+    def _track(new_entities: Iterable[FreeAtHomeEntity]) -> list[FreeAtHomeEntity]:
         result = []
         for entity in new_entities:
-            existing = entities.get(entity.unique_id)
-            if existing is not None and async_entity_is_loaded(hass, existing):
+            if entity.unique_id in entities:
                 continue
             entities[entity.unique_id] = entity
             result.append(entity)
@@ -82,6 +102,7 @@ def async_setup_platform_entities(
             hass, signal_channels_added(entry.entry_id), _async_channels_added
         )
     )
+    async_release_removed_entities(hass, entry, entities)
 
 
 class FreeAtHomeEntity(Entity):
@@ -96,6 +117,11 @@ class FreeAtHomeEntity(Entity):
     def _free_at_home_device(self) -> Device:
         """Return the free@home device backing this entity."""
         return self._channel.device
+
+    @property
+    def device_serial(self) -> str:
+        """Return the serial of the free@home device backing this entity."""
+        return self._free_at_home_device.device_serial
 
     @property
     def available(self) -> bool:
