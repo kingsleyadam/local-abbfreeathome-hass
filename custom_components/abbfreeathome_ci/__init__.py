@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 from urllib.parse import urlparse, urlunparse
 
 from abbfreeathome import FreeAtHome, FreeAtHomeApi
@@ -45,11 +46,25 @@ from .helpers import async_get_via_device_kwargs
 VIRTUALDEVICE_SCHEMA = (
     vol.Schema(
         {
-            vol.Required("serial"): str,
+            vol.Required("serial"): vol.All(
+                str,
+                vol.Match(
+                    r"^[A-Za-z0-9_-]{1,64}\Z",
+                    msg="Virtual device ID must contain 1-64 letters, numbers, underscores, or hyphens",
+                ),
+            ),
+            vol.Optional("config_entry_id"): cv.string,
         }
     )
     .extend(VIRTUAL_DEVICE_ROOT_SCHEMA.schema)
     .extend(VIRTUAL_DEVICE_PROPERTIES_SCHEMA.schema)
+    .extend(
+        {
+            vol.Optional("ttl", default=-1): VIRTUAL_DEVICE_PROPERTIES_SCHEMA.schema[
+                "ttl"
+            ],
+        }
+    )
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -241,7 +256,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Setup services
     if not hass.services.has_service(DOMAIN, VIRTUAL_DEVICE):
-        await async_setup_service(hass, entry)
+        await async_setup_service(hass)
 
     return True
 
@@ -331,43 +346,59 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-async def async_setup_service(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def async_setup_service(hass: HomeAssistant) -> None:
     """Set up services for ABB-free@home integration."""
+
+    def virtual_device_defaults(data: dict[str, Any]) -> dict[str, Any]:
+        """Fill energy defaults before validating the paired API properties."""
+        if data.get("type") == "EnergyMeterv2":
+            data = dict(data)
+            data.setdefault("flavor", "E")
+            data.setdefault("capabilities", [16, 17, 18, 19, 22, 28])
+        return data
 
     async def virtual_device(call: ServiceCall) -> ServiceResponse:
         """Service call to interact with the virtualdevice REST endpoint."""
-
-        # At this point the validation was successful and the dict can be constructed
-        data = {
-            "type": call.data.get("type"),
-            "properties": {
-                "ttl": call.data.get("ttl"),
-            },
+        entry_ids = {
+            entry.entry_id
+            for entry in hass.config_entries.async_entries(DOMAIN, include_ignore=False)
         }
-
-        if "displayname" in call.data:
-            data["properties"]["displayname"] = call.data.get("displayname")
-        if "flavor" in call.data:
-            data["properties"]["flavor"] = call.data.get("flavor")
-        if "capabilities" in call.data:
-            data["properties"]["capabilities"] = call.data.get("capabilities")
-
-        _fah = hass.data[DOMAIN][entry.entry_id]
-
-        try:
-            _result = await _fah.api.virtualdevice(
-                serial=call.data.get("serial"),
-                data=data,
+        config_entry_id = call.data.get("config_entry_id")
+        if config_entry_id is None:
+            if len(entry_ids) > 1:
+                raise ServiceValidationError(
+                    translation_domain=DOMAIN,
+                    translation_key="virtual_device_sysap_required",
+                )
+            config_entry_id = next(iter(entry_ids), None)
+        elif config_entry_id not in entry_ids:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="virtual_device_sysap_invalid",
             )
-        except BadRequestException as e:
-            raise ServiceValidationError(e.message) from e
-
-        return _result
+        free_at_home: FreeAtHome | None = hass.data.get(DOMAIN, {}).get(config_entry_id)
+        if free_at_home is None:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="virtual_device_sysap_unavailable",
+            )
+        properties = {
+            key: call.data[key]
+            for key in ("ttl", "displayname", "flavor", "capabilities")
+            if key in call.data
+        }
+        try:
+            return await free_at_home.api.virtualdevice(
+                serial=call.data["serial"],
+                data={"type": call.data["type"], "properties": properties},
+            )
+        except BadRequestException as err:
+            raise ServiceValidationError(err.message) from err
 
     hass.services.async_register(
         DOMAIN,
         VIRTUAL_DEVICE,
         virtual_device,
-        schema=VIRTUALDEVICE_SCHEMA,
+        schema=vol.Schema(vol.All(virtual_device_defaults, VIRTUALDEVICE_SCHEMA)),
         supports_response=SupportsResponse.ONLY,
     )

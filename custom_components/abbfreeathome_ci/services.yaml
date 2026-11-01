@@ -1,32 +1,86 @@
 virtual_device:
   fields:
-    serial:
-      required: true
-      example: my-virtual-serial
+    config_entry_id:
+      required: false
       selector:
-        text:
+        config_entry:
+          integration: abbfreeathome_ci
     type:
       required: true
-      example: BinarySensor
+      default: SwitchingActuator
+      example: SwitchingActuator
+      selector:
+        select:
+          mode: dropdown
+          custom_value: true
+          options:
+            - value: SwitchingActuator
+              label: Switch
+            - value: DimActuator
+              label: Dimmer
+            - value: WindowSensor
+              label: Window/door sensor
+            - value: RTC
+              label: Room thermostat
+            - value: WeatherStation
+              label: Weather station
+            - value: Weather-BrightnessSensor
+              label: Brightness sensor
+            - value: Weather-RainSensor
+              label: Rain sensor
+            - value: Weather-TemperatureSensor
+              label: Temperature sensor
+            - value: Weather-WindSensor
+              label: Wind sensor
+            - value: AirQualityTemperature
+              label: Temperature sensor (air quality)
+            - value: EnergyMeterv2
+              label: Energy meter
+    displayname:
+      required: false
+      example: Virtual switch
+      selector:
+        text:
+    serial:
+      required: true
+      example: ha-virtual-switch-01
       selector:
         text:
     ttl:
-      required: true
-      example: 180
-      selector:
-        number:
-          min: -1
-          max: 86400
-          mode: box
-    displayname:
       required: false
+      default: "-1"
+      example: "-1"
       selector:
-        text:
-    flavor:
-      required: false
-      selector:
-        text:
-    capabilities:
-      required: false
-      selector:
-        object:
+        select:
+          mode: dropdown
+          custom_value: true
+          options:
+            - value: "-1"
+              label: Unlimited
+            - value: "0"
+              label: Mark offline (manual deletion)
+            - value: "180"
+              label: 3 minutes
+            - value: "300"
+              label: 5 minutes
+            - value: "3600"
+              label: 1 hour
+            - value: "86400"
+              label: 1 day
+    energy_meter:
+      collapsed: true
+      fields:
+        flavor:
+          required: false
+          example: E
+          selector:
+            select:
+              options:
+                - E
+              custom_value: true
+              mode: dropdown
+        capabilities:
+          required: false
+          example: [16, 17, 18, 19, 22, 28]
+          selector:
+            object:
