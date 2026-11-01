@@ -220,7 +220,7 @@ async def test_async_setup_entry_no_channels(
     async_add_entities = MagicMock()
     await async_setup_entry(hass, mock_config_entry, async_add_entities)
 
-    assert async_add_entities.call_count == len(EVENT_DESCRIPTIONS)
+    assert async_add_entities.call_count == 1
 
 
 async def test_async_setup_entry_builds_entity_with_extra_data(
@@ -341,8 +341,15 @@ def test_handle_event_with_extra_data() -> None:
 async def test_callbacks_registered_with_state_attribute() -> None:
     """Callbacks register/remove using a non-empty state attribute."""
     channel = Mock(
-        spec=["channel_name", "channel_id", "register_callback", "remove_callback"]
+        spec=[
+            "channel_name",
+            "channel_id",
+            "device",
+            "register_callback",
+            "remove_callback",
+        ]
     )
+    channel.device = Mock()
     channel.channel_name = "Switch"
     channel.channel_id = "ch0004"
 

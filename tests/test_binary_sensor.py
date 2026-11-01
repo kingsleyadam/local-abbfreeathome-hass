@@ -26,8 +26,7 @@ async def test_async_setup_entry_no_sensors(
     async_add_entities = MagicMock()
     await async_setup_entry(hass, mock_config_entry, async_add_entities)
 
-    # Should be called 11 times (once per sensor description) even if with empty lists
-    assert async_add_entities.call_count == 11
+    assert async_add_entities.call_count == 1
 
 
 async def test_async_setup_entry_with_window_sensor(
