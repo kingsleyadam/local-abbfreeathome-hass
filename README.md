@@ -258,9 +258,14 @@ ID when switching modes; channel sensors have separate, channel-specific IDs.
 To expose an individual parameter using a template helper:
 
 ```jinja
-{{ state_attr('sensor.living_room_actuator_parameters', 'channel_parameters')
-   ['ch0000']['parameters']['PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION'] }}
+{{ (state_attr('sensor.living_room_actuator_parameters', 'channel_parameters') or {})
+   .get('ch0000', {}).get('parameters', {})
+   .get('PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION') }}
 ```
+
+The attributes are absent while the sensor is unavailable, for example when the
+device is unresponsive or the integration is reloading, so guard each lookup as
+shown to avoid template errors.
 
 Replace the entity ID, channel ID and parameter key with those from your device. Add numeric
 conversion and a unit only if you know the parameter's meaning. A change to any
