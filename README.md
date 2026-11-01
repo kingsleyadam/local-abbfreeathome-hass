@@ -190,6 +190,19 @@ Each time Home Assistant is loaded, the `configuration.yaml` entry for `abbfreea
 
 When adding the integration it'll automatically add devices to different `Areas` in Home Assistant. The areas will be pulled from your ABB-free@home Configuration/Floorplan. When prompted to add the devices double check the area for each.
 
+### Device Changes
+
+Devices added to or removed from free@home are picked up automatically; there
+is no need to reload the integration or restart Home Assistant.
+
+- New devices are created as soon as the SysAP reports them. Unless
+  **Include channels NOT on the free@home floorplan?** is enabled, a device
+  appears once one of its channels is placed on the floorplan.
+- Devices deleted in free@home are removed from Home Assistant together with
+  their entities.
+- Entities of unresponsive devices become unavailable and recover when the
+  device responds again.
+
 ## Device and Channel Parameters
 
 By default, each physical device with included channels and at least one parameter
