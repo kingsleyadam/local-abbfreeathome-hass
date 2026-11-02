@@ -130,7 +130,9 @@ on `main`, for example `1.16.1` while `main` holds 1.17 work.
    `manifest.json` in the same PR. Open the PR against `release/X.Y` with the
    version in the title (for example `Bump local-abbfreeathome to 3.10.1 (1.16.1)`)
    and the usual labels.
-3. After it merges, confirm CI passed, get explicit confirmation, then tag the
+3. CI's test and Ruff workflows only run on `main`, `beta/*`, and `alpha/*`, so
+   they do not run for `release/X.Y`; run the validation locally on the branch and
+   record it in the PR. After it merges, get explicit confirmation, then tag the
    head of `release/X.Y` and push the tag as above.
 4. GitHub marks the newest-created stable release as "Latest". If a newer
    version line already exists, restore it afterwards:
