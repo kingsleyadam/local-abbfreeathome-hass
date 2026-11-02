@@ -410,38 +410,25 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if entry.version == 1:
         new_data = {**entry.data}
 
+        # Check every step against the original version and update the entry
+        # once, so later steps cannot overwrite existing settings.
         if entry.minor_version < 2:
             new_data[CONF_INCLUDE_ORPHAN_CHANNELS] = True
 
-        hass.config_entries.async_update_entry(
-            entry, data=new_data, version=1, minor_version=2
-        )
-
-        if entry.minor_version < 3:  # pragma: no cover
+        if entry.minor_version < 3:
             new_data[CONF_INCLUDE_VIRTUAL_DEVICES] = False
 
-        hass.config_entries.async_update_entry(
-            entry, data=new_data, version=1, minor_version=3
-        )
-
-        if entry.minor_version < 4:  # pragma: no cover
+        if entry.minor_version < 4:
             new_data[CONF_CREATE_SUBDEVICES] = False
 
-        hass.config_entries.async_update_entry(
-            entry, data=new_data, version=1, minor_version=4
-        )
-
-        if entry.minor_version < 5:  # pragma: no cover
+        if entry.minor_version < 5:
             if CONF_SSL_CERT_FILE_PATH not in new_data:
                 new_data[CONF_SSL_CERT_FILE_PATH] = None
             if CONF_VERIFY_SSL not in new_data:
                 new_data[CONF_VERIFY_SSL] = False
 
-        hass.config_entries.async_update_entry(
-            entry, data=new_data, version=1, minor_version=5
-        )
-
-        new_data.setdefault(CONF_CREATE_UNRESPONSIVE_REPAIRS, False)
+        if entry.minor_version < 6:
+            new_data[CONF_CREATE_UNRESPONSIVE_REPAIRS] = False
 
         hass.config_entries.async_update_entry(
             entry, data=new_data, version=1, minor_version=6

@@ -424,7 +424,7 @@ async def test_async_migrate_entry_from_v1_2(hass: HomeAssistant) -> None:
 
 
 async def test_async_migrate_entry_from_v1_4(hass: HomeAssistant) -> None:
-    """Test migration from version 1.4."""
+    """Test migration from version 1.4 keeps existing settings."""
     entry = MockConfigEntry(
         version=1,
         minor_version=4,
@@ -435,8 +435,8 @@ async def test_async_migrate_entry_from_v1_4(hass: HomeAssistant) -> None:
             CONF_USERNAME: "installer",
             CONF_PASSWORD: "password",
             CONF_INCLUDE_ORPHAN_CHANNELS: True,
-            CONF_INCLUDE_VIRTUAL_DEVICES: False,
-            CONF_CREATE_SUBDEVICES: False,
+            CONF_INCLUDE_VIRTUAL_DEVICES: True,
+            CONF_CREATE_SUBDEVICES: True,
         },
         source="user",
         unique_id="TEST123",
@@ -455,10 +455,12 @@ async def test_async_migrate_entry_from_v1_4(hass: HomeAssistant) -> None:
     assert entry.data[CONF_CREATE_UNRESPONSIVE_REPAIRS] is False
     assert entry.data[CONF_SSL_CERT_FILE_PATH] is None
     assert entry.data[CONF_VERIFY_SSL] is False
+    assert entry.data[CONF_INCLUDE_VIRTUAL_DEVICES] is True
+    assert entry.data[CONF_CREATE_SUBDEVICES] is True
 
 
 async def test_async_migrate_entry_from_v1_5(hass: HomeAssistant) -> None:
-    """Test migration from version 1.5."""
+    """Test migration from version 1.5 keeps existing settings."""
     entry = MockConfigEntry(
         version=1,
         minor_version=5,
@@ -468,11 +470,11 @@ async def test_async_migrate_entry_from_v1_5(hass: HomeAssistant) -> None:
             CONF_HOST: "http://192.168.1.100",
             CONF_USERNAME: "installer",
             CONF_PASSWORD: "password",
-            CONF_INCLUDE_ORPHAN_CHANNELS: True,
-            CONF_INCLUDE_VIRTUAL_DEVICES: False,
-            CONF_CREATE_SUBDEVICES: False,
-            CONF_SSL_CERT_FILE_PATH: None,
-            CONF_VERIFY_SSL: False,
+            CONF_INCLUDE_ORPHAN_CHANNELS: False,
+            CONF_INCLUDE_VIRTUAL_DEVICES: True,
+            CONF_CREATE_SUBDEVICES: True,
+            CONF_SSL_CERT_FILE_PATH: "/existing/path.pem",
+            CONF_VERIFY_SSL: True,
         },
         source="user",
         unique_id="TEST123",
@@ -489,6 +491,11 @@ async def test_async_migrate_entry_from_v1_5(hass: HomeAssistant) -> None:
     assert entry.version == 1
     assert entry.minor_version == 6
     assert entry.data[CONF_CREATE_UNRESPONSIVE_REPAIRS] is False
+    assert entry.data[CONF_INCLUDE_ORPHAN_CHANNELS] is False
+    assert entry.data[CONF_INCLUDE_VIRTUAL_DEVICES] is True
+    assert entry.data[CONF_CREATE_SUBDEVICES] is True
+    assert entry.data[CONF_SSL_CERT_FILE_PATH] == "/existing/path.pem"
+    assert entry.data[CONF_VERIFY_SSL] is True
 
 
 async def test_async_migrate_entry_future_version(hass: HomeAssistant) -> None:
@@ -1447,7 +1454,7 @@ async def test_async_migrate_entry_from_v1_1(hass: HomeAssistant) -> None:
 
 
 async def test_async_migrate_entry_from_v1_3(hass: HomeAssistant) -> None:
-    """Test migration from version 1.3 through remaining versions to 1.5."""
+    """Test migration from version 1.3 through remaining versions to 1.6."""
     entry = MockConfigEntry(
         version=1,
         minor_version=3,
@@ -1458,7 +1465,7 @@ async def test_async_migrate_entry_from_v1_3(hass: HomeAssistant) -> None:
             CONF_USERNAME: "installer",
             CONF_PASSWORD: "password",
             CONF_INCLUDE_ORPHAN_CHANNELS: True,
-            CONF_INCLUDE_VIRTUAL_DEVICES: False,
+            CONF_INCLUDE_VIRTUAL_DEVICES: True,
         },
         source="user",
         unique_id="TEST123",
@@ -1471,7 +1478,8 @@ async def test_async_migrate_entry_from_v1_3(hass: HomeAssistant) -> None:
     assert entry.version == 1
     assert entry.minor_version == 6
     assert entry.data[CONF_CREATE_UNRESPONSIVE_REPAIRS] is False
-    # v1.3 -> v1.4 adds create_subdevices
+    # v1.3 -> v1.4 adds create_subdevices and keeps virtual devices
+    assert entry.data[CONF_INCLUDE_VIRTUAL_DEVICES] is True
     assert entry.data[CONF_CREATE_SUBDEVICES] is False
     # Then continues to v1.5
     assert entry.data[CONF_SSL_CERT_FILE_PATH] is None
