@@ -512,7 +512,7 @@ async def test_async_migrate_entry_already_current(hass: HomeAssistant) -> None:
     """Test migration succeeds when already at current version."""
     entry = MockConfigEntry(
         version=1,
-        minor_version=5,
+        minor_version=6,
         domain=DOMAIN,
         title="Test",
         data={
@@ -522,6 +522,7 @@ async def test_async_migrate_entry_already_current(hass: HomeAssistant) -> None:
             CONF_INCLUDE_ORPHAN_CHANNELS: True,
             CONF_INCLUDE_VIRTUAL_DEVICES: False,
             CONF_CREATE_SUBDEVICES: False,
+            CONF_CREATE_UNRESPONSIVE_REPAIRS: True,
             CONF_SSL_CERT_FILE_PATH: None,
             CONF_VERIFY_SSL: False,
         },
@@ -539,7 +540,8 @@ async def test_async_migrate_entry_already_current(hass: HomeAssistant) -> None:
     assert result is True
     assert entry.version == 1
     assert entry.minor_version == 6
-    assert entry.data[CONF_CREATE_UNRESPONSIVE_REPAIRS] is False
+    # An already migrated entry keeps its setting.
+    assert entry.data[CONF_CREATE_UNRESPONSIVE_REPAIRS] is True
 
 
 async def test_async_setup_entry_with_devices(

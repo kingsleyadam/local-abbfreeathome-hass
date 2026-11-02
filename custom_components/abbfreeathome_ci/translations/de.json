@@ -449,6 +449,16 @@
       "message": "Der System Access Point ist nicht verfügbar. Richten Sie seine ABB-free@home-Integration ein oder laden Sie diese neu und versuchen Sie es erneut."
     }
   },
+  "issues": {
+    "device_unresponsive": {
+      "title": "Gerät {name} antwortet nicht",
+      "description": "Das free@home-Gerät {name} ({serial}) antwortet seit einigen Minuten nicht mehr auf den System Access Point, daher sind seine Entitäten nicht verfügbar.\n\nWenn das Gerät batteriebetrieben ist, ist die Batterie vermutlich leer und muss getauscht werden. Andernfalls prüfe die Stromversorgung und die Verbindung des Geräts.\n\nDiese Meldung wird automatisch entfernt, sobald das Gerät wieder antwortet."
+    },
+    "virtual_device_unresponsive": {
+      "title": "Virtuelles Gerät {name} antwortet nicht",
+      "description": "Das virtuelle free@home-Gerät {name} ({serial}) antwortet seit einigen Minuten nicht mehr, daher sind seine Entitäten nicht verfügbar. Meist ist die Lebensdauer (TTL) abgelaufen, ohne erneuert zu werden.\n\nPrüfe das externe System, das dieses virtuelle Gerät aktuell halten soll.\n\nDiese Meldung wird automatisch entfernt, sobald das Gerät wieder antwortet."
+    }
+  },
   "services": {
     "virtual_device": {
       "name": "Virtuelles Gerät",
