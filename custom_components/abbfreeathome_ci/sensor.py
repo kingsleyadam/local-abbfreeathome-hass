@@ -1,5 +1,6 @@
 """Create ABB-free@home sensor entities."""
 
+from collections.abc import Iterable
 from typing import Any
 
 from abbfreeathome import FreeAtHome
@@ -30,12 +31,20 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import LIGHT_LUX, PERCENTAGE, UnitOfSpeed, UnitOfTemperature
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
+from .entity import (
+    ChannelGetter,
+    FreeAtHomeEntity,
+    async_release_removed_entities,
+    async_setup_platform_entities,
+    signal_channels_added,
+)
 from .helpers import async_get_via_device_kwargs
 
 try:
@@ -164,10 +173,9 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up sensors."""
-    free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
 
-    for key, description in SENSOR_DESCRIPTIONS.items():
-        async_add_entities(
+    def build_entities(get_channels: ChannelGetter) -> list[FreeAtHomeSensorEntity]:
+        return [
             FreeAtHomeSensorEntity(
                 channel,
                 value_attribute=description.get("value_attribute"),
@@ -176,31 +184,70 @@ async def async_setup_entry(
                 sysap_serial_number=entry.data[CONF_SERIAL],
                 create_subdevices=entry.data[CONF_CREATE_SUBDEVICES],
             )
-            for channel in free_at_home.get_channels_by_class(
-                channel_class=description.get("channel_class")
-            )
+            for key, description in SENSOR_DESCRIPTIONS.items()
+            for channel in get_channels(description.get("channel_class"))
             if getattr(channel, description.get("value_attribute")) is not None
+        ]
+
+    async_setup_platform_entities(hass, entry, async_add_entities, build_entities)
+    _async_setup_parameter_entities(hass, entry, async_add_entities)
+
+
+@callback
+def _async_setup_parameter_entities(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Add parameter sensors for current devices and devices changed at runtime."""
+    free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
+    parameter_entities: dict[str, FreeAtHomeParametersSensor] = {}
+
+    def _build(devices: Iterable[Device]) -> list[FreeAtHomeParametersSensor]:
+        new_entities = []
+        for device in devices:
+            channels = free_at_home.get_channels_by_device(device.device_serial)
+            if not channels:
+                continue
+            candidates: list[FreeAtHomeParametersSensor] = []
+            if entry.data[CONF_CREATE_SUBDEVICES] and device.is_multi_device:
+                if device.parameters:
+                    candidates.append(FreeAtHomeParametersSensor(device, []))
+                candidates.extend(
+                    FreeAtHomeParametersSensor(None, [channel])
+                    for channel in channels
+                    if channel.parameters
+                )
+            elif device.parameters or any(channel.parameters for channel in channels):
+                candidates.append(FreeAtHomeParametersSensor(device, channels))
+
+            for entity in candidates:
+                existing = parameter_entities.get(entity.unique_id)
+                if existing is not None:
+                    # A channel placed later extends the device's existing aggregate.
+                    existing.async_update_channels(entity.channels)
+                    continue
+                parameter_entities[entity.unique_id] = entity
+                new_entities.append(entity)
+        return new_entities
+
+    async_add_entities(_build(free_at_home.get_devices().values()))
+
+    @callback
+    def _async_channels_added(channels: tuple[Base, ...]) -> None:
+        devices = {channel.device_serial: channel.device for channel in channels}
+        if new_entities := _build(devices.values()):
+            async_add_entities(new_entities)
+
+    entry.async_on_unload(
+        async_dispatcher_connect(
+            hass, signal_channels_added(entry.entry_id), _async_channels_added
         )
-
-    parameter_entities = []
-    for device in free_at_home.get_devices().values():
-        channels = free_at_home.get_channels_by_device(device.device_serial)
-        if not channels:
-            continue
-        if entry.data[CONF_CREATE_SUBDEVICES] and device.is_multi_device:
-            if device.parameters:
-                parameter_entities.append(FreeAtHomeParametersSensor(device, []))
-            parameter_entities.extend(
-                FreeAtHomeParametersSensor(None, [channel])
-                for channel in channels
-                if channel.parameters
-            )
-        elif device.parameters or any(channel.parameters for channel in channels):
-            parameter_entities.append(FreeAtHomeParametersSensor(device, channels))
-    async_add_entities(parameter_entities)
+    )
+    async_release_removed_entities(hass, entry, parameter_entities)
 
 
-class FreeAtHomeParametersSensor(SensorEntity):
+class FreeAtHomeParametersSensor(FreeAtHomeEntity, SensorEntity):
     """Expose parameters belonging to a physical device or channel sub-device."""
 
     _attr_should_poll = False
@@ -214,12 +261,41 @@ class FreeAtHomeParametersSensor(SensorEntity):
         super().__init__()
         self._device = device
         self._channels = channels
+        self._subscribed = False
         serial = (
             device.device_serial
             if device is not None
             else f"{channels[0].device_serial}_{channels[0].channel_id}"
         )
         self._attr_unique_id = f"{serial}_parameters"
+
+    @property
+    def _free_at_home_device(self) -> Device:
+        """Return the free@home device backing this entity."""
+        if self._device is not None:
+            return self._device
+        return self._channels[0].device
+
+    @property
+    def channels(self) -> list[Base]:
+        """Return the channels whose parameters are exposed."""
+        return self._channels
+
+    @callback
+    def async_update_channels(self, channels: list[Base]) -> None:
+        """Include channels that became visible after the entity was created."""
+        new_channels = [
+            channel for channel in channels if channel not in self._channels
+        ]
+        if not new_channels:
+            return
+        self._channels = [*self._channels, *new_channels]
+        # A pending entity subscribes to all of its channels once it is added.
+        if not self._subscribed:
+            return
+        for channel in new_channels:
+            channel.register_parameter_callback(self.async_write_ha_state)
+        self.async_write_ha_state()
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -245,13 +321,16 @@ class FreeAtHomeParametersSensor(SensorEntity):
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to device and included channel parameter changes."""
+        await super().async_added_to_hass()
         if self._device is not None:
             self._device.register_parameter_callback(self.async_write_ha_state)
         for channel in self._channels:
             channel.register_parameter_callback(self.async_write_ha_state)
+        self._subscribed = True
 
     async def async_will_remove_from_hass(self) -> None:
         """Unsubscribe from parameter changes."""
+        self._subscribed = False
         if self._device is not None:
             self._device.remove_parameter_callback(self.async_write_ha_state)
         for channel in self._channels:
@@ -290,7 +369,7 @@ class FreeAtHomeParametersSensor(SensorEntity):
         return attributes
 
 
-class FreeAtHomeSensorEntity(SensorEntity):
+class FreeAtHomeSensorEntity(FreeAtHomeEntity, SensorEntity):
     """Defines a free@home sensor entity."""
 
     _attr_should_poll: bool = False
@@ -324,6 +403,7 @@ class FreeAtHomeSensorEntity(SensorEntity):
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
+        await super().async_added_to_hass()
         self._channel.register_callback(
             callback_attribute=self._value_attribute, callback=self.async_write_ha_state
         )

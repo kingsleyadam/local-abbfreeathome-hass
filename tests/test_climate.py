@@ -151,8 +151,7 @@ async def test_async_setup_entry_no_climate_channels(
     async_add_entities = MagicMock()
     await async_setup_entry(hass, mock_config_entry, async_add_entities)
 
-    # Once for room temperature controllers, once for radiator thermostats
-    assert async_add_entities.call_count == 2
+    assert async_add_entities.call_count == 1
 
 
 async def test_async_setup_entry_with_room_temperature_controller(
@@ -369,6 +368,7 @@ def _mock_rtc_channel() -> MagicMock:
     channel.room_name = "Wohnzimmer"
     channel.device.is_multi_device = False
     channel.device.device_id = "1234"
+    channel.device.unresponsive = False
     channel.state = True
     channel.current_temperature = 21.3
     channel.target_temperature = 21.0
@@ -515,7 +515,7 @@ async def test_rtc_entity_hvac_action_follows_state_indication_updates(
     hass: HomeAssistant,
 ) -> None:
     """Test a state indication push updates the action without a value update."""
-    device = MagicMock()
+    device = MagicMock(unresponsive=False)
     channel = RoomTemperatureController(
         device=device,
         channel_id="ch0000",

@@ -30,8 +30,7 @@ async def test_async_setup_entry_no_valves(
     async_add_entities = MagicMock()
     await async_setup_entry(hass, mock_config_entry, async_add_entities)
 
-    # Should be called 4 times (once per valve description)
-    assert async_add_entities.call_count == 4
+    assert async_add_entities.call_count == 1
 
 
 async def test_async_setup_entry_with_heating_actuator(

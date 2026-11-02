@@ -2,7 +2,6 @@
 
 from typing import Any
 
-from abbfreeathome import FreeAtHome
 from abbfreeathome.channels.trigger import Trigger
 from abbfreeathome.channels.virtual.virtual_trigger import VirtualTrigger
 
@@ -13,6 +12,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
+from .entity import ChannelGetter, FreeAtHomeEntity, async_setup_platform_entities
 from .helpers import async_get_via_device_kwargs
 
 BUTTON_DESCRIPTIONS = {
@@ -37,23 +37,23 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up buttons."""
-    free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
 
-    for description in BUTTON_DESCRIPTIONS.values():
-        async_add_entities(
+    def build_entities(get_channels: ChannelGetter) -> list[FreeAtHomeButtonEntity]:
+        return [
             FreeAtHomeButtonEntity(
                 channel,
                 entity_description_kwargs=description.get("entity_description_kwargs"),
                 sysap_serial_number=entry.data[CONF_SERIAL],
                 create_subdevices=entry.data[CONF_CREATE_SUBDEVICES],
             )
-            for channel in free_at_home.get_channels_by_class(
-                channel_class=description.get("channel_class")
-            )
-        )
+            for description in BUTTON_DESCRIPTIONS.values()
+            for channel in get_channels(description.get("channel_class"))
+        ]
+
+    async_setup_platform_entities(hass, entry, async_add_entities, build_entities)
 
 
-class FreeAtHomeButtonEntity(ButtonEntity):
+class FreeAtHomeButtonEntity(FreeAtHomeEntity, ButtonEntity):
     """Defines a free@home button entity."""
 
     _attr_should_poll: bool = False

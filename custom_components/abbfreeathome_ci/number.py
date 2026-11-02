@@ -2,7 +2,6 @@
 
 from typing import Any
 
-from abbfreeathome import FreeAtHome
 from abbfreeathome.channels.virtual.virtual_brightness_sensor import (
     VirtualBrightnessSensor,
 )
@@ -37,6 +36,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
+from .entity import ChannelGetter, FreeAtHomeEntity, async_setup_platform_entities
 from .helpers import async_get_via_device_kwargs
 
 NUMBER_DESCRIPTIONS = {
@@ -289,10 +289,9 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up numbers."""
-    free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
 
-    for key, description in NUMBER_DESCRIPTIONS.items():
-        async_add_entities(
+    def build_entities(get_channels: ChannelGetter) -> list[FreeAtHomeNumberEntity]:
+        return [
             FreeAtHomeNumberEntity(
                 channel,
                 value_attribute=description.get("value_attribute"),
@@ -301,14 +300,15 @@ async def async_setup_entry(
                 sysap_serial_number=entry.data[CONF_SERIAL],
                 create_subdevices=entry.data[CONF_CREATE_SUBDEVICES],
             )
-            for channel in free_at_home.get_channels_by_class(
-                channel_class=description.get("channel_class")
-            )
+            for key, description in NUMBER_DESCRIPTIONS.items()
+            for channel in get_channels(description.get("channel_class"))
             if getattr(channel, description.get("value_attribute")) is not None
-        )
+        ]
+
+    async_setup_platform_entities(hass, entry, async_add_entities, build_entities)
 
 
-class FreeAtHomeNumberEntity(NumberEntity):
+class FreeAtHomeNumberEntity(FreeAtHomeEntity, NumberEntity):
     """Defines a free@home number entity."""
 
     _attr_should_poll: bool = False
@@ -337,6 +337,7 @@ class FreeAtHomeNumberEntity(NumberEntity):
 
     async def async_added_to_hass(self) -> None:
         """Run when this entity has been added to HA."""
+        await super().async_added_to_hass()
         self._channel.register_callback(
             callback_attribute=self._value_attribute, callback=self.async_write_ha_state
         )

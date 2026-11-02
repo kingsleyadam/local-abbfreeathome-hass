@@ -2,7 +2,6 @@
 
 from typing import Any
 
-from abbfreeathome import FreeAtHome
 from abbfreeathome.channels.dimming_actuator import (
     ColorTemperatureActuator,
     DimmingActuator,
@@ -25,6 +24,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util.color import brightness_to_value, value_to_brightness
 
 from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
+from .entity import ChannelGetter, FreeAtHomeEntity, async_setup_platform_entities
 from .helpers import async_get_via_device_kwargs
 
 BRIGHTNESS_SCALE = (1, 100)
@@ -36,26 +36,26 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up lights."""
-    free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
 
-    for channel_class in (
-        DimmingActuator,
-        ColorTemperatureActuator,
-        VirtualDimmingActuator,
-    ):
-        async_add_entities(
+    def build_entities(get_channels: ChannelGetter) -> list[FreeAtHomeLightEntity]:
+        return [
             FreeAtHomeLightEntity(
                 channel,
                 sysap_serial_number=entry.data[CONF_SERIAL],
                 create_subdevices=entry.data[CONF_CREATE_SUBDEVICES],
             )
-            for channel in free_at_home.get_channels_by_class(
-                channel_class=channel_class
+            for channel_class in (
+                DimmingActuator,
+                ColorTemperatureActuator,
+                VirtualDimmingActuator,
             )
-        )
+            for channel in get_channels(channel_class)
+        ]
+
+    async_setup_platform_entities(hass, entry, async_add_entities, build_entities)
 
 
-class FreeAtHomeLightEntity(LightEntity):
+class FreeAtHomeLightEntity(FreeAtHomeEntity, LightEntity):
     """Defines a free@home light entity."""
 
     _attr_should_poll: bool = False
@@ -83,6 +83,7 @@ class FreeAtHomeLightEntity(LightEntity):
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
+        await super().async_added_to_hass()
         for _callback_attribute in self._callback_attributes:
             self._channel.register_callback(
                 callback_attribute=_callback_attribute,

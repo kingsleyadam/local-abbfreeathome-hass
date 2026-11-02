@@ -190,6 +190,19 @@ Each time Home Assistant is loaded, the `configuration.yaml` entry for `abbfreea
 
 When adding the integration it'll automatically add devices to different `Areas` in Home Assistant. The areas will be pulled from your ABB-free@home Configuration/Floorplan. When prompted to add the devices double check the area for each.
 
+### Device Changes
+
+Devices added to or removed from free@home are picked up automatically; there
+is no need to reload the integration or restart Home Assistant.
+
+- New devices are created as soon as the SysAP reports them. Unless
+  **Include channels NOT on the free@home floorplan?** is enabled, a device
+  appears once one of its channels is placed on the floorplan.
+- Devices deleted in free@home are removed from Home Assistant together with
+  their entities.
+- Entities of unresponsive devices become unavailable and recover when the
+  device responds again.
+
 ## Device and Channel Parameters
 
 By default, each physical device with included channels and at least one parameter
@@ -258,9 +271,14 @@ ID when switching modes; channel sensors have separate, channel-specific IDs.
 To expose an individual parameter using a template helper:
 
 ```jinja
-{{ state_attr('sensor.living_room_actuator_parameters', 'channel_parameters')
-   ['ch0000']['parameters']['PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION'] }}
+{{ (state_attr('sensor.living_room_actuator_parameters', 'channel_parameters') or {})
+   .get('ch0000', {}).get('parameters', {})
+   .get('PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION') }}
 ```
+
+The attributes are absent while the sensor is unavailable, for example when the
+device is unresponsive or the integration is reloading, so guard each lookup as
+shown to avoid template errors.
 
 Replace the entity ID, channel ID and parameter key with those from your device. Add numeric
 conversion and a unit only if you know the parameter's meaning. A change to any

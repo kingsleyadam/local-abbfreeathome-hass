@@ -6,7 +6,6 @@ from abbfreeathome.channels.trigger import Trigger
 from abbfreeathome.channels.virtual.virtual_trigger import VirtualTrigger
 
 from custom_components.abbfreeathome_ci.button import (
-    BUTTON_DESCRIPTIONS,
     FreeAtHomeButtonEntity,
     async_setup_entry,
 )
@@ -27,7 +26,7 @@ async def test_async_setup_entry_no_buttons(
     async_add_entities = MagicMock()
     await async_setup_entry(hass, mock_config_entry, async_add_entities)
 
-    assert async_add_entities.call_count == len(BUTTON_DESCRIPTIONS)
+    assert async_add_entities.call_count == 1
     mock_free_at_home.get_channels_by_class.assert_any_call(channel_class=Trigger)
     mock_free_at_home.get_channels_by_class.assert_any_call(
         channel_class=VirtualTrigger

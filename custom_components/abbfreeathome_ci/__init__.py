@@ -2,17 +2,19 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 import logging
 from typing import Any
 from urllib.parse import urlparse, urlunparse
 
-from abbfreeathome import FreeAtHome, FreeAtHomeApi
+from abbfreeathome import DevicesChangedEvent, FreeAtHome, FreeAtHomeApi
 from abbfreeathome.api import (
     VIRTUAL_DEVICE_PROPERTIES_SCHEMA,
     VIRTUAL_DEVICE_ROOT_SCHEMA,
     FreeAtHomeSettings,
 )
 from abbfreeathome.bin.interface import Interface
+from abbfreeathome.device import Device
 from abbfreeathome.exceptions import BadRequestException
 import voluptuous as vol
 
@@ -24,10 +26,12 @@ from homeassistant.core import (
     ServiceResponse,
     ServiceValidationError,
     SupportsResponse,
+    callback,
 )
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
@@ -41,6 +45,7 @@ from .const import (
     MANUFACTURER,
     VIRTUAL_DEVICE,
 )
+from .entity import signal_channels_added, signal_devices_removed
 from .helpers import async_get_via_device_kwargs
 
 VIRTUALDEVICE_SCHEMA = (
@@ -226,12 +231,51 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         configuration_url=_configuration_url,
     )
 
+    _async_register_devices(
+        hass, entry, _free_at_home, _free_at_home.get_devices().values()
+    )
+
+    # Add the FreeAtHome object to hass data
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = _free_at_home
+
+    # Setup platforms
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Add, remove, and update devices reported by the SysAP at runtime.
+    @callback
+    def _async_devices_changed(event: DevicesChangedEvent) -> None:
+        _async_handle_devices_changed(hass, entry, _free_at_home, event)
+
+    _free_at_home.register_devices_changed_callback(_async_devices_changed)
+    entry.async_on_unload(
+        lambda: _free_at_home.remove_devices_changed_callback(_async_devices_changed)
+    )
+
+    # Create a websocket connection for listen for changes in device entities.
+    entry.async_create_background_task(hass, _free_at_home.ws_listen(), f"{DOMAIN}_ws")
+
+    # Setup services
+    if not hass.services.has_service(DOMAIN, VIRTUAL_DEVICE):
+        await async_setup_service(hass)
+
+    return True
+
+
+@callback
+def _async_register_devices(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    free_at_home: FreeAtHome,
+    devices: Iterable[Device],
+) -> None:
+    """Create device registry entries for devices with visible channels."""
+    device_registry = dr.async_get(hass)
     via_device_kwarg = async_get_via_device_kwargs(
         hass, entry.entry_id, entry.data[CONF_SERIAL]
     )
 
-    for _device in _free_at_home.get_devices().values():
-        if not _free_at_home.get_channels_by_device(_device.device_serial):
+    for _device in devices:
+        if not free_at_home.get_channels_by_device(_device.device_serial):
             continue
 
         device_registry.async_get_or_create(
@@ -245,20 +289,61 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             **via_device_kwarg,
         )
 
-    # Add the FreeAtHome object to hass data
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = _free_at_home
 
-    # Setup platforms
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+@callback
+def _async_remove_devices(
+    hass: HomeAssistant, entry: ConfigEntry, device_serials: Iterable[str]
+) -> None:
+    """Remove devices, their sub-devices, and their entities from the registry."""
+    device_registry = dr.async_get(hass)
+    device_entries = dr.async_entries_for_config_entry(device_registry, entry.entry_id)
 
-    # Create a websocket connection for listen for changes in device entities.
-    entry.async_create_background_task(hass, _free_at_home.ws_listen(), f"{DOMAIN}_ws")
+    for _serial in device_serials:
+        _device_entry = next(
+            (
+                _entry
+                for _entry in device_entries
+                if (DOMAIN, _serial) in _entry.identifiers
+            ),
+            None,
+        )
+        # Devices filtered out by interface or without visible channels have no entry.
+        if _device_entry is None:
+            continue
 
-    # Setup services
-    if not hass.services.has_service(DOMAIN, VIRTUAL_DEVICE):
-        await async_setup_service(hass)
+        for _sub_device in device_entries:
+            if _sub_device.via_device_id == _device_entry.id:
+                device_registry.async_remove_device(_sub_device.id)
+        device_registry.async_remove_device(_device_entry.id)
+        _LOGGER.debug("Removed device %s", _serial)
 
-    return True
+
+@callback
+def _async_handle_devices_changed(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    free_at_home: FreeAtHome,
+    event: DevicesChangedEvent,
+) -> None:
+    """Apply device additions and removals reported by the SysAP."""
+    if event.removed_device_serials:
+        _async_remove_devices(hass, entry, event.removed_device_serials)
+        async_dispatcher_send(
+            hass, signal_devices_removed(entry.entry_id), event.removed_device_serials
+        )
+
+    # Channels placed later can belong to a device without a registry entry yet.
+    _devices = {_device.device_serial: _device for _device in event.added_devices}
+    _devices.update(
+        {_channel.device_serial: _channel.device for _channel in event.added_channels}
+    )
+    _async_register_devices(hass, entry, free_at_home, _devices.values())
+
+    if event.added_channels:
+        _LOGGER.debug("Adding %s channel(s)", len(event.added_channels))
+        async_dispatcher_send(
+            hass, signal_channels_added(entry.entry_id), event.added_channels
+        )
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

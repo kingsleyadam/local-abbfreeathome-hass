@@ -2,7 +2,6 @@
 
 from typing import Any
 
-from abbfreeathome import FreeAtHome
 from abbfreeathome.channels.blind_sensor import BlindSensor, BlindSensorState
 from abbfreeathome.channels.des_door_ringing_sensor import DesDoorRingingSensor
 from abbfreeathome.channels.force_on_off_sensor import (
@@ -35,6 +34,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
+from .entity import ChannelGetter, FreeAtHomeEntity, async_setup_platform_entities
 from .helpers import async_get_via_device_kwargs
 
 EVENT_DESCRIPTIONS = {
@@ -213,10 +213,9 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up event entities."""
-    free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
 
-    for key, description in EVENT_DESCRIPTIONS.items():
-        async_add_entities(
+    def build_entities(get_channels: ChannelGetter) -> list[FreeAtHomeEventEntity]:
+        return [
             FreeAtHomeEventEntity(
                 channel,
                 state_attribute=description.get("state_attribute"),
@@ -229,13 +228,14 @@ async def async_setup_entry(
                 if "extra_data" in description
                 else None,
             )
-            for channel in free_at_home.get_channels_by_class(
-                channel_class=description.get("channel_class")
-            )
-        )
+            for key, description in EVENT_DESCRIPTIONS.items()
+            for channel in get_channels(description.get("channel_class"))
+        ]
+
+    async_setup_platform_entities(hass, entry, async_add_entities, build_entities)
 
 
-class FreeAtHomeEventEntity(EventEntity):
+class FreeAtHomeEventEntity(FreeAtHomeEntity, EventEntity):
     """free@home Event Entity."""
 
     def __init__(
@@ -300,6 +300,7 @@ class FreeAtHomeEventEntity(EventEntity):
 
     async def async_added_to_hass(self) -> None:
         """Entity being added to hass."""
+        await super().async_added_to_hass()
         if len(self._state_attribute) > 0:
             self._channel.register_callback(
                 callback_attribute=self._state_attribute,

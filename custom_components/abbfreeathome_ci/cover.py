@@ -2,7 +2,6 @@
 
 from typing import Any
 
-from abbfreeathome import FreeAtHome
 from abbfreeathome.channels.cover_actuator import (
     AtticWindowActuator,
     AwningActuator,
@@ -24,6 +23,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
+from .entity import ChannelGetter, FreeAtHomeEntity, async_setup_platform_entities
 from .helpers import async_get_via_device_kwargs
 
 SELECT_DESCRIPTIONS = {
@@ -60,10 +60,9 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up switches."""
-    free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
 
-    for key, description in SELECT_DESCRIPTIONS.items():
-        async_add_entities(
+    def build_entities(get_channels: ChannelGetter) -> list[FreeAtHomeCoverEntity]:
+        return [
             FreeAtHomeCoverEntity(
                 channel,
                 entity_description_kwargs={"key": key}
@@ -71,13 +70,14 @@ async def async_setup_entry(
                 sysap_serial_number=entry.data[CONF_SERIAL],
                 create_subdevices=entry.data[CONF_CREATE_SUBDEVICES],
             )
-            for channel in free_at_home.get_channels_by_class(
-                channel_class=description.get("channel_class")
-            )
-        )
+            for key, description in SELECT_DESCRIPTIONS.items()
+            for channel in get_channels(description.get("channel_class"))
+        ]
+
+    async_setup_platform_entities(hass, entry, async_add_entities, build_entities)
 
 
-class FreeAtHomeCoverEntity(CoverEntity):
+class FreeAtHomeCoverEntity(FreeAtHomeEntity, CoverEntity):
     """Defines a free@home cover entity."""
 
     _attr_should_poll: bool = False
@@ -107,6 +107,7 @@ class FreeAtHomeCoverEntity(CoverEntity):
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
+        await super().async_added_to_hass()
         for _callback_attribute in self._callback_attributes:
             self._channel.register_callback(
                 callback_attribute=_callback_attribute,
