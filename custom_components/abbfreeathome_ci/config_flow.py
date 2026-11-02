@@ -26,6 +26,7 @@ from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 from .const import (
     CONF_CREATE_SUBDEVICES,
+    CONF_CREATE_UNRESPONSIVE_REPAIRS,
     CONF_INCLUDE_ORPHAN_CHANNELS,
     CONF_INCLUDE_VIRTUAL_DEVICES,
     CONF_SERIAL,
@@ -69,6 +70,10 @@ def _schema_with_defaults(include_ssl: bool = True) -> vol.Schema:
             ): bool,
             vol.Optional(
                 CONF_CREATE_SUBDEVICES, description={"suggested_value": False}
+            ): bool,
+            vol.Optional(
+                CONF_CREATE_UNRESPONSIVE_REPAIRS,
+                description={"suggested_value": False},
             ): bool,
         }
     )
@@ -169,7 +174,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for ABB-free@home."""
 
     VERSION = 1
-    MINOR_VERSION = 5
+    MINOR_VERSION = 6
 
     def __init__(self) -> None:
         """Initialize."""
@@ -183,6 +188,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._include_orphan_channels: bool = False
         self._include_virtual_devices: bool = False
         self._create_subdevices: bool = False
+        self._create_unresponsive_repairs: bool = False
         self._ssl_cert_file_path: str | None = None
         self._verify_ssl: bool = True
 
@@ -232,6 +238,9 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._include_orphan_channels = import_data.get(CONF_INCLUDE_ORPHAN_CHANNELS)
         self._include_virtual_devices = import_data.get(CONF_INCLUDE_VIRTUAL_DEVICES)
         self._create_subdevices = import_data.get(CONF_CREATE_SUBDEVICES)
+        self._create_unresponsive_repairs = import_data.get(
+            CONF_CREATE_UNRESPONSIVE_REPAIRS, False
+        )
         self._ssl_cert_file_path = import_data.get(CONF_SSL_CERT_FILE_PATH)
         self._verify_ssl = import_data.get(CONF_VERIFY_SSL, _default_verify_ssl)
 
@@ -245,6 +254,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_INCLUDE_ORPHAN_CHANNELS: self._include_orphan_channels,
                 CONF_INCLUDE_VIRTUAL_DEVICES: self._include_virtual_devices,
                 CONF_CREATE_SUBDEVICES: self._create_subdevices,
+                CONF_CREATE_UNRESPONSIVE_REPAIRS: self._create_unresponsive_repairs,
                 CONF_SSL_CERT_FILE_PATH: self._ssl_cert_file_path,
                 CONF_VERIFY_SSL: self._verify_ssl,
             }
@@ -267,6 +277,9 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._include_orphan_channels = user_input.get(CONF_INCLUDE_ORPHAN_CHANNELS)
         self._include_virtual_devices = user_input.get(CONF_INCLUDE_VIRTUAL_DEVICES)
         self._create_subdevices = user_input.get(CONF_CREATE_SUBDEVICES)
+        self._create_unresponsive_repairs = user_input.get(
+            CONF_CREATE_UNRESPONSIVE_REPAIRS, False
+        )
 
         # If it's HTTPS, we need to proceed to SSL config step
         if self._is_https_host(self._host):
@@ -407,6 +420,9 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._include_orphan_channels = user_input.get(CONF_INCLUDE_ORPHAN_CHANNELS)
         self._include_virtual_devices = user_input.get(CONF_INCLUDE_VIRTUAL_DEVICES)
         self._create_subdevices = user_input.get(CONF_CREATE_SUBDEVICES)
+        self._create_unresponsive_repairs = user_input.get(
+            CONF_CREATE_UNRESPONSIVE_REPAIRS, False
+        )
 
         # If it's HTTPS, we need to proceed to SSL config step
         if self._is_https_host(self._host):
@@ -501,6 +517,9 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._include_orphan_channels = user_input[CONF_INCLUDE_ORPHAN_CHANNELS]
         self._include_virtual_devices = user_input[CONF_INCLUDE_VIRTUAL_DEVICES]
         self._create_subdevices = user_input[CONF_CREATE_SUBDEVICES]
+        self._create_unresponsive_repairs = user_input.get(
+            CONF_CREATE_UNRESPONSIVE_REPAIRS, False
+        )
         self._ssl_cert_file_path = user_input.get(CONF_SSL_CERT_FILE_PATH)
         self._verify_ssl = user_input.get(CONF_VERIFY_SSL)
 
@@ -519,6 +538,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_INCLUDE_ORPHAN_CHANNELS: self._include_orphan_channels,
                 CONF_INCLUDE_VIRTUAL_DEVICES: self._include_virtual_devices,
                 CONF_CREATE_SUBDEVICES: self._create_subdevices,
+                CONF_CREATE_UNRESPONSIVE_REPAIRS: self._create_unresponsive_repairs,
                 CONF_SSL_CERT_FILE_PATH: self._ssl_cert_file_path,
                 CONF_VERIFY_SSL: self._verify_ssl,
             },
@@ -572,6 +592,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_INCLUDE_ORPHAN_CHANNELS: self._include_orphan_channels,
                 CONF_INCLUDE_VIRTUAL_DEVICES: self._include_virtual_devices,
                 CONF_CREATE_SUBDEVICES: self._create_subdevices,
+                CONF_CREATE_UNRESPONSIVE_REPAIRS: self._create_unresponsive_repairs,
                 CONF_SSL_CERT_FILE_PATH: self._ssl_cert_file_path,
                 CONF_VERIFY_SSL: self._verify_ssl,
             },

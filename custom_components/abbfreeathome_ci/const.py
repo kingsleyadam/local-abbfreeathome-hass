@@ -10,6 +10,7 @@ CONF_INCLUDE_VIRTUAL_DEVICES = "include_virtual_devices"
 CONF_CREATE_SUBDEVICES = "create_subdevices"
 CONF_SSL_CERT_FILE_PATH = "ssl_cert_file_path"
 CONF_VERIFY_SSL = "verify_ssl"
+CONF_CREATE_UNRESPONSIVE_REPAIRS = "create_unresponsive_repairs"
 
 # SysAP Settings
 SYSAP_VERSION = "sysap_version"

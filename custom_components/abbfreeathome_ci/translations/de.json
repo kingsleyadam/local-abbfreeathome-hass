@@ -21,6 +21,7 @@
           "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
           "include_virtual_devices": "Virtuelle Geräte einschließen?",
           "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?",
+          "create_unresponsive_repairs": "Reparaturmeldungen für nicht antwortende Geräte erstellen?",
           "password": "Passwort",
           "username": "Benutzername",
           "ssl_cert_file_path": "SSL-Zertifikatsdateipfad",
@@ -51,6 +52,7 @@
           "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
           "include_virtual_devices": "Virtuelle Geräte einschließen?",
           "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?",
+          "create_unresponsive_repairs": "Reparaturmeldungen für nicht antwortende Geräte erstellen?",
           "password": "Passwort",
           "username": "Benutzername"
         },
@@ -63,6 +65,7 @@
           "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
           "include_virtual_devices": "Virtuelle Geräte einschließen?",
           "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?",
+          "create_unresponsive_repairs": "Reparaturmeldungen für nicht antwortende Geräte erstellen?",
           "password": "Passwort",
           "username": "Benutzername"
         },

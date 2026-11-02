@@ -22,6 +22,7 @@ from custom_components.abbfreeathome_ci import (
 )
 from custom_components.abbfreeathome_ci.const import (
     CONF_CREATE_SUBDEVICES,
+    CONF_CREATE_UNRESPONSIVE_REPAIRS,
     CONF_INCLUDE_ORPHAN_CHANNELS,
     CONF_INCLUDE_VIRTUAL_DEVICES,
     CONF_SERIAL,
@@ -379,7 +380,8 @@ async def test_async_migrate_entry_from_v1_0(hass: HomeAssistant) -> None:
 
     assert result is True
     assert entry.version == 1
-    assert entry.minor_version == 5
+    assert entry.minor_version == 6
+    assert entry.data[CONF_CREATE_UNRESPONSIVE_REPAIRS] is False
     assert entry.data[CONF_INCLUDE_ORPHAN_CHANNELS] is True
     assert entry.data[CONF_INCLUDE_VIRTUAL_DEVICES] is False
     assert entry.data[CONF_CREATE_SUBDEVICES] is False
@@ -413,7 +415,8 @@ async def test_async_migrate_entry_from_v1_2(hass: HomeAssistant) -> None:
 
     assert result is True
     assert entry.version == 1
-    assert entry.minor_version == 5
+    assert entry.minor_version == 6
+    assert entry.data[CONF_CREATE_UNRESPONSIVE_REPAIRS] is False
     assert entry.data[CONF_INCLUDE_VIRTUAL_DEVICES] is False
     assert entry.data[CONF_CREATE_SUBDEVICES] is False
     assert entry.data[CONF_SSL_CERT_FILE_PATH] is None
@@ -448,9 +451,44 @@ async def test_async_migrate_entry_from_v1_4(hass: HomeAssistant) -> None:
 
     assert result is True
     assert entry.version == 1
-    assert entry.minor_version == 5
+    assert entry.minor_version == 6
+    assert entry.data[CONF_CREATE_UNRESPONSIVE_REPAIRS] is False
     assert entry.data[CONF_SSL_CERT_FILE_PATH] is None
     assert entry.data[CONF_VERIFY_SSL] is False
+
+
+async def test_async_migrate_entry_from_v1_5(hass: HomeAssistant) -> None:
+    """Test migration from version 1.5."""
+    entry = MockConfigEntry(
+        version=1,
+        minor_version=5,
+        domain=DOMAIN,
+        title="Test",
+        data={
+            CONF_HOST: "http://192.168.1.100",
+            CONF_USERNAME: "installer",
+            CONF_PASSWORD: "password",
+            CONF_INCLUDE_ORPHAN_CHANNELS: True,
+            CONF_INCLUDE_VIRTUAL_DEVICES: False,
+            CONF_CREATE_SUBDEVICES: False,
+            CONF_SSL_CERT_FILE_PATH: None,
+            CONF_VERIFY_SSL: False,
+        },
+        source="user",
+        unique_id="TEST123",
+        discovery_keys={},
+        options={},
+        subentries_data={},
+    )
+    # Add config entry to hass
+    entry.add_to_hass(hass)
+
+    result = await async_migrate_entry(hass, entry)
+
+    assert result is True
+    assert entry.version == 1
+    assert entry.minor_version == 6
+    assert entry.data[CONF_CREATE_UNRESPONSIVE_REPAIRS] is False
 
 
 async def test_async_migrate_entry_future_version(hass: HomeAssistant) -> None:
@@ -500,7 +538,8 @@ async def test_async_migrate_entry_already_current(hass: HomeAssistant) -> None:
 
     assert result is True
     assert entry.version == 1
-    assert entry.minor_version == 5
+    assert entry.minor_version == 6
+    assert entry.data[CONF_CREATE_UNRESPONSIVE_REPAIRS] is False
 
 
 async def test_async_setup_entry_with_devices(
@@ -913,7 +952,8 @@ async def test_async_migrate_entry_ssl_fields_already_present(
 
     assert result is True
     assert entry.version == 1
-    assert entry.minor_version == 5
+    assert entry.minor_version == 6
+    assert entry.data[CONF_CREATE_UNRESPONSIVE_REPAIRS] is False
     # SSL fields should be preserved
     assert entry.data[CONF_SSL_CERT_FILE_PATH] == "/existing/path.pem"
     assert entry.data[CONF_VERIFY_SSL] is True
@@ -1393,7 +1433,8 @@ async def test_async_migrate_entry_from_v1_1(hass: HomeAssistant) -> None:
 
     assert result is True
     assert entry.version == 1
-    assert entry.minor_version == 5
+    assert entry.minor_version == 6
+    assert entry.data[CONF_CREATE_UNRESPONSIVE_REPAIRS] is False
     # v1.1 -> v1.2 adds orphan channels
     assert entry.data[CONF_INCLUDE_ORPHAN_CHANNELS] is True
     # Then continues to v1.3, v1.4, v1.5
@@ -1426,7 +1467,8 @@ async def test_async_migrate_entry_from_v1_3(hass: HomeAssistant) -> None:
 
     assert result is True
     assert entry.version == 1
-    assert entry.minor_version == 5
+    assert entry.minor_version == 6
+    assert entry.data[CONF_CREATE_UNRESPONSIVE_REPAIRS] is False
     # v1.3 -> v1.4 adds create_subdevices
     assert entry.data[CONF_CREATE_SUBDEVICES] is False
     # Then continues to v1.5

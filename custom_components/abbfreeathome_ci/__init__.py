@@ -36,6 +36,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import (
     CONF_CREATE_SUBDEVICES,
+    CONF_CREATE_UNRESPONSIVE_REPAIRS,
     CONF_INCLUDE_ORPHAN_CHANNELS,
     CONF_INCLUDE_VIRTUAL_DEVICES,
     CONF_SERIAL,
@@ -99,6 +100,9 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional(CONF_INCLUDE_ORPHAN_CHANNELS, default=False): cv.boolean,
                 vol.Optional(CONF_INCLUDE_VIRTUAL_DEVICES, default=False): cv.boolean,
                 vol.Optional(CONF_CREATE_SUBDEVICES, default=False): cv.boolean,
+                vol.Optional(
+                    CONF_CREATE_UNRESPONSIVE_REPAIRS, default=False
+                ): cv.boolean,
                 vol.Optional(CONF_SSL_CERT_FILE_PATH): cv.string,
                 vol.Optional(CONF_VERIFY_SSL): cv.boolean,
             }
@@ -420,6 +424,13 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         hass.config_entries.async_update_entry(
             entry, data=new_data, version=1, minor_version=5
+        )
+
+        if entry.minor_version < 6:
+            new_data[CONF_CREATE_UNRESPONSIVE_REPAIRS] = False
+
+        hass.config_entries.async_update_entry(
+            entry, data=new_data, version=1, minor_version=6
         )
 
     _LOGGER.debug(  # pragma: no cover

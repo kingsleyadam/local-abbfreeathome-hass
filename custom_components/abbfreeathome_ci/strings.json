@@ -22,7 +22,8 @@
           "password": "[%key:common::config_flow::data::password%]",
           "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
           "include_virtual_devices": "Include virtual devices?",
-          "create_subdevices": "Create Sub-Devices for each independent channel?"
+          "create_subdevices": "Create Sub-Devices for each independent channel?",
+          "create_unresponsive_repairs": "Create repair issues for unresponsive devices?"
         }
       },
       "zeroconf_confirm": {
@@ -34,7 +35,8 @@
           "password": "[%key:common::config_flow::data::password%]",
           "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
           "include_virtual_devices": "Include virtual devices?",
-          "create_subdevices": "Create Sub-Devices for each independent channel?"
+          "create_subdevices": "Create Sub-Devices for each independent channel?",
+          "create_unresponsive_repairs": "Create repair issues for unresponsive devices?"
         }
       },
       "reconfigure": {
@@ -46,6 +48,7 @@
           "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
           "include_virtual_devices": "Include virtual devices?",
           "create_subdevices": "Create Sub-Devices for each independent channel?",
+          "create_unresponsive_repairs": "Create repair issues for unresponsive devices?",
           "ssl_cert_file_path": "SSL Certificate File Path",
           "verify_ssl": "Verify SSL Certificate"
         },

@@ -21,6 +21,7 @@
           "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
           "include_virtual_devices": "Include virtual devices?",
           "create_subdevices": "Create Sub-Devices for each independent channel?",
+          "create_unresponsive_repairs": "Create repair issues for unresponsive devices?",
           "password": "Password",
           "username": "Username",
           "ssl_cert_file_path": "SSL Certificate File Path",
@@ -51,6 +52,7 @@
           "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
           "include_virtual_devices": "Include virtual devices?",
           "create_subdevices": "Create Sub-Devices for each independent channel?",
+          "create_unresponsive_repairs": "Create repair issues for unresponsive devices?",
           "password": "Password",
           "username": "Username"
         },
@@ -63,6 +65,7 @@
           "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
           "include_virtual_devices": "Include virtual devices?",
           "create_subdevices": "Create Sub-Devices for each independent channel?",
+          "create_unresponsive_repairs": "Create repair issues for unresponsive devices?",
           "password": "Password",
           "username": "Username"
         },
