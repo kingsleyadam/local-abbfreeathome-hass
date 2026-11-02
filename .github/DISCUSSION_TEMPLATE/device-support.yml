@@ -4,7 +4,7 @@ body:
     attributes:
       value: |
         Thanks for helping expand device support! Please check the [supported functions](https://github.com/kingsleyadam/local-abbfreeathome-hass#device-support) first.
-        The maintainer doesn't own every ABB / Busch-Jaeger device, so the diagnostics and logs below are what make adding support possible.
+        The maintainers don't own every ABB / Busch-Jaeger device, so the diagnostics and logs below are what make adding support possible.
   - type: input
     id: device
     attributes:
