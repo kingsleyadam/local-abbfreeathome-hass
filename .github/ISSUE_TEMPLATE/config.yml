@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔌 Device not detected / not supported
+    url: https://github.com/kingsleyadam/local-abbfreeathome-hass/discussions/new?category=device-support
+    about: Request support for a device or function ID (FID). Please attach your diagnostics.
+  - name: 🛠️ Setup & Troubleshooting
+    url: https://github.com/kingsleyadam/local-abbfreeathome-hass/discussions/new?category=setup-troubleshooting
+    about: Connection, credentials, setup errors, or not sure if it's a bug? Start here.
+  - name: 🏠 Automations & How-To
+    url: https://github.com/kingsleyadam/local-abbfreeathome-hass/discussions/new?category=automations-how-to
+    about: Questions about using the entities and events in Home Assistant.
+  - name: 💡 Feature Ideas
+    url: https://github.com/kingsleyadam/local-abbfreeathome-hass/discussions/new?category=feature-ideas
+    about: Suggest a new feature or improvement.

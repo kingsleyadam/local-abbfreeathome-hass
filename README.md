@@ -59,7 +59,7 @@ The current list of supported devices by function are:
 
 ### Additional Devices
 
-This is a new repo written from the ground up in tandem with the PyPi Package [local-abbfreeathome](https://pypi.org/project/local-abbfreeathome/#description) in order to communicate with the ABB-free@home System over the **local** api. **The list of supported functions may not include your device.** If you expect a device to appear and don't, please open a new issues and include the device configuration. To fetch your device configuration download the integration [diagnostics](#download-diagnostics).
+This is a new repo written from the ground up in tandem with the PyPi Package [local-abbfreeathome](https://pypi.org/project/local-abbfreeathome/#description) in order to communicate with the ABB-free@home System over the **local** api. **The list of supported functions may not include your device.** If you expect a device to appear and don't, please start a [Device Support](https://github.com/kingsleyadam/local-abbfreeathome-hass/discussions/new?category=device-support) discussion and include the device configuration. To fetch your device configuration download the integration [diagnostics](#download-diagnostics).
 
 I (kingsleyadam) don't have access to the number of different ABB devices and would rely on others to either provide configurations, or contribute code directly in order to add additional device support.
 

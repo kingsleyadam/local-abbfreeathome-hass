@@ -1,0 +1,50 @@
+name: 🐛 Bug report
+description: Something that used to work, or should work, is broken in the integration.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for reproducible bugs only. Missing or unsupported devices go to [Device Support](https://github.com/kingsleyadam/local-abbfreeathome-hass/discussions/new?category=device-support), and general questions go to [Discussions](https://github.com/kingsleyadam/local-abbfreeathome-hass/discussions).
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the bug and what you expected to happen instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Integration version
+      placeholder: "e.g. 1.17.0"
+    validations:
+      required: true
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+      placeholder: "e.g. 2026.10.1"
+    validations:
+      required: true
+  - type: input
+    id: sysap
+    attributes:
+      label: System Access Point model and firmware
+      placeholder: "e.g. SAP 2.0, firmware 3.5.0"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Diagnostics and logs
+      description: Attach [diagnostics](https://github.com/kingsleyadam/local-abbfreeathome-hass#download-diagnostics) and/or [debug logs](https://github.com/kingsleyadam/local-abbfreeathome-hass#gather-debug-logs).

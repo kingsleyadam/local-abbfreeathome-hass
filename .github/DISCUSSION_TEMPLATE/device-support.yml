@@ -1,0 +1,69 @@
+title: "[Device] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping expand device support! Please check the [supported functions](https://github.com/kingsleyadam/local-abbfreeathome-hass#device-support) first.
+        The maintainer doesn't own every ABB / Busch-Jaeger device, so the diagnostics and logs below are what make adding support possible.
+  - type: input
+    id: device
+    attributes:
+      label: Device name and article number
+      description: As printed on the device or shown in the free@home app.
+      placeholder: "e.g. Busch-Jaeger 62721-WL control element, 2-gang"
+    validations:
+      required: true
+  - type: dropdown
+    id: problem
+    attributes:
+      label: What's happening?
+      options:
+        - Device is not detected at all
+        - Device is detected but some channels/functions are missing
+        - Device is detected but doesn't behave correctly
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: function_id
+    attributes:
+      label: Function ID (if known)
+      description: Found in the diagnostics under the device's channels, e.g. `FID_SWITCH_SENSOR`.
+      placeholder: "e.g. FID_STAIRCASE_LIGHT_SENSOR"
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should this device look like in Home Assistant (light, cover, sensor, event, ...)?
+    validations:
+      required: true
+  - type: input
+    id: sysap
+    attributes:
+      label: System Access Point model and firmware
+      placeholder: "e.g. SAP 2.0, firmware 3.5.0"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Integration version
+      placeholder: "e.g. 1.17.0"
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: |
+        Attach the integration [diagnostics](https://github.com/kingsleyadam/local-abbfreeathome-hass#download-diagnostics) file (drag and drop it here).
+        Please review it for private information before sharing.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Debug logs (optional, but very helpful)
+      description: |
+        [Enable debug logging](https://github.com/kingsleyadam/local-abbfreeathome-hass#gather-debug-logs), operate every function of the device (press, hold, open/close, ...), then attach the logs.
+        Filter by the device serial (e.g. `ABB7F59C9F7C`) to keep it short.
