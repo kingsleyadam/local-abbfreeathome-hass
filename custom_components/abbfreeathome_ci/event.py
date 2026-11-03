@@ -17,6 +17,7 @@ from abbfreeathome.channels.switch_sensor import (
 )
 from abbfreeathome.channels.virtual.virtual_dimming_actuator import (
     VirtualDimmingActuator,
+    VirtualDimmingRequestState,
 )
 from abbfreeathome.channels.virtual.virtual_room_temperature_controller import (
     VirtualRoomTemperatureController,
@@ -55,7 +56,7 @@ EVENT_DESCRIPTIONS = {
     "EventVirtualDimmingActuatorDimming": {
         "channel_class": VirtualDimmingActuator,
         "event_type_callback": lambda state: (
-            state if state != DimmingSensorState.unknown.name else None
+            state if state != VirtualDimmingRequestState.unknown.name else None
         ),
         "state_attribute": "requested_dimming_state",
         "entity_description_kwargs": {
@@ -63,8 +64,8 @@ EVENT_DESCRIPTIONS = {
             "device_class": EventDeviceClass.BUTTON,
             "event_types": [
                 state.name
-                for state in DimmingSensorState
-                if state is not DimmingSensorState.unknown
+                for state in VirtualDimmingRequestState
+                if state is not VirtualDimmingRequestState.unknown
             ],
             "translation_key": "virtual_dimming_actuator_dimming",
         },

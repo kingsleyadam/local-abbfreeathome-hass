@@ -176,6 +176,8 @@ async def test_feedback_failure_propagates(channel, light):
         (DIMMING_KEY, "idp0001", "8", "longpress_up_release", None),
         (DIMMING_KEY, "idp0001", "1", "longpress_down", None),
         (DIMMING_KEY, "idp0001", "0", "longpress_down_release", None),
+        (DIMMING_KEY, "idp0001", "15", "step_up", None),
+        (DIMMING_KEY, "idp0001", "7", "step_down", None),
         (BRIGHTNESS_KEY, "idp0002", "0", "requested_brightness", 0.0),
         (BRIGHTNESS_KEY, "idp0002", "42.5", "requested_brightness", 42.5),
         (BRIGHTNESS_KEY, "idp0002", "100", "requested_brightness", 100.0),
@@ -201,6 +203,36 @@ async def test_request_events(
     ]
     assert writes[key].call_count == 2
     assert all(not write.called for name, write in writes.items() if name != key)
+    assert channel.state is False
+    assert channel.brightness == 25
+    channel.device.api.set_datapoint.assert_not_awaited()
+
+
+async def test_dimming_steps_and_stops(channel, events):
+    """App steps and repeated stops are accepted without changing feedback."""
+    entity = events[DIMMING_KEY]
+    entity.async_write_ha_state = Mock()
+    await entity.async_added_to_hass()
+
+    with patch.object(entity, "_trigger_event", wraps=entity._trigger_event) as trigger:
+        for value in ("15", "0", "0", "7", "0", "9", "8", "1", "0"):
+            channel.update_channel("idp0001", value)
+
+    assert trigger.call_args_list == [
+        call(event_type, {"extra_data": None})
+        for event_type in (
+            "step_up",
+            "stop",
+            "stop",
+            "step_down",
+            "stop",
+            "longpress_up",
+            "longpress_up_release",
+            "longpress_down",
+            "longpress_down_release",
+        )
+    ]
+    assert entity.async_write_ha_state.call_count == 9
     assert channel.state is False
     assert channel.brightness == 25
     channel.device.api.set_datapoint.assert_not_awaited()
@@ -333,12 +365,23 @@ async def test_home_assistant_services_and_events(hass, mock_config_entry, chann
     channel.update_channel("idp0001", "9")
     channel.update_channel("idp0002", "42.5")
     channel.update_channel("idp0000", "1")
+    for value in ("15", "0", "7", "0"):
+        channel.update_channel("idp0001", value)
     await hass.async_block_till_done()
     unsubscribe()
 
     assert [
         event.data["new_state"].attributes["event_type"] for event in state_changes
-    ] == ["on", "longpress_up", "requested_brightness", "on"]
+    ] == [
+        "on",
+        "longpress_up",
+        "requested_brightness",
+        "on",
+        "step_up",
+        "stop",
+        "step_down",
+        "stop",
+    ]
     brightness_event = next(
         state
         for state in hass.states.async_all("event")
