@@ -558,3 +558,29 @@ async def test_cover_requested_position_ignores_feedback() -> None:
 
     trigger.assert_not_called()
     assert channel.target_position == 40
+
+
+@pytest.mark.parametrize(
+    ("command", "raw", "expected"), [("open", "100", 100), ("close", "0", 0)]
+)
+async def test_awning_open_close_fire_requested_position(
+    command: str, raw: str, expected: int
+) -> None:
+    """Awning open/close send an absolute position, so their echo fires an event."""
+    channel = _build_cover_channel(AwningActuator)
+    entity = _build_cover_entity(channel)
+    entity.async_write_ha_state = Mock()
+    await entity.async_added_to_hass()
+
+    with patch.object(entity, "_trigger_event") as trigger:
+        await getattr(channel, command)()
+        channel.device.api.set_datapoint.assert_awaited_once_with(
+            device_serial="ABB7F57FFFE77777",
+            channel_id="ch0000",
+            datapoint="idp0000",
+            value=raw,
+        )
+        trigger.assert_not_called()
+        channel.update_channel("idp0000", raw)
+
+    trigger.assert_called_once_with("requested_position", {"extra_data": expected})
