@@ -566,16 +566,14 @@ async def test_device_info_with_subdevices(mock_simple_light_channel):
 
     entity.platform = MagicMock()
     with patch(
-        "custom_components.abbfreeathome_ci.light.async_get_via_device_kwargs",
-        return_value={"via_device_id": "parent_device_id"},
-    ) as mock_via_device_kwargs:
+        "custom_components.abbfreeathome_ci.light.async_get_sub_device_info"
+    ) as mock_sub_device_info:
         device_info = entity.device_info
-    assert (DOMAIN, "ABB700000001_ch0000") in device_info["identifiers"]
-    assert device_info["name"] == "Light Device (ch0000)"
-    mock_via_device_kwargs.assert_called_once_with(
-        entity.hass, entity.platform.config_entry.entry_id, "ABB700000001"
+
+    mock_sub_device_info.assert_called_once_with(
+        entity.hass, entity.platform.config_entry.entry_id, mock_simple_light_channel
     )
-    assert device_info["via_device_id"] == "parent_device_id"
+    assert device_info is mock_sub_device_info.return_value
 
 
 async def test_callbacks_registered(mock_simple_light_channel):

@@ -37,7 +37,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN, MANUFACTURER
+from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN
 from .entity import (
     ChannelGetter,
     FreeAtHomeEntity,
@@ -45,7 +45,7 @@ from .entity import (
     async_setup_platform_entities,
     signal_channels_added,
 )
-from .helpers import async_get_via_device_kwargs
+from .helpers import AnyDeviceInfo, async_get_sub_device_info
 
 try:
     from homeassistant.const import UnitOfRatio
@@ -298,25 +298,13 @@ class FreeAtHomeParametersSensor(FreeAtHomeEntity, SensorEntity):
         self.async_write_ha_state()
 
     @property
-    def device_info(self) -> DeviceInfo:
+    def device_info(self) -> AnyDeviceInfo:
         """Attach to the same physical device or sub-device as operational entities."""
         if self._device is not None:
             return DeviceInfo(identifiers={(DOMAIN, self._device.device_serial)})
 
-        channel = self._channels[0]
-        serial = f"{channel.device_serial}_{channel.channel_id}"
-        return DeviceInfo(
-            identifiers={(DOMAIN, serial)},
-            name=f"{channel.device_name} ({channel.channel_id})",
-            manufacturer=MANUFACTURER,
-            serial_number=serial,
-            hw_version=f"{channel.device.device_id} (sub)",
-            suggested_area=channel.room_name,
-            **async_get_via_device_kwargs(
-                self.hass,
-                self.platform.config_entry.entry_id,
-                channel.device_serial,
-            ),
+        return async_get_sub_device_info(
+            self.hass, self.platform.config_entry.entry_id, self._channels[0]
         )
 
     async def async_added_to_hass(self) -> None:
@@ -415,26 +403,11 @@ class FreeAtHomeSensorEntity(FreeAtHomeEntity, SensorEntity):
         )
 
     @property
-    def device_info(self) -> DeviceInfo:
+    def device_info(self) -> AnyDeviceInfo:
         """Information about this entity/device."""
         if self._create_subdevices and self._channel.device.is_multi_device:
-            return DeviceInfo(
-                identifiers={
-                    (
-                        DOMAIN,
-                        f"{self._channel.device_serial}_{self._channel.channel_id}",
-                    )
-                },
-                name=f"{self._channel.device_name} ({self._channel.channel_id})",
-                manufacturer=MANUFACTURER,
-                serial_number=f"{self._channel.device_serial}_{self._channel.channel_id}",
-                hw_version=f"{self._channel.device.device_id} (sub)",
-                suggested_area=self._channel.room_name,
-                **async_get_via_device_kwargs(
-                    self.hass,
-                    self.platform.config_entry.entry_id,
-                    self._channel.device_serial,
-                ),
+            return async_get_sub_device_info(
+                self.hass, self.platform.config_entry.entry_id, self._channel
             )
 
         return DeviceInfo(identifiers={(DOMAIN, self._channel.device_serial)})
