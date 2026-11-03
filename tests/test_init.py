@@ -53,7 +53,11 @@ from homeassistant.const import (
     Platform,
 )
 from homeassistant.core import HomeAssistant, ServiceValidationError
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import (
+    area_registry as ar,
+    device_registry as dr,
+    entity_registry as er,
+)
 
 
 @pytest.fixture
@@ -1814,8 +1818,8 @@ async def test_sub_devices_linked_to_parent_device(
 ) -> None:
     """Test channel sub-devices are linked to their device and removed with it.
 
-    An existing sub-device keeps its device id. With HA 2026.9+ sub-devices are
-    child devices named after their channel.
+    An existing sub-device keeps its device id, area, and user-defined name. With
+    HA 2026.9+ sub-devices are child devices named after their channel.
     """
     entry = MockConfigEntry(
         version=mock_config_entry.version,
@@ -1840,6 +1844,11 @@ async def test_sub_devices_linked_to_parent_device(
         identifiers={(DOMAIN, "ABB700000001_ch0000")},
         name="Runtime Device (ch0000)",
         **async_get_via_device_kwargs(hass, entry.entry_id, "ABB700000001"),
+    )
+    # Settings made by the user must survive the conversion.
+    area = ar.async_get(hass).async_create("Living room")
+    device_registry.async_update_device(
+        old_sub_device.id, area_id=area.id, name_by_user="Ceiling light"
     )
     child_devices_supported = hasattr(dr, "ChildDeviceInfo")
     if child_devices_supported:
@@ -1872,6 +1881,8 @@ async def test_sub_devices_linked_to_parent_device(
         channel_id = sub_device_serial.removeprefix("ABB700000001_")
         if channel_id == "ch0000":
             assert sub_device.id == old_sub_device.id
+            assert sub_device.area_id == area.id
+            assert sub_device.name_by_user == "Ceiling light"
         if child_devices_supported:
             assert sub_device.parent_device_id == parent_device.id
             assert sub_device.name == channel_id
