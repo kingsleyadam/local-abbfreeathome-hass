@@ -3,6 +3,9 @@
     "abort": {
       "already_configured": "Device is already configured",
       "already_in_progress": "Configuration flow is already in progress",
+      "invalid_api": "Could not connect to the local API of the System Access Point.",
+      "invalid_settings": "Could not read the settings of the System Access Point.",
+      "not_ipv4address": "Only IPv4 addresses are supported.",
       "reauth_successful": "Re-authentication was successful",
       "reconfigure_not_supported": "Reconfigure for this integration is only supported on Home Assistant version 2024.11.0 or newer.",
       "reconfigure_successful": "Re-configuration was successful"
@@ -166,8 +169,8 @@
           "event_type": {
             "state": {
               "unknown": "Unknown",
-              "on": "[%key:common::state::on%]",
-              "off": "[%key:common::state::off%]"
+              "on": "On",
+              "off": "Off"
             }
           }
         }

@@ -69,6 +69,9 @@
     "abort": {
       "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
       "already_in_progress": "[%key:common::config_flow::abort::already_in_progress%]",
+      "invalid_api": "Could not connect to the local API of the System Access Point.",
+      "invalid_settings": "Could not read the settings of the System Access Point.",
+      "not_ipv4address": "Only IPv4 addresses are supported.",
       "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
       "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]",
       "reconfigure_not_supported": "Reconfigure for this integration is only supported on Home Assistant version 2024.11.0 or newer."
