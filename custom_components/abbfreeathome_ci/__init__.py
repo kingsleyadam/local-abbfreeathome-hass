@@ -36,6 +36,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import (
     CONF_CREATE_SUBDEVICES,
+    CONF_CREATE_UNRESPONSIVE_REPAIRS,
     CONF_INCLUDE_ORPHAN_CHANNELS,
     CONF_INCLUDE_VIRTUAL_DEVICES,
     CONF_SERIAL,
@@ -47,6 +48,7 @@ from .const import (
 )
 from .entity import signal_channels_added, signal_devices_removed
 from .helpers import async_get_via_device_kwargs
+from .unresponsive import UnresponsiveDeviceTracker, async_get_unresponsive_tracker
 
 VIRTUALDEVICE_SCHEMA = (
     vol.Schema(
@@ -99,6 +101,9 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional(CONF_INCLUDE_ORPHAN_CHANNELS, default=False): cv.boolean,
                 vol.Optional(CONF_INCLUDE_VIRTUAL_DEVICES, default=False): cv.boolean,
                 vol.Optional(CONF_CREATE_SUBDEVICES, default=False): cv.boolean,
+                vol.Optional(
+                    CONF_CREATE_UNRESPONSIVE_REPAIRS, default=False
+                ): cv.boolean,
                 vol.Optional(CONF_SSL_CERT_FILE_PATH): cv.string,
                 vol.Optional(CONF_VERIFY_SSL): cv.boolean,
             }
@@ -231,8 +236,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         configuration_url=_configuration_url,
     )
 
+    # Optionally create repair issues for devices that stay unresponsive.
+    _tracker: UnresponsiveDeviceTracker | None = None
+    if entry.data.get(CONF_CREATE_UNRESPONSIVE_REPAIRS, False):
+        _tracker = UnresponsiveDeviceTracker(hass, entry)
+
     _async_register_devices(
-        hass, entry, _free_at_home, _free_at_home.get_devices().values()
+        hass, entry, _free_at_home, _free_at_home.get_devices().values(), _tracker
     )
 
     # Add the FreeAtHome object to hass data
@@ -244,7 +254,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Add, remove, and update devices reported by the SysAP at runtime.
     @callback
     def _async_devices_changed(event: DevicesChangedEvent) -> None:
-        _async_handle_devices_changed(hass, entry, _free_at_home, event)
+        _async_handle_devices_changed(hass, entry, _free_at_home, event, _tracker)
 
     _free_at_home.register_devices_changed_callback(_async_devices_changed)
     entry.async_on_unload(
@@ -267,6 +277,7 @@ def _async_register_devices(
     entry: ConfigEntry,
     free_at_home: FreeAtHome,
     devices: Iterable[Device],
+    tracker: UnresponsiveDeviceTracker | None = None,
 ) -> None:
     """Create device registry entries for devices with visible channels."""
     device_registry = dr.async_get(hass)
@@ -288,6 +299,8 @@ def _async_register_devices(
             suggested_area=_device.room_name,
             **via_device_kwarg,
         )
+        if tracker is not None:
+            tracker.async_track(_device)
 
 
 @callback
@@ -324,9 +337,12 @@ def _async_handle_devices_changed(
     entry: ConfigEntry,
     free_at_home: FreeAtHome,
     event: DevicesChangedEvent,
+    tracker: UnresponsiveDeviceTracker | None = None,
 ) -> None:
     """Apply device additions and removals reported by the SysAP."""
     if event.removed_device_serials:
+        if tracker is not None:
+            tracker.async_untrack(event.removed_device_serials)
         _async_remove_devices(hass, entry, event.removed_device_serials)
         async_dispatcher_send(
             hass, signal_devices_removed(entry.entry_id), event.removed_device_serials
@@ -337,7 +353,7 @@ def _async_handle_devices_changed(
     _devices.update(
         {_channel.device_serial: _channel.device for _channel in event.added_channels}
     )
-    _async_register_devices(hass, entry, free_at_home, _devices.values())
+    _async_register_devices(hass, entry, free_at_home, _devices.values(), tracker)
 
     if event.added_channels:
         _LOGGER.debug("Adding %s channel(s)", len(event.added_channels))
@@ -373,6 +389,9 @@ async def async_remove_config_entry_device(
     free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
     free_at_home.unload_device(device_serial)
 
+    if tracker := async_get_unresponsive_tracker(hass, entry.entry_id):
+        tracker.async_untrack((device_serial,))
+
     return True
 
 
@@ -391,35 +410,28 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if entry.version == 1:
         new_data = {**entry.data}
 
+        # Check every step against the original version and update the entry
+        # once, so later steps cannot overwrite existing settings.
         if entry.minor_version < 2:
             new_data[CONF_INCLUDE_ORPHAN_CHANNELS] = True
 
-        hass.config_entries.async_update_entry(
-            entry, data=new_data, version=1, minor_version=2
-        )
-
-        if entry.minor_version < 3:  # pragma: no cover
+        if entry.minor_version < 3:
             new_data[CONF_INCLUDE_VIRTUAL_DEVICES] = False
 
-        hass.config_entries.async_update_entry(
-            entry, data=new_data, version=1, minor_version=3
-        )
-
-        if entry.minor_version < 4:  # pragma: no cover
+        if entry.minor_version < 4:
             new_data[CONF_CREATE_SUBDEVICES] = False
 
-        hass.config_entries.async_update_entry(
-            entry, data=new_data, version=1, minor_version=4
-        )
-
-        if entry.minor_version < 5:  # pragma: no cover
+        if entry.minor_version < 5:
             if CONF_SSL_CERT_FILE_PATH not in new_data:
                 new_data[CONF_SSL_CERT_FILE_PATH] = None
             if CONF_VERIFY_SSL not in new_data:
                 new_data[CONF_VERIFY_SSL] = False
 
+        if entry.minor_version < 6:
+            new_data[CONF_CREATE_UNRESPONSIVE_REPAIRS] = False
+
         hass.config_entries.async_update_entry(
-            entry, data=new_data, version=1, minor_version=5
+            entry, data=new_data, version=1, minor_version=6
         )
 
     _LOGGER.debug(  # pragma: no cover

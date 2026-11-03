@@ -17,6 +17,7 @@ from custom_components.abbfreeathome_ci.config_flow import (
 )
 from custom_components.abbfreeathome_ci.const import (
     CONF_CREATE_SUBDEVICES,
+    CONF_CREATE_UNRESPONSIVE_REPAIRS,
     CONF_INCLUDE_ORPHAN_CHANNELS,
     CONF_INCLUDE_VIRTUAL_DEVICES,
     CONF_SERIAL,
@@ -53,6 +54,7 @@ def get_user_input(
     include_orphan_channels: bool = False,
     include_virtual_devices: bool = False,
     create_subdevices: bool = False,
+    create_unresponsive_repairs: bool = False,
     ssl_cert_file_path: str | None = None,
     verify_ssl: bool | None = None,
 ) -> dict:
@@ -64,6 +66,7 @@ def get_user_input(
         CONF_INCLUDE_ORPHAN_CHANNELS: include_orphan_channels,
         CONF_INCLUDE_VIRTUAL_DEVICES: include_virtual_devices,
         CONF_CREATE_SUBDEVICES: create_subdevices,
+        CONF_CREATE_UNRESPONSIVE_REPAIRS: create_unresponsive_repairs,
     }
     if ssl_cert_file_path is not None:
         data[CONF_SSL_CERT_FILE_PATH] = ssl_cert_file_path
@@ -79,6 +82,7 @@ def get_expected_entry_data(
     include_orphan_channels: bool = False,
     include_virtual_devices: bool = False,
     create_subdevices: bool = False,
+    create_unresponsive_repairs: bool = False,
     ssl_cert_file_path: str | None = None,
     verify_ssl: bool = False,
 ) -> dict:
@@ -92,6 +96,7 @@ def get_expected_entry_data(
         CONF_INCLUDE_ORPHAN_CHANNELS: include_orphan_channels,
         CONF_INCLUDE_VIRTUAL_DEVICES: include_virtual_devices,
         CONF_CREATE_SUBDEVICES: create_subdevices,
+        CONF_CREATE_UNRESPONSIVE_REPAIRS: create_unresponsive_repairs,
         CONF_SSL_CERT_FILE_PATH: ssl_cert_file_path,
         CONF_VERIFY_SSL: verify_ssl,
     }
@@ -119,6 +124,48 @@ async def test_user_form_http(
     assert result2["title"] == TEST_TITLE
     assert result2["data"] == get_expected_entry_data()
     assert len(mock_setup_entry.mock_calls) == 1
+
+
+async def test_user_form_unresponsive_repairs(
+    hass: HomeAssistant,
+    mock_setup_entry: AsyncMock,
+    mock_free_at_home_settings: AsyncMock,
+    mock_free_at_home_api: AsyncMock,
+) -> None:
+    """Test the unresponsive repairs option is stored when enabled."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+
+    result2 = await hass.config_entries.flow.async_configure(
+        result["flow_id"], get_user_input(create_unresponsive_repairs=True)
+    )
+    await hass.async_block_till_done()
+
+    assert result2["type"] is FlowResultType.CREATE_ENTRY
+    assert result2["data"] == get_expected_entry_data(create_unresponsive_repairs=True)
+
+
+async def test_user_form_unresponsive_repairs_default(
+    hass: HomeAssistant,
+    mock_setup_entry: AsyncMock,
+    mock_free_at_home_settings: AsyncMock,
+    mock_free_at_home_api: AsyncMock,
+) -> None:
+    """Test the unresponsive repairs option defaults to disabled."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    user_input = get_user_input()
+    user_input.pop(CONF_CREATE_UNRESPONSIVE_REPAIRS)
+
+    result2 = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input
+    )
+    await hass.async_block_till_done()
+
+    assert result2["type"] is FlowResultType.CREATE_ENTRY
+    assert result2["data"][CONF_CREATE_UNRESPONSIVE_REPAIRS] is False
 
 
 async def test_user_form_https_with_ssl(
@@ -424,6 +471,38 @@ async def test_reconfigure_flow(
 
     assert result2["type"] is FlowResultType.ABORT
     assert result2["reason"] == "reconfigure_successful"
+    assert mock_config_entry.data[CONF_CREATE_UNRESPONSIVE_REPAIRS] is False
+
+
+async def test_reconfigure_enables_unresponsive_repairs(
+    hass: HomeAssistant,
+    mock_free_at_home_settings: AsyncMock,
+    mock_free_at_home_api: AsyncMock,
+    mock_config_entry,
+    mock_setup_entry: AsyncMock,
+) -> None:
+    """Test reconfigure flow stores the unresponsive repairs option."""
+    await hass.config_entries.async_add(mock_config_entry)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={
+            "source": config_entries.SOURCE_RECONFIGURE,
+            "entry_id": mock_config_entry.entry_id,
+        },
+    )
+
+    result2 = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            **get_user_input(create_unresponsive_repairs=True),
+            CONF_VERIFY_SSL: False,
+        },
+    )
+
+    assert result2["type"] is FlowResultType.ABORT
+    assert result2["reason"] == "reconfigure_successful"
+    assert mock_config_entry.data[CONF_CREATE_UNRESPONSIVE_REPAIRS] is True
 
 
 async def test_forbidden_auth_exception(

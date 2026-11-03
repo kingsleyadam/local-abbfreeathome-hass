@@ -22,7 +22,8 @@
           "password": "[%key:common::config_flow::data::password%]",
           "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
           "include_virtual_devices": "Include virtual devices?",
-          "create_subdevices": "Create Sub-Devices for each independent channel?"
+          "create_subdevices": "Create Sub-Devices for each independent channel?",
+          "create_unresponsive_repairs": "Create repair issues for unresponsive devices?"
         }
       },
       "zeroconf_confirm": {
@@ -34,7 +35,8 @@
           "password": "[%key:common::config_flow::data::password%]",
           "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
           "include_virtual_devices": "Include virtual devices?",
-          "create_subdevices": "Create Sub-Devices for each independent channel?"
+          "create_subdevices": "Create Sub-Devices for each independent channel?",
+          "create_unresponsive_repairs": "Create repair issues for unresponsive devices?"
         }
       },
       "reconfigure": {
@@ -46,6 +48,7 @@
           "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
           "include_virtual_devices": "Include virtual devices?",
           "create_subdevices": "Create Sub-Devices for each independent channel?",
+          "create_unresponsive_repairs": "Create repair issues for unresponsive devices?",
           "ssl_cert_file_path": "SSL Certificate File Path",
           "verify_ssl": "Verify SSL Certificate"
         },
@@ -444,6 +447,16 @@
     },
     "virtual_device_sysap_unavailable": {
       "message": "The System Access Point is unavailable. Set up or reload its ABB-free@home integration and try again."
+    }
+  },
+  "issues": {
+    "device_unresponsive": {
+      "title": "Device {name} is unresponsive",
+      "description": "The free@home device {name} ({serial}) has not been responding to the System Access Point for several minutes, so its entities are unavailable.\n\nIf the device is battery-powered, the battery is probably empty and needs to be replaced. Otherwise, check the power supply and the connection of the device.\n\nThis issue is removed automatically as soon as the device responds again."
+    },
+    "virtual_device_unresponsive": {
+      "title": "Virtual device {name} is unresponsive",
+      "description": "The virtual free@home device {name} ({serial}) has been unresponsive for several minutes, so its entities are unavailable. This usually means its time-to-live (TTL) has elapsed without being renewed.\n\nCheck the external system that is supposed to keep this virtual device up to date.\n\nThis issue is removed automatically as soon as the device responds again."
     }
   },
   "services": {

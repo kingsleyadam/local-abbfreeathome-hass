@@ -59,7 +59,7 @@ def mock_config_entry():
     """Mock a config entry."""
     return MockConfigEntry(
         version=1,
-        minor_version=5,
+        minor_version=6,
         domain=DOMAIN,
         title="Test SysAP (TEST123456)",
         data={
@@ -71,6 +71,7 @@ def mock_config_entry():
             "include_orphan_channels": False,
             "include_virtual_devices": False,
             "create_subdevices": False,
+            "create_unresponsive_repairs": False,
             "ssl_cert_file_path": None,
             "verify_ssl": False,
         },

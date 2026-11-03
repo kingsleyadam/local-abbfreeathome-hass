@@ -21,6 +21,7 @@
           "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
           "include_virtual_devices": "Virtuelle Geräte einschließen?",
           "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?",
+          "create_unresponsive_repairs": "Reparaturmeldungen für nicht antwortende Geräte erstellen?",
           "password": "Passwort",
           "username": "Benutzername",
           "ssl_cert_file_path": "SSL-Zertifikatsdateipfad",
@@ -51,6 +52,7 @@
           "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
           "include_virtual_devices": "Virtuelle Geräte einschließen?",
           "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?",
+          "create_unresponsive_repairs": "Reparaturmeldungen für nicht antwortende Geräte erstellen?",
           "password": "Passwort",
           "username": "Benutzername"
         },
@@ -63,6 +65,7 @@
           "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
           "include_virtual_devices": "Virtuelle Geräte einschließen?",
           "create_subdevices": "Extra Geräte für jeden unabhängigen Kanal erzeugen?",
+          "create_unresponsive_repairs": "Reparaturmeldungen für nicht antwortende Geräte erstellen?",
           "password": "Passwort",
           "username": "Benutzername"
         },
@@ -444,6 +447,16 @@
     },
     "virtual_device_sysap_unavailable": {
       "message": "Der System Access Point ist nicht verfügbar. Richten Sie seine ABB-free@home-Integration ein oder laden Sie diese neu und versuchen Sie es erneut."
+    }
+  },
+  "issues": {
+    "device_unresponsive": {
+      "title": "Gerät {name} antwortet nicht",
+      "description": "Das free@home-Gerät {name} ({serial}) antwortet seit einigen Minuten nicht mehr auf den System Access Point, daher sind seine Entitäten nicht verfügbar.\n\nWenn das Gerät batteriebetrieben ist, ist die Batterie vermutlich leer und muss getauscht werden. Andernfalls prüfe die Stromversorgung und die Verbindung des Geräts.\n\nDiese Meldung wird automatisch entfernt, sobald das Gerät wieder antwortet."
+    },
+    "virtual_device_unresponsive": {
+      "title": "Virtuelles Gerät {name} antwortet nicht",
+      "description": "Das virtuelle free@home-Gerät {name} ({serial}) antwortet seit einigen Minuten nicht mehr, daher sind seine Entitäten nicht verfügbar. Meist ist die Lebensdauer (TTL) abgelaufen, ohne erneuert zu werden.\n\nPrüfe das externe System, das dieses virtuelle Gerät aktuell halten soll.\n\nDiese Meldung wird automatisch entfernt, sobald das Gerät wieder antwortet."
     }
   },
   "services": {

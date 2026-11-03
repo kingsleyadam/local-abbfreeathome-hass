@@ -102,6 +102,7 @@ The config setup will include some options to help configure the integration.
 | Include channels NOT on the free@home floorplan? | Whether to include channels that are not located on the free@home floorplan.                                                             |
 | Include virtual devices?                         | Whether to include virtual devices or not.                                                                                               |
 | Create Sub-Devices for each independent channel? | Wether to create sub-devices for each channel of a physical device, which can be placed independently on the free@home floorplan or not. |
+| Create repair issues for unresponsive devices?   | Whether to create a repair issue for devices that stay unresponsive. See [Repair Issues](#repair-issues-for-unresponsive-devices).       |
 | Verify SSL Certificate                           | Enable SSL certificate verification. When disabled, HTTPS connections will not verify the server certificate.                            |
 | SSL Certificate File Path                        | File path to SSL certificate file to verify HTTPS/SSL connections.                                                                       |
 
@@ -113,6 +114,7 @@ The config setup will include some options to help configure the integration.
 - **Include channels NOT on the free@home floorplan?**: False
 - **Include virtual devices?**: False
 - **Create Sub-Devices for each independent channel?**: False
+- **Create repair issues for unresponsive devices?**: False
 - **Verify SSL Certificate**: False
 - **SSL Certificate File Path**: `../config/ssl/sysap.crt`
 
@@ -155,6 +157,7 @@ abbfreeathome_ci:
   include_orphan_channels: false
   include_virtual_devices: false
   create_subdevices: false
+  create_unresponsive_repairs: false # optional
   ssl_cert_file_path: ../config/ssl/sysap.crt # optional
   verify_ssl: false # optional
 ```
@@ -202,6 +205,27 @@ is no need to reload the integration or restart Home Assistant.
   their entities.
 - Entities of unresponsive devices become unavailable and recover when the
   device responds again.
+
+### Repair Issues for Unresponsive Devices
+
+With **Create repair issues for unresponsive devices?** enabled, the
+integration creates a repair issue under **Settings → Repairs** for every
+device that has been unresponsive for five minutes. The short delay avoids
+issues for brief dropouts.
+
+An unresponsive device usually needs attention:
+
+- **Battery-powered devices:** the free@home API does not expose the battery
+  level, so an unresponsive device is often the only sign of an empty battery.
+- **Virtual devices:** the time-to-live (TTL) has elapsed, so check the external
+  system that is supposed to keep the device updated.
+
+The issue is removed automatically as soon as the device responds again, is
+deleted, or the option is disabled. Issues are not kept across restarts; they
+are re-created five minutes after startup if the device is still unresponsive.
+
+The option is disabled by default and can be changed at any time via
+**Reconfigure** on the integration.
 
 ## Device and Channel Parameters
 
