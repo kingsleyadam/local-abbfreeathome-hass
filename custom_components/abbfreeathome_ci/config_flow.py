@@ -495,6 +495,10 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
                 suggested_values=user_input,
             )
 
+        # Abort if the new host belongs to a different SysAP
+        await self.async_set_unique_id(settings.serial_number)
+        self._abort_if_unique_id_mismatch()
+
         errors = await validate_api(
             host=user_input[CONF_HOST],
             username=user_input[CONF_USERNAME],
