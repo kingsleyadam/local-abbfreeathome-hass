@@ -505,6 +505,39 @@ async def test_reconfigure_enables_unresponsive_repairs(
     assert mock_config_entry.data[CONF_CREATE_UNRESPONSIVE_REPAIRS] is True
 
 
+async def test_reconfigure_different_sysap(
+    hass: HomeAssistant,
+    mock_free_at_home_settings: AsyncMock,
+    mock_free_at_home_api: AsyncMock,
+    mock_config_entry,
+    mock_setup_entry: AsyncMock,
+) -> None:
+    """Test reconfigure flow aborts when the host belongs to another SysAP."""
+    await hass.config_entries.async_add(mock_config_entry)
+    original_data = dict(mock_config_entry.data)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={
+            "source": config_entries.SOURCE_RECONFIGURE,
+            "entry_id": mock_config_entry.entry_id,
+        },
+    )
+
+    mock_free_at_home_settings.serial_number = "OTHER654321"
+
+    result2 = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        get_user_input(host="http://192.168.1.200", verify_ssl=False),
+    )
+
+    assert result2["type"] is FlowResultType.ABORT
+    assert result2["reason"] == "unique_id_mismatch"
+    assert mock_config_entry.data == original_data
+    assert mock_config_entry.unique_id == TEST_SERIAL
+    mock_free_at_home_api.get_sysap.assert_not_awaited()
+
+
 async def test_forbidden_auth_exception(
     hass: HomeAssistant,
     mock_free_at_home_settings: AsyncMock,
