@@ -99,10 +99,10 @@ async def test_lock_entity_properties() -> None:
 
 @pytest.mark.parametrize(
     ("state", "is_locked"),
-    [(False, True), (True, False)],
+    [(False, True), (True, False), (None, None)],
 )
 async def test_lock_is_locked(state, is_locked) -> None:
-    """Test the door is locked while the door opener is off."""
+    """Test the door is locked while the door opener is off, unknown without state."""
     entity = _build_entity(_build_channel(state=state))
 
     assert entity.is_locked is is_locked
