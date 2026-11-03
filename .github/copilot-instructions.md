@@ -40,10 +40,9 @@ CI's coverage-summary gate requires 100% line and branch coverage; every change
 must keep it there by adding tests for new or changed code. Only when a path is
 genuinely untestable may it be excluded with `# pragma: no cover`, ideally with a
 short reason. `custom_components` has no `__init__.py`, so coverage only reports
-modules that tests import: `switch.py`, `select.py`, `number.py`, `lock.py`, and
-`diagnostics.py` currently have no tests and are invisible to the gate. Do not
-treat a passing gate as proof that a new or changed module is covered; check that
-it appears in the report.
+modules that tests import; a module without tests is invisible to the gate. Do
+not treat a passing gate as proof that a new or changed module is covered; check
+that it appears in the report.
 
 ## Architecture
 
