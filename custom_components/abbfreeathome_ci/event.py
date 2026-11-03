@@ -1,8 +1,15 @@
 """Create ABB-free@home event entities."""
 
+from collections.abc import Callable
 from typing import Any
 
 from abbfreeathome.channels.blind_sensor import BlindSensor, BlindSensorState
+from abbfreeathome.channels.cover_actuator import (
+    AtticWindowActuator,
+    AwningActuator,
+    BlindActuator,
+    ShutterActuator,
+)
 from abbfreeathome.channels.des_door_ringing_sensor import DesDoorRingingSensor
 from abbfreeathome.channels.force_on_off_sensor import (
     ForceOnOffSensor,
@@ -82,6 +89,30 @@ EVENT_DESCRIPTIONS = {
             "translation_key": "virtual_dimming_actuator_brightness",
         },
         "extra_data": "requested_brightness",
+    },
+    **{
+        f"Event{channel_class.__name__}RequestedPosition": {
+            "channel_class": channel_class,
+            "event_type_callback": lambda position: (
+                "requested_position" if position is not None else None
+            ),
+            "state_attribute": "target_position",
+            "entity_description_kwargs": {
+                # Repeated identical requests may share the same event timestamp.
+                "force_update": True,
+                "event_types": ["requested_position"],
+                "translation_key": "cover_actuator_requested_position",
+            },
+            "extra_data": "target_position",
+            # The library uses 0 = open; Home Assistant uses 0 = closed.
+            "extra_data_callback": lambda position: 100 - position,
+        }
+        for channel_class in (
+            AtticWindowActuator,
+            AwningActuator,
+            BlindActuator,
+            ShutterActuator,
+        )
     },
     "EventBlindSensorState": {
         "channel_class": BlindSensor,
@@ -228,6 +259,7 @@ async def async_setup_entry(
                 extra_data=description.get("extra_data")
                 if "extra_data" in description
                 else None,
+                extra_data_callback=description.get("extra_data_callback"),
             )
             for key, description in EVENT_DESCRIPTIONS.items()
             for channel in get_channels(description.get("channel_class"))
@@ -241,10 +273,14 @@ class FreeAtHomeEventEntity(FreeAtHomeEntity, EventEntity):
 
     def __init__(
         self,
-        channel: BlindSensor
+        channel: AtticWindowActuator
+        | AwningActuator
+        | BlindActuator
+        | BlindSensor
         | DesDoorRingingSensor
         | DimmingSensor
         | ForceOnOffSensor
+        | ShutterActuator
         | StaircaseLightSensor
         | SwitchSensor
         | VirtualDimmingActuator
@@ -255,6 +291,7 @@ class FreeAtHomeEventEntity(FreeAtHomeEntity, EventEntity):
         create_subdevices: bool,
         event_type_callback: callback,
         extra_data: str | None = None,
+        extra_data_callback: Callable[[Any], Any] | None = None,
     ) -> None:
         """Initialize the sensor."""
         super().__init__()
@@ -264,6 +301,7 @@ class FreeAtHomeEventEntity(FreeAtHomeEntity, EventEntity):
         self._create_subdevices = create_subdevices
         self._event_type_callback = event_type_callback
         self._extra_data = extra_data
+        self._extra_data_callback = extra_data_callback
 
         self.entity_description = EventEntityDescription(
             has_entity_name=True,
@@ -290,6 +328,8 @@ class FreeAtHomeEventEntity(FreeAtHomeEntity, EventEntity):
 
         if self._extra_data and hasattr(self._channel, self._extra_data):
             _extra_data = getattr(self._channel, self._extra_data)
+            if self._extra_data_callback is not None:
+                _extra_data = self._extra_data_callback(_extra_data)
 
         # A callback may return a single event type or a list of them (e.g. a
         # standard type fired alongside a legacy one for backwards

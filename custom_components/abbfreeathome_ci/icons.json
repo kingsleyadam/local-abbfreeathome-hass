@@ -30,6 +30,9 @@
       "blind_sensor": {
         "default": "mdi:window-shutter"
       },
+      "cover_actuator_requested_position": {
+        "default": "mdi:window-shutter-settings"
+      },
       "dimming_sensor": {
         "default": "mdi:brightness-6"
       },

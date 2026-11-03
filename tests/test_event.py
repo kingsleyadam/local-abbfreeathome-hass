@@ -1,12 +1,22 @@
 """Test ABB-free@home event platform (doorbell standard ring event)."""
 
-from unittest.mock import MagicMock, Mock, call, patch
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock, Mock, call, patch
 
+from abbfreeathome.bin.pairing import Pairing
+from abbfreeathome.channels.cover_actuator import (
+    AtticWindowActuator,
+    AwningActuator,
+    BlindActuator,
+    ShutterActuator,
+)
 from abbfreeathome.channels.des_door_ringing_sensor import DesDoorRingingSensor
 from abbfreeathome.channels.switch_sensor import StaircaseLightSensor, SwitchSensorState
 from abbfreeathome.channels.virtual.virtual_room_temperature_controller import (
     VirtualRoomTemperatureController,
 )
+from abbfreeathome.device import Device
+import pytest
 
 from custom_components.abbfreeathome_ci.const import DOMAIN
 from custom_components.abbfreeathome_ci.event import (
@@ -20,6 +30,7 @@ from homeassistant.core import HomeAssistant
 DOORBELL_KEY = "EventDesDoorRingingSensorActivated"
 TARGET_TEMPERATURE_KEY = "EventVirtualRoomTemperatureControllerTargetTemperature"
 STAIRCASE_KEY = "EventStaircaseLightSensorOnOff"
+COVER_CLASSES = (AtticWindowActuator, AwningActuator, BlindActuator, ShutterActuator)
 
 
 def _build_doorbell_channel() -> Mock:
@@ -424,3 +435,126 @@ def test_device_info_subdevice() -> None:
         entity.hass, entity.platform.config_entry.entry_id, "ABB7F57FFFE12345"
     )
     assert device_info["via_device_id"] == "parent_device_id"
+
+
+def _build_cover_channel(channel_class: type, position: str = "") -> Any:
+    """Create a real library cover channel with a requested position input."""
+    device = Device(
+        device_serial="ABB7F57FFFE77777",
+        device_id="B001",
+        display_name="Skylight Cover",
+        api=Mock(set_datapoint=AsyncMock(), get_datapoint=AsyncMock()),
+    )
+    return channel_class(
+        device=device,
+        channel_id="ch0000",
+        channel_name="Skylight Cover",
+        inputs={
+            "idp0000": {
+                "pairingID": Pairing.AL_SET_ABSOLUTE_POSITION_BLINDS_PERCENTAGE.value,
+                "value": position,
+            },
+        },
+        outputs={
+            "odp0001": {
+                "pairingID": Pairing.AL_CURRENT_ABSOLUTE_POSITION_BLINDS_PERCENTAGE.value,
+                "value": "100",
+            },
+        },
+        parameters={},
+    )
+
+
+def _build_cover_entity(channel: Any) -> FreeAtHomeEventEntity:
+    """Build a requested-position event entity from the platform description."""
+    key = f"Event{type(channel).__name__}RequestedPosition"
+    description = EVENT_DESCRIPTIONS[key]
+    return FreeAtHomeEventEntity(
+        channel,
+        state_attribute=description["state_attribute"],
+        entity_description_kwargs={"key": key}
+        | description["entity_description_kwargs"],
+        sysap_serial_number="TEST123456",
+        create_subdevices=False,
+        event_type_callback=description["event_type_callback"],
+        extra_data=description["extra_data"],
+        extra_data_callback=description["extra_data_callback"],
+    )
+
+
+async def test_async_setup_entry_adds_cover_requested_position(
+    hass: HomeAssistant, mock_config_entry
+) -> None:
+    """Every cover class gets a requested-position event entity."""
+    mock_config_entry.add_to_hass(hass)
+    channels = {cls: _build_cover_channel(cls) for cls in COVER_CLASSES}
+
+    mock_free_at_home = MagicMock()
+    mock_free_at_home.get_channels_by_class.side_effect = lambda channel_class: (
+        [channels[channel_class]] if channel_class in channels else []
+    )
+    hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
+
+    entities_added = []
+    await async_setup_entry(hass, mock_config_entry, entities_added.extend)
+
+    covers = [
+        e for e in entities_added if e.entity_description.key.endswith("Position")
+    ]
+    assert {e.unique_id for e in covers} == {
+        f"ABB7F57FFFE77777_ch0000_Event{cls.__name__}RequestedPosition"
+        for cls in COVER_CLASSES
+    }
+    assert all(e.event_types == ["requested_position"] for e in covers)
+    assert all(
+        e.entity_description.translation_key == "cover_actuator_requested_position"
+        for e in covers
+    )
+
+
+@pytest.mark.parametrize(
+    ("channel_class", "value", "expected"),
+    [
+        (BlindActuator, "30", 70),
+        (ShutterActuator, "0", 100),
+        (AtticWindowActuator, "100", 0),
+        # The library inverts awnings; the event matches the cover entity.
+        (AwningActuator, "30", 30),
+    ],
+)
+async def test_cover_requested_position_events(
+    channel_class: type, value: str, expected: int
+) -> None:
+    """Requests, including repeats, fire with a Home Assistant position."""
+    channel = _build_cover_channel(channel_class)
+    entity = _build_cover_entity(channel)
+    entity.async_write_ha_state = Mock()
+    await entity.async_added_to_hass()
+
+    with patch.object(entity, "_trigger_event") as trigger:
+        channel.update_channel("idp0000", value)
+        channel.update_channel("idp0000", value)
+        channel.update_channel("idp0000", "invalid")
+
+    assert trigger.call_args_list == [
+        call("requested_position", {"extra_data": expected}),
+        call("requested_position", {"extra_data": expected}),
+    ]
+    assert entity.async_write_ha_state.call_count == 2
+
+    await entity.async_will_remove_from_hass()
+    assert not channel._callbacks["target_position"]
+
+
+async def test_cover_requested_position_ignores_feedback() -> None:
+    """Position feedback does not fire a requested-position event."""
+    channel = _build_cover_channel(BlindActuator, position="40")
+    entity = _build_cover_entity(channel)
+    entity.async_write_ha_state = Mock()
+    await entity.async_added_to_hass()
+
+    with patch.object(entity, "_trigger_event") as trigger:
+        channel.update_channel("odp0001", "50")
+
+    trigger.assert_not_called()
+    assert channel.target_position == 40

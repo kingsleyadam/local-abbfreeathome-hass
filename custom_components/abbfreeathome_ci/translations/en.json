@@ -125,6 +125,16 @@
           }
         }
       },
+      "cover_actuator_requested_position": {
+        "name": "Requested Position ({channel_id})",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "requested_position": "Requested Position"
+            }
+          }
+        }
+      },
       "des_door_ringing_sensor": {
         "state_attributes": {
           "event_type": {
