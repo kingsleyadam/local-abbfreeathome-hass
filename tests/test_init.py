@@ -53,7 +53,11 @@ from homeassistant.const import (
     Platform,
 )
 from homeassistant.core import HomeAssistant, ServiceValidationError
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import (
+    area_registry as ar,
+    device_registry as dr,
+    entity_registry as er,
+)
 
 
 @pytest.fixture
@@ -1681,7 +1685,8 @@ async def _setup_with_channels(
             c for c in channels if type(c) is channel_class
         ]
     )
-    entry.add_to_hass(hass)
+    if hass.config_entries.async_get_entry(entry.entry_id) is None:
+        entry.add_to_hass(hass)
 
     with (
         patch(
@@ -1803,6 +1808,96 @@ async def test_runtime_device_added_unavailable_and_removed(
     assert device_registry.async_get(sysap_entry.id) is not None
     assert entity_registry.async_get(entity_id) is None
     assert hass.states.get(entity_id) is None
+
+
+async def test_sub_devices_linked_to_parent_device(
+    hass: HomeAssistant,
+    mock_config_entry,
+    mock_free_at_home_settings,
+    lifecycle_platforms,
+) -> None:
+    """Test channel sub-devices are linked to their device and removed with it.
+
+    An existing sub-device keeps its device id, area, and user-defined name. With
+    HA 2026.9+ sub-devices are child devices named after their channel.
+    """
+    entry = MockConfigEntry(
+        version=mock_config_entry.version,
+        minor_version=mock_config_entry.minor_version,
+        domain=DOMAIN,
+        data={**mock_config_entry.data, CONF_CREATE_SUBDEVICES: True},
+        unique_id=mock_config_entry.unique_id,
+    )
+    entry.add_to_hass(hass)
+    device = _device()
+    for channel_id in ("ch0000", "ch0001"):
+        device.channels[channel_id] = _trigger(device, channel_id)
+    assert device.is_multi_device
+
+    # Registry entries left by an earlier version linking sub-devices with via_device.
+    device_registry = dr.async_get(hass)
+    device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id, identifiers={(DOMAIN, "ABB700000001")}
+    )
+    old_sub_device = device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, "ABB700000001_ch0000")},
+        name="Runtime Device (ch0000)",
+        **async_get_via_device_kwargs(hass, entry.entry_id, "ABB700000001"),
+    )
+    # Settings made by the user must survive the conversion.
+    area = ar.async_get(hass).async_create("Living room")
+    device_registry.async_update_device(
+        old_sub_device.id, area_id=area.id, name_by_user="Ceiling light"
+    )
+    child_devices_supported = hasattr(dr, "ChildDeviceInfo")
+    if child_devices_supported:
+        # Like a restart, so the earlier registration can be converted.
+        device_registry.async_config_entry_unloaded(entry.entry_id)
+
+    mock_fah = await _setup_with_channels(
+        hass, entry, mock_free_at_home_settings, list(device.channels.values())
+    )
+
+    parent_device = next(
+        _device_entry
+        for _device_entry in dr.async_entries_for_config_entry(
+            device_registry, entry.entry_id
+        )
+        if (DOMAIN, "ABB700000001") in _device_entry.identifiers
+    )
+    sub_devices = [
+        device_registry.async_get(_device_id)
+        for _device_id in {
+            _entity.device_id
+            for _entity in er.async_entries_for_config_entry(
+                er.async_get(hass), entry.entry_id
+            )
+        }
+    ]
+    assert len(sub_devices) == 2
+    for sub_device in sub_devices:
+        ((_, sub_device_serial),) = sub_device.identifiers
+        channel_id = sub_device_serial.removeprefix("ABB700000001_")
+        if channel_id == "ch0000":
+            assert sub_device.id == old_sub_device.id
+            assert sub_device.area_id == area.id
+            assert sub_device.name_by_user == "Ceiling light"
+        if child_devices_supported:
+            assert sub_device.parent_device_id == parent_device.id
+            assert sub_device.name == channel_id
+        else:
+            assert sub_device.via_device_id == parent_device.id
+            assert sub_device.name == f"Runtime Device ({channel_id})"
+
+    _devices_changed(
+        mock_fah, DevicesChangedEvent(removed_device_serials=("ABB700000001",))
+    )
+    await hass.async_block_till_done()
+
+    assert device_registry.async_get(parent_device.id) is None
+    for sub_device in sub_devices:
+        assert device_registry.async_get(sub_device.id) is None
 
 
 async def test_runtime_channel_placed_later(

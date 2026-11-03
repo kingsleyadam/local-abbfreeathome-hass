@@ -12,7 +12,7 @@ from abbfreeathome.device import Device
 import pytest
 
 from custom_components.abbfreeathome_ci import sensor as sensor_platform
-from custom_components.abbfreeathome_ci.const import DOMAIN, MANUFACTURER
+from custom_components.abbfreeathome_ci.const import DOMAIN
 from custom_components.abbfreeathome_ci.sensor import (
     FreeAtHomeParametersSensor,
     FreeAtHomeSensorEntity,
@@ -311,14 +311,13 @@ async def test_setup_split_parameter_sensors(
     child.hass = hass
     child.platform = Mock(config_entry=mock_config_entry)
     with patch(
-        "custom_components.abbfreeathome_ci.sensor.async_get_via_device_kwargs",
-        return_value={"via_device": (DOMAIN, "ABB123456")},
-    ) as parent_link:
+        "custom_components.abbfreeathome_ci.sensor.async_get_sub_device_info"
+    ) as sub_device_info:
         info = child.device_info
-    assert info["identifiers"] == {(DOMAIN, "ABB123456_ch0000")}
-    assert info["name"] == "Living room actuator (ch0000)"
-    assert info["via_device"] == (DOMAIN, "ABB123456")
-    parent_link.assert_called_once_with(hass, mock_config_entry.entry_id, "ABB123456")
+    assert info is sub_device_info.return_value
+    sub_device_info.assert_called_once_with(
+        hass, mock_config_entry.entry_id, parameter_device.channels["ch0000"]
+    )
 
     with patch.object(child, "async_write_ha_state") as child_write:
         await child.async_added_to_hass()
@@ -615,26 +614,17 @@ async def test_measurement_sensor_properties_and_callbacks(
     entity.hass = hass
     entity.platform = Mock(config_entry=mock_config_entry)
     with patch(
-        "custom_components.abbfreeathome_ci.sensor.async_get_via_device_kwargs",
-        return_value={"via_device": (DOMAIN, "ABB123456")},
-    ) as parent_link:
+        "custom_components.abbfreeathome_ci.sensor.async_get_sub_device_info"
+    ) as sub_device_info:
         info = entity.device_info
     if create_subdevices and multi_device:
-        assert info == {
-            "identifiers": {(DOMAIN, "ABB123456_ch0003")},
-            "name": "Living room actuator (ch0003)",
-            "manufacturer": MANUFACTURER,
-            "serial_number": "ABB123456_ch0003",
-            "hw_version": "test (sub)",
-            "suggested_area": "Living room",
-            "via_device": (DOMAIN, "ABB123456"),
-        }
-        parent_link.assert_called_once_with(
-            hass, mock_config_entry.entry_id, "ABB123456"
+        assert info is sub_device_info.return_value
+        sub_device_info.assert_called_once_with(
+            hass, mock_config_entry.entry_id, channel
         )
     else:
         assert info == {"identifiers": {(DOMAIN, "ABB123456")}}
-        parent_link.assert_not_called()
+        sub_device_info.assert_not_called()
 
     await entity.async_added_to_hass()
     channel.register_callback.assert_called_once_with(

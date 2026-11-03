@@ -121,19 +121,14 @@ async def test_button_entity_with_subdevices(hass: HomeAssistant) -> None:
     # Test device info for subdevice
     entity.platform = MagicMock()
     with patch(
-        "custom_components.abbfreeathome_ci.button.async_get_via_device_kwargs",
-        return_value={"via_device_id": "parent_device_id"},
-    ) as mock_via_device_kwargs:
+        "custom_components.abbfreeathome_ci.button.async_get_sub_device_info"
+    ) as mock_sub_device_info:
         device_info = entity.device_info
-    assert device_info["identifiers"] == {(DOMAIN, "ABB7F57FFFE12345_ch0002")}
-    assert device_info["name"] == "Multi Button Device (ch0002)"
-    assert device_info["serial_number"] == "ABB7F57FFFE12345_ch0002"
-    assert device_info["hw_version"] == "1234 (sub)"
-    assert device_info["suggested_area"] == "Bedroom"
-    mock_via_device_kwargs.assert_called_once_with(
-        entity.hass, entity.platform.config_entry.entry_id, "ABB7F57FFFE12345"
+
+    mock_sub_device_info.assert_called_once_with(
+        entity.hass, entity.platform.config_entry.entry_id, mock_channel
     )
-    assert device_info["via_device_id"] == "parent_device_id"
+    assert device_info is mock_sub_device_info.return_value
 
 
 async def test_button_entity_press(hass: HomeAssistant) -> None:

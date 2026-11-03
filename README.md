@@ -106,6 +106,13 @@ The config setup will include some options to help configure the integration.
 | Verify SSL Certificate                           | Enable SSL certificate verification. When disabled, HTTPS connections will not verify the server certificate.                            |
 | SSL Certificate File Path                        | File path to SSL certificate file to verify HTTPS/SSL connections.                                                                       |
 
+On Home Assistant 2026.9 and later, sub-devices are child devices of their
+physical device. They are named after their channel (for example `ch0001`),
+and Home Assistant shows the physical device's name in front of it. Removing or
+disabling the physical device also removes or disables its sub-devices, and
+targeting it in an action includes the entities of its sub-devices. Existing
+sub-devices are converted and keep their device ID.
+
 ###### Example
 
 - **Hostname**: `http://192.168.1.100`
