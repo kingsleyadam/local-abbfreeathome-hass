@@ -24,8 +24,8 @@ def inject_function_pairing_parameter_names(device_list: list[dict]):
 
     for _device_value in device_list.values():
         _device_value["parameterNames"] = {}
-        for _device_param_key, _device_param_value in _device_value.get(
-            "parameters"
+        for _device_param_key, _device_param_value in (
+            _device_value.get("parameters") or {}
         ).items():
             try:
                 _device_value["parameterNames"][
@@ -36,8 +36,12 @@ def inject_function_pairing_parameter_names(device_list: list[dict]):
                     _device_param_value
                 )
 
-        for _channel_key, _channel_value in _device_value.get("channels").items():
-            for _input_key, _input_value in _channel_value.get("inputs").items():
+        for _channel_key, _channel_value in (
+            _device_value.get("channels") or {}
+        ).items():
+            for _input_key, _input_value in (
+                _channel_value.get("inputs") or {}
+            ).items():
                 try:
                     _input_value["pairing"] = Pairing(
                         _input_value.get("pairingID")
@@ -49,7 +53,9 @@ def inject_function_pairing_parameter_names(device_list: list[dict]):
                     sorted(_input_value.items())
                 )
 
-            for _output_key, _output_value in _channel_value.get("outputs").items():
+            for _output_key, _output_value in (
+                _channel_value.get("outputs") or {}
+            ).items():
                 try:
                     _output_value["pairing"] = Pairing(
                         _output_value.get("pairingID")
@@ -62,8 +68,8 @@ def inject_function_pairing_parameter_names(device_list: list[dict]):
                 )
 
             _channel_value["parameterNames"] = {}
-            for _channel_param_key, _channel_param_value in _channel_value.get(
-                "parameters"
+            for _channel_param_key, _channel_param_value in (
+                _channel_value.get("parameters") or {}
             ).items():
                 try:
                     _channel_value["parameterNames"][
@@ -78,7 +84,7 @@ def inject_function_pairing_parameter_names(device_list: list[dict]):
                 _channel_value["function"] = Function(
                     int(_channel_value.get("functionID"), 16)
                 ).name
-            except ValueError:
+            except (TypeError, ValueError):
                 _channel_value["function"] = "UNKNOWN"
 
             _device_value["channels"][_channel_key] = OrderedDict(

@@ -50,8 +50,10 @@ def _configuration():
                         "outputs": {},
                         "parameters": {},
                     },
+                    "ch0003": {"displayName": "Unconfigured Channel"},
                 },
             },
+            "ABB7F57FFFE67890": {"displayName": "Device Without Channels"},
         },
     }
 
@@ -149,3 +151,21 @@ async def test_diagnostics_sorts_channel_keys(
     ]
     assert list(channel["inputs"]["idp0000"]) == ["pairing", "pairingID", "value"]
     assert list(channel["outputs"]["odp0000"]) == ["pairing", "pairingID", "value"]
+
+
+async def test_diagnostics_tolerates_missing_keys(
+    hass: HomeAssistant, mock_config_entry
+) -> None:
+    """Test devices and channels without optional keys are still reported."""
+    diagnostics = await _async_get_diagnostics(hass, mock_config_entry)
+    devices = diagnostics["devices"]
+
+    assert devices["ABB7F57FFFE67890"] == {
+        "displayName": "Device Without Channels",
+        "parameterNames": {},
+    }
+    assert devices["ABB7F57FFFE12345"]["channels"]["ch0003"] == {
+        "displayName": "Unconfigured Channel",
+        "function": "UNKNOWN",
+        "parameterNames": {},
+    }
