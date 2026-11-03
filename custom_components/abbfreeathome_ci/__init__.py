@@ -298,6 +298,7 @@ def _raise_on_sysap_error(host: str) -> Iterator[None]:
         ClientConnectionError,
         ConnectionTimeoutException,
         InvalidApiResponseException,
+        TimeoutError,
     ) as err:
         raise ConfigEntryNotReady(
             translation_domain=DOMAIN,

@@ -977,6 +977,12 @@ async def test_async_setup_entry_retries_when_sysap_unreachable(
             ConfigEntryState.SETUP_RETRY,
             "setup_cannot_connect",
         ),
+        # aiohttp raises its total request timeout as plain TimeoutError
+        (
+            TimeoutError(),
+            ConfigEntryState.SETUP_RETRY,
+            "setup_cannot_connect",
+        ),
         (
             InvalidHostException("192.168.1.100"),
             ConfigEntryState.SETUP_ERROR,
