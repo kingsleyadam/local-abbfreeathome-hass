@@ -22,16 +22,6 @@ IMPLICIT_ABORT_REASONS = {
     "reconfigure_successful",
 }
 
-# Known gaps, to be fixed separately. The tests fail once a gap is fixed, so
-# remove its entry together with the fix.
-UNTRANSLATED_ABORT_REASONS = {"invalid_api", "invalid_settings", "not_ipv4address"}
-UNRESOLVED_REFERENCES = {
-    "translations/en.json": {
-        "entity.event.staircase_light_sensor.state_attributes.event_type.state.off",
-        "entity.event.staircase_light_sensor.state_attributes.event_type.state.on",
-    },
-}
-
 
 def _load(name: str) -> dict:
     """Load one of the integration's json files."""
@@ -115,7 +105,7 @@ def test_translations_have_no_references(name) -> None:
         if isinstance(value, str) and "[%key:" in value
     }
 
-    assert references == UNRESOLVED_REFERENCES.get(name, set())
+    assert not references
 
 
 def test_config_flow_steps_are_translated(strings) -> None:
@@ -138,7 +128,7 @@ def test_config_flow_abort_reasons_are_translated(strings) -> None:
     """Test every config flow abort reason has a message."""
     reasons = _string_constants("config_flow", "reason") | IMPLICIT_ABORT_REASONS
 
-    assert reasons - set(strings["config"]["abort"]) == UNTRANSLATED_ABORT_REASONS
+    assert reasons <= set(strings["config"]["abort"])
 
 
 @pytest.mark.parametrize("platform", PLATFORMS)
