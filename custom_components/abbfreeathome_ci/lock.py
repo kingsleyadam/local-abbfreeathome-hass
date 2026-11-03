@@ -20,7 +20,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up valves."""
+    """Set up locks."""
 
     def build_entities(get_channels: ChannelGetter) -> list[FreeAtHomeLockEntity]:
         return [
@@ -97,8 +97,10 @@ class FreeAtHomeLockEntity(FreeAtHomeEntity, LockEntity):
 
     @property
     def is_locked(self) -> bool | None:
-        """Return if device is on."""
-        return self._channel.state is False
+        """Return if the door is locked."""
+        if self._channel.state is None:
+            return None
+        return not self._channel.state
 
     @property
     def unique_id(self) -> str | None:
