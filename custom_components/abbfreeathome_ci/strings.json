@@ -241,7 +241,10 @@
               "longpress_up": "Dimming Up",
               "longpress_up_release": "Dimming Up Release",
               "longpress_down": "Dimming Down",
-              "longpress_down_release": "Dimming Down Release"
+              "longpress_down_release": "Dimming Down Release",
+              "step_up": "Dimming Step Up",
+              "step_down": "Dimming Step Down",
+              "stop": "Dimming Stop"
             }
           }
         }

@@ -241,7 +241,10 @@
               "longpress_up": "Hochdimmen",
               "longpress_up_release": "Hochdimmen losgelassen",
               "longpress_down": "Herunterdimmen",
-              "longpress_down_release": "Herunterdimmen losgelassen"
+              "longpress_down_release": "Herunterdimmen losgelassen",
+              "step_up": "Schrittweise hochdimmen",
+              "step_down": "Schrittweise herunterdimmen",
+              "stop": "Dimmen stoppen"
             }
           }
         }
