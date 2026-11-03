@@ -450,6 +450,18 @@
     },
     "virtual_device_sysap_unavailable": {
       "message": "Der System Access Point ist nicht verfügbar. Richten Sie seine ABB-free@home-Integration ein oder laden Sie diese neu und versuchen Sie es erneut."
+    },
+    "setup_cannot_connect": {
+      "message": "Der System Access Point unter {host} ist nicht erreichbar oder noch nicht bereit."
+    },
+    "setup_invalid_host": {
+      "message": "Der Host {host} ist keine gültige URL. Konfigurieren Sie die Integration mit einem gültigen Host neu."
+    },
+    "setup_ssl_error": {
+      "message": "Die SSL-Verbindung zum System Access Point unter {host} ist fehlgeschlagen. Prüfen Sie das SSL-Zertifikat und konfigurieren Sie die Integration neu."
+    },
+    "setup_invalid_auth": {
+      "message": "Der System Access Point unter {host} hat die Zugangsdaten abgelehnt. Konfigurieren Sie die Integration mit gültigem Benutzernamen und Passwort neu."
     }
   },
   "issues": {
