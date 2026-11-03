@@ -2,12 +2,23 @@
 
 import asyncio
 import inspect
+import json
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from abbfreeathome import DevicesChangedEvent
 from abbfreeathome.channels.trigger import Trigger
 from abbfreeathome.device import Device
-from abbfreeathome.exceptions import BadRequestException
+from abbfreeathome.exceptions import (
+    BadRequestException,
+    ClientConnectionError,
+    ConnectionTimeoutException,
+    ForbiddenAuthException,
+    InvalidApiResponseException,
+    InvalidCredentialsException,
+    InvalidHostException,
+    SslErrorException,
+)
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 import voluptuous as vol
@@ -33,7 +44,7 @@ from custom_components.abbfreeathome_ci.const import (
 )
 from custom_components.abbfreeathome_ci.entity import FreeAtHomeEntity
 from custom_components.abbfreeathome_ci.helpers import async_get_via_device_kwargs
-from homeassistant.config_entries import SOURCE_IGNORE, SOURCE_IMPORT
+from homeassistant.config_entries import SOURCE_IGNORE, SOURCE_IMPORT, ConfigEntryState
 from homeassistant.const import (
     CONF_HOST,
     CONF_PASSWORD,
@@ -888,6 +899,133 @@ async def test_async_setup_entry_https_url_conversion(
     calls = mock_device_registry.async_get_or_create.call_args_list
     sysap_call = calls[0][1]
     assert sysap_call["configuration_url"] == "http://192.168.1.100/path"
+
+
+async def _async_setup_entry_via_hass(
+    hass: HomeAssistant,
+    entry: MockConfigEntry,
+    mock_free_at_home: MagicMock,
+    mock_free_at_home_settings: MagicMock,
+) -> None:
+    """Set up the entry through Home Assistant with the library patched."""
+    entry.add_to_hass(hass)
+    with (
+        patch(
+            "custom_components.abbfreeathome_ci.FreeAtHomeSettings",
+            return_value=mock_free_at_home_settings,
+        ),
+        patch(
+            "custom_components.abbfreeathome_ci.FreeAtHome",
+            return_value=mock_free_at_home,
+        ),
+        patch("custom_components.abbfreeathome_ci.FreeAtHomeApi"),
+        patch("custom_components.abbfreeathome_ci.async_get_clientsession"),
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+
+@pytest.mark.parametrize(
+    "failing_call",
+    [
+        lambda settings, _: settings.load,
+        lambda _, free_at_home: free_at_home.get_config,
+        lambda _, free_at_home: free_at_home.load,
+    ],
+    ids=["settings_load", "get_config", "load"],
+)
+async def test_async_setup_entry_retries_when_sysap_unreachable(
+    hass: HomeAssistant,
+    mock_config_entry,
+    mock_free_at_home,
+    mock_free_at_home_settings,
+    failing_call,
+) -> None:
+    """Test that setup is retried when any SysAP call cannot connect."""
+    failing_call(
+        mock_free_at_home_settings, mock_free_at_home
+    ).side_effect = ClientConnectionError("http://192.168.1.100")
+
+    await _async_setup_entry_via_hass(
+        hass, mock_config_entry, mock_free_at_home, mock_free_at_home_settings
+    )
+
+    assert mock_config_entry.state is ConfigEntryState.SETUP_RETRY
+    # Home Assistant drops the trailing period of translated messages
+    assert mock_config_entry.reason == (
+        "The System Access Point at http://192.168.1.100 is not reachable or not "
+        "ready yet"
+    )
+    assert mock_config_entry.entry_id not in hass.data.get(DOMAIN, {})
+
+
+@pytest.mark.parametrize(
+    ("error", "expected_state", "translation_key"),
+    [
+        (
+            ClientConnectionError("http://192.168.1.100"),
+            ConfigEntryState.SETUP_RETRY,
+            "setup_cannot_connect",
+        ),
+        (
+            ConnectionTimeoutException("http://192.168.1.100"),
+            ConfigEntryState.SETUP_RETRY,
+            "setup_cannot_connect",
+        ),
+        (
+            InvalidApiResponseException(503),
+            ConfigEntryState.SETUP_RETRY,
+            "setup_cannot_connect",
+        ),
+        (
+            InvalidHostException("192.168.1.100"),
+            ConfigEntryState.SETUP_ERROR,
+            "setup_invalid_host",
+        ),
+        (
+            SslErrorException("http://192.168.1.100"),
+            ConfigEntryState.SETUP_ERROR,
+            "setup_ssl_error",
+        ),
+        (
+            InvalidCredentialsException("installer"),
+            ConfigEntryState.SETUP_ERROR,
+            "setup_invalid_auth",
+        ),
+        (
+            ForbiddenAuthException("/rest/configuration", 403),
+            ConfigEntryState.SETUP_ERROR,
+            "setup_invalid_auth",
+        ),
+    ],
+)
+async def test_async_setup_entry_sysap_errors(
+    hass: HomeAssistant,
+    mock_config_entry,
+    mock_free_at_home,
+    mock_free_at_home_settings,
+    error,
+    expected_state,
+    translation_key,
+) -> None:
+    """Test that SysAP errors during setup map to the right entry state."""
+    mock_free_at_home.get_config.side_effect = error
+
+    await _async_setup_entry_via_hass(
+        hass, mock_config_entry, mock_free_at_home, mock_free_at_home_settings
+    )
+
+    translations = json.loads(
+        Path("custom_components/abbfreeathome_ci/translations/en.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert mock_config_entry.state is expected_state
+    message = translations["exceptions"][translation_key]["message"]
+    assert mock_config_entry.reason == message.format(
+        host="http://192.168.1.100"
+    ).rstrip(".")
+    mock_free_at_home.load.assert_not_awaited()
 
 
 async def test_async_setup_service_already_registered(

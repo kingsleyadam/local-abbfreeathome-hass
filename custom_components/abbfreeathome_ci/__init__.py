@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
 import logging
 from typing import Any
 from urllib.parse import urlparse, urlunparse
@@ -15,7 +16,16 @@ from abbfreeathome.api import (
 )
 from abbfreeathome.bin.interface import Interface
 from abbfreeathome.device import Device
-from abbfreeathome.exceptions import BadRequestException
+from abbfreeathome.exceptions import (
+    BadRequestException,
+    ClientConnectionError,
+    ConnectionTimeoutException,
+    ForbiddenAuthException,
+    InvalidApiResponseException,
+    InvalidCredentialsException,
+    InvalidHostException,
+    SslErrorException,
+)
 import voluptuous as vol
 
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
@@ -28,6 +38,7 @@ from homeassistant.core import (
     SupportsResponse,
     callback,
 )
+from homeassistant.exceptions import ConfigEntryError, ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
@@ -159,7 +170,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         verify_ssl=_verify_ssl,
         ssl_cert_ca_file=_ssl_cert_file_path,
     )
-    await _free_at_home_settings.load()
+    with _raise_on_sysap_error(_host):
+        await _free_at_home_settings.load()
 
     # Attempt to fetch orphan channels config entry, if not found fallback to True
     try:
@@ -199,11 +211,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         include_orphan_channels=_include_orphan_channels,
     )
 
-    # Verify we can fetch the config from the api
-    await _free_at_home.get_config()
+    with _raise_on_sysap_error(_host):
+        # Verify we can fetch the config from the api
+        await _free_at_home.get_config()
 
-    # Load devices into the free at home object
-    await _free_at_home.load()
+        # Load devices into the free at home object
+        await _free_at_home.load()
 
     # Register SysAP as a Device
     _configuration_url = entry.data[CONF_HOST]
@@ -269,6 +282,46 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await async_setup_service(hass)
 
     return True
+
+
+@contextmanager
+def _raise_on_sysap_error(host: str) -> Iterator[None]:
+    """Raise SysAP errors during setup as config entry setup errors.
+
+    Connection problems let Home Assistant retry the setup; configuration
+    problems fail it until the user reconfigures the entry.
+    """
+    placeholders = {"host": host}
+    try:
+        yield
+    except (
+        ClientConnectionError,
+        ConnectionTimeoutException,
+        InvalidApiResponseException,
+    ) as err:
+        raise ConfigEntryNotReady(
+            translation_domain=DOMAIN,
+            translation_key="setup_cannot_connect",
+            translation_placeholders=placeholders,
+        ) from err
+    except InvalidHostException as err:
+        raise ConfigEntryError(
+            translation_domain=DOMAIN,
+            translation_key="setup_invalid_host",
+            translation_placeholders=placeholders,
+        ) from err
+    except SslErrorException as err:
+        raise ConfigEntryError(
+            translation_domain=DOMAIN,
+            translation_key="setup_ssl_error",
+            translation_placeholders=placeholders,
+        ) from err
+    except (InvalidCredentialsException, ForbiddenAuthException) as err:
+        raise ConfigEntryError(
+            translation_domain=DOMAIN,
+            translation_key="setup_invalid_auth",
+            translation_placeholders=placeholders,
+        ) from err
 
 
 @callback
