@@ -20,7 +20,6 @@ from abbfreeathome.exceptions import (
     SslErrorException,
 )
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 import voluptuous as vol
 
 from custom_components.abbfreeathome_ci import (
@@ -58,6 +57,8 @@ from homeassistant.helpers import (
     device_registry as dr,
     entity_registry as er,
 )
+
+from .common import MockConfigEntry
 
 
 @pytest.fixture

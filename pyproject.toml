@@ -170,6 +170,8 @@ norecursedirs = [
 ]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+# Let Home Assistant install its httpx alias before respx is imported.
+addopts = "-p no:respx"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["SLF001"]
