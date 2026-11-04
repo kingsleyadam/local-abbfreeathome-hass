@@ -7,10 +7,6 @@ from abbfreeathome.bin.interface import Interface
 from abbfreeathome.device import Device
 from freezegun.api import FrozenDateTimeFactory
 import pytest
-from pytest_homeassistant_custom_component.common import (
-    MockConfigEntry,
-    async_fire_time_changed,
-)
 
 from custom_components.abbfreeathome_ci import async_remove_config_entry_device
 from custom_components.abbfreeathome_ci.const import (
@@ -24,6 +20,7 @@ from custom_components.abbfreeathome_ci.unresponsive import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, issue_registry as ir
 
+from .common import MockConfigEntry, async_fire_time_changed
 from .test_init import _devices_changed, _setup_with_channels, _trigger
 
 SERIAL = "ABB700000001"
