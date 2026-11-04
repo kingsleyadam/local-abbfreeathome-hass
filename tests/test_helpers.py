@@ -4,7 +4,6 @@ import inspect
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.abbfreeathome_ci.const import DOMAIN, MANUFACTURER
 from custom_components.abbfreeathome_ci.helpers import (
@@ -13,6 +12,8 @@ from custom_components.abbfreeathome_ci.helpers import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+
+from .common import MockConfigEntry
 
 
 def _mock_device_registry(*, supports_via_device_id: bool) -> MagicMock:

@@ -22,7 +22,6 @@ from abbfreeathome.exceptions import (
 )
 from abbfreeathome.floorplan import Floorplan
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 import voluptuous as vol
 
 from custom_components.abbfreeathome_ci import (
@@ -61,6 +60,8 @@ from homeassistant.helpers import (
     device_registry as dr,
     entity_registry as er,
 )
+
+from .common import MockConfigEntry
 
 
 @pytest.fixture
@@ -1859,6 +1860,22 @@ def _devices_changed(mock_fah, event: DevicesChangedEvent) -> None:
     mock_fah.register_devices_changed_callback.call_args.args[0](event)
 
 
+def _get_device(
+    hass: HomeAssistant, config_entry_id: str, serial: str
+) -> dr.DeviceEntry | None:
+    """Return the device a config entry registered for a serial.
+
+    HA 2026.8 deprecated async_get_device in favor of
+    async_get_device_by_identifier; older versions only have async_get_device.
+    """
+    device_registry = dr.async_get(hass)
+    if not hasattr(device_registry, "async_get_device_by_identifier"):
+        return device_registry.async_get_device(identifiers={(DOMAIN, serial)})
+    return device_registry.async_get_device_by_identifier(
+        (DOMAIN, serial), config_entry_id
+    )
+
+
 async def test_runtime_device_added_unavailable_and_removed(
     hass: HomeAssistant,
     mock_config_entry,
@@ -1882,11 +1899,9 @@ async def test_runtime_device_added_unavailable_and_removed(
     )
     await hass.async_block_till_done()
 
-    device_entry = device_registry.async_get_device(
-        identifiers={(DOMAIN, "ABB700000001")}
-    )
+    device_entry = _get_device(hass, mock_config_entry.entry_id, "ABB700000001")
     assert device_entry is not None
-    sysap_entry = device_registry.async_get_device(identifiers={(DOMAIN, "TEST123456")})
+    sysap_entry = _get_device(hass, mock_config_entry.entry_id, "TEST123456")
     assert device_entry.via_device_id == sysap_entry.id
     entities = er.async_entries_for_device(entity_registry, device_entry.id)
     assert len(entities) == 1
@@ -2011,17 +2026,14 @@ async def test_sub_devices_linked_to_parent_device(
 
 
 async def test_runtime_channel_placed_later(
-    hass: HomeAssistant, loaded_free_at_home
+    hass: HomeAssistant, mock_config_entry, loaded_free_at_home
 ) -> None:
     """Test a device without visible channels appears once a channel is placed."""
-    device_registry = dr.async_get(hass)
     device = _device()
 
     _devices_changed(loaded_free_at_home, DevicesChangedEvent(added_devices=(device,)))
     await hass.async_block_till_done()
-    assert (
-        device_registry.async_get_device(identifiers={(DOMAIN, "ABB700000001")}) is None
-    )
+    assert _get_device(hass, mock_config_entry.entry_id, "ABB700000001") is None
 
     channel = _trigger(device)
     loaded_free_at_home.channels.append(channel)
@@ -2030,9 +2042,7 @@ async def test_runtime_channel_placed_later(
     )
     await hass.async_block_till_done()
 
-    device_entry = device_registry.async_get_device(
-        identifiers={(DOMAIN, "ABB700000001")}
-    )
+    device_entry = _get_device(hass, mock_config_entry.entry_id, "ABB700000001")
     assert device_entry.name == "Runtime Device"
     assert device_entry.area_id == "hall"
     assert er.async_entries_for_device(er.async_get(hass), device_entry.id)
