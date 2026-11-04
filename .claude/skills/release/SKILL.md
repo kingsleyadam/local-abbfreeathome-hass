@@ -43,8 +43,9 @@ the user of the exact tag and commit.
 
 2. Pick the bump from the highest version-impact label among those PRs:
    `Semver-Major` -> major, `Semver-Minor` -> minor, otherwise patch.
-   Flag any merged PR missing a version-impact label (documentation-only PRs
-   are exempt) and confirm the version with the user before continuing.
+   Flag any merged PR missing a version-impact label (documentation-only and
+   `chore` PRs are exempt) and confirm the version with the user before
+   continuing.
 
 ## 2. Check the library pin
 

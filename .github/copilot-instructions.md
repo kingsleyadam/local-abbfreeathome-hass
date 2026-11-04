@@ -113,8 +113,10 @@ Every new issue and PR must have at least one relevant label. Inspect existing
 repository labels and apply them when creating the issue or PR; do not leave
 labeling as a follow-up task or invent new labels without agreement.
 
-For documentation-only PRs, `documentation` is the only required label; no
-version-impact label is required.
+For documentation-only PRs, `documentation` is the only required label. For
+chore PRs, which change neither code nor documentation (for example CI, tooling,
+the Dev Container, or repository configuration), `chore` is the only required
+label. Neither needs a version-impact label.
 
 For all other PRs, also apply exactly one version-impact label:
 
