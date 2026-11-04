@@ -476,6 +476,9 @@
     },
     "setup_invalid_auth": {
       "message": "Der System Access Point unter {host} hat die Zugangsdaten abgelehnt. Konfigurieren Sie die Integration mit gültigem Benutzernamen und Passwort neu."
+    },
+    "list_virtual_devices_disabled": {
+      "message": "Virtuelle Geräte sind für diesen System Access Point nicht eingebunden. Aktivieren Sie „Virtuelle Geräte einschließen?“ über „Neu konfigurieren“ der Integration und versuchen Sie es erneut."
     }
   },
   "issues": {
@@ -525,6 +528,16 @@
         "capabilities": {
           "name": "Energiezähler-Funktions-IDs",
           "description": "Nur für EnergyMeterv2. Standardwert: [16, 17, 18, 19, 22, 28]. Dieser erzeugt Zähler-, Batterie- und Wechselrichterkanäle, auch bei Aktualisierungen. Eigene Fähigkeiten als Liste ganzer Zahlen angeben, um diese beizubehalten; eine leere Liste bleibt erhalten."
+        }
+      }
+    },
+    "list_virtual_devices": {
+      "name": "Virtuelle Geräte auflisten",
+      "description": "Listet die aus einem System Access Point geladenen virtuellen Free@home-Geräte auf, einschließlich ihrer IDs für Aktualisierungen. Virtuelle Geräte müssen in den Einstellungen aktiviert sein.",
+      "fields": {
+        "config_entry_id": {
+          "name": "System Access Point",
+          "description": "Wählen Sie die zu verwendende ABB-free@home-Integration aus. Optional, wenn nur eine eingerichtet ist; erforderlich bei mehreren Integrationen."
         }
       }
     }
