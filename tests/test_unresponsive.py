@@ -18,10 +18,10 @@ from custom_components.abbfreeathome_ci.unresponsive import (
     async_get_unresponsive_tracker,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr, issue_registry as ir
+from homeassistant.helpers import issue_registry as ir
 
 from .common import MockConfigEntry, async_fire_time_changed
-from .test_init import _devices_changed, _setup_with_channels, _trigger
+from .test_init import _devices_changed, _get_device, _setup_with_channels, _trigger
 
 SERIAL = "ABB700000001"
 
@@ -275,7 +275,7 @@ async def test_manual_device_removal(
     await _pass_delay(hass, freezer, 1.5)
     assert _issue(hass, repairs_config_entry) is not None
 
-    device_entry = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, SERIAL)})
+    device_entry = _get_device(hass, repairs_config_entry.entry_id, SERIAL)
     assert await async_remove_config_entry_device(
         hass, repairs_config_entry, device_entry
     )
