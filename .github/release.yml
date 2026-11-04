@@ -19,6 +19,9 @@ changelog:
       labels:
         - Semver-Patch
         - bug
+    - title: Maintenance 🧹
+      labels:
+        - chore
     - title: Other Changes
       labels:
         - "*"
