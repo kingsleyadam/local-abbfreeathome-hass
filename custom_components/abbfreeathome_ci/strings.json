@@ -476,6 +476,9 @@
     },
     "setup_invalid_auth": {
       "message": "The System Access Point at {host} rejected the credentials. Reconfigure the integration with a valid username and password."
+    },
+    "list_virtual_devices_disabled": {
+      "message": "Virtual devices are not included for this System Access Point. Enable \"Include virtual devices?\" through Reconfigure on the integration and try again."
     }
   },
   "issues": {
@@ -525,6 +528,16 @@
         "capabilities": {
           "name": "Energy meter capability IDs",
           "description": "For EnergyMeterv2 only. Defaults to [16, 17, 18, 19, 22, 28], creating meter, battery, and inverter channels, including on updates. Set a list of integers to keep custom capabilities; an empty list is preserved."
+        }
+      }
+    },
+    "list_virtual_devices": {
+      "name": "List virtual devices",
+      "description": "List the Free@home virtual devices loaded from a System Access Point, including their virtual device IDs for updates. Requires virtual devices to be enabled in settings.",
+      "fields": {
+        "config_entry_id": {
+          "name": "System Access Point",
+          "description": "Choose the ABB-free@home integration to use. Optional when only one is configured; required when several are configured."
         }
       }
     }

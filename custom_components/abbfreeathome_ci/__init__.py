@@ -54,6 +54,7 @@ from .const import (
     CONF_SSL_CERT_FILE_PATH,
     CONF_VERIFY_SSL,
     DOMAIN,
+    LIST_VIRTUAL_DEVICES,
     MANUFACTURER,
     VIRTUAL_DEVICE,
 )
@@ -510,8 +511,8 @@ async def async_setup_service(hass: HomeAssistant) -> None:
             data.setdefault("capabilities", [16, 17, 18, 19, 22, 28])
         return data
 
-    async def virtual_device(call: ServiceCall) -> ServiceResponse:
-        """Service call to interact with the virtualdevice REST endpoint."""
+    def get_free_at_home(call: ServiceCall) -> tuple[str, FreeAtHome]:
+        """Return the selected, loaded SysAP, or the only one configured."""
         entry_ids = {
             entry.entry_id
             for entry in hass.config_entries.async_entries(DOMAIN, include_ignore=False)
@@ -535,6 +536,11 @@ async def async_setup_service(hass: HomeAssistant) -> None:
                 translation_domain=DOMAIN,
                 translation_key="virtual_device_sysap_unavailable",
             )
+        return config_entry_id, free_at_home
+
+    async def virtual_device(call: ServiceCall) -> ServiceResponse:
+        """Service call to interact with the virtualdevice REST endpoint."""
+        _, free_at_home = get_free_at_home(call)
         properties = {
             key: call.data[key]
             for key in ("ttl", "displayname", "flavor", "capabilities")
@@ -547,6 +553,55 @@ async def async_setup_service(hass: HomeAssistant) -> None:
             )
         except BadRequestException as err:
             raise ServiceValidationError(err.message) from err
+
+    async def list_virtual_devices(call: ServiceCall) -> ServiceResponse:
+        """List the virtual devices loaded from the selected SysAP."""
+        config_entry_id, free_at_home = get_free_at_home(call)
+        entry = hass.config_entries.async_get_entry(config_entry_id)
+        if not entry.data.get(CONF_INCLUDE_VIRTUAL_DEVICES):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="list_virtual_devices_disabled",
+            )
+        devices = sorted(
+            (
+                device
+                for device in free_at_home.get_devices().values()
+                if device.is_virtual
+            ),
+            key=lambda device: (device.native_id or "", device.device_serial),
+        )
+        return {
+            "virtual_devices": [
+                {
+                    "native_id": device.native_id,
+                    "serial": device.device_serial,
+                    "display_name": device.display_name,
+                    "floor": device.floor_name,
+                    "room": device.room_name,
+                    "unresponsive": device.unresponsive,
+                    "channels": [
+                        {
+                            "channel_id": channel.channel_id,
+                            "channel_name": channel.channel_name,
+                            "channel_type": type(channel).__name__,
+                            "floor": channel.floor_name,
+                            "room": channel.room_name,
+                        }
+                        for _, channel in sorted(device.channels.items())
+                    ],
+                }
+                for device in devices
+            ]
+        }
+
+    hass.services.async_register(
+        DOMAIN,
+        LIST_VIRTUAL_DEVICES,
+        list_virtual_devices,
+        schema=vol.Schema({vol.Optional("config_entry_id"): cv.string}),
+        supports_response=SupportsResponse.ONLY,
+    )
 
     hass.services.async_register(
         DOMAIN,

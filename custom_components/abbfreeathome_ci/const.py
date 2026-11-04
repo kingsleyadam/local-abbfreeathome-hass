@@ -22,3 +22,4 @@ SYSAP_VERSION = "sysap_version"
 
 # Service Calls
 VIRTUAL_DEVICE = "virtual_device"
+LIST_VIRTUAL_DEVICES = "list_virtual_devices"

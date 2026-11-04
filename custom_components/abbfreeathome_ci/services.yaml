@@ -84,3 +84,10 @@ virtual_device:
           example: [16, 17, 18, 19, 22, 28]
           selector:
             object:
+list_virtual_devices:
+  fields:
+    config_entry_id:
+      required: false
+      selector:
+        config_entry:
+          integration: abbfreeathome_ci

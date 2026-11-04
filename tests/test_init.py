@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from abbfreeathome import DevicesChangedEvent
+from abbfreeathome.bin.interface import Interface
 from abbfreeathome.channels.trigger import Trigger
 from abbfreeathome.device import Device
 from abbfreeathome.exceptions import (
@@ -19,6 +20,7 @@ from abbfreeathome.exceptions import (
     InvalidHostException,
     SslErrorException,
 )
+from abbfreeathome.floorplan import Floorplan
 import pytest
 import voluptuous as vol
 
@@ -39,6 +41,7 @@ from custom_components.abbfreeathome_ci.const import (
     CONF_SSL_CERT_FILE_PATH,
     CONF_VERIFY_SSL,
     DOMAIN,
+    LIST_VIRTUAL_DEVICES,
     VIRTUAL_DEVICE,
 )
 from custom_components.abbfreeathome_ci.entity import FreeAtHomeEntity
@@ -1519,6 +1522,113 @@ async def test_virtual_device_ignores_ignored_discoveries(
     )
     assert result == {"status": "ok"}
     virtual_device_service.api.virtualdevice.assert_awaited_once()
+
+
+async def test_list_virtual_devices(
+    hass: HomeAssistant, mock_config_entry, virtual_device_service
+) -> None:
+    """List only virtual devices, sorted by virtual device ID, with their channels."""
+    hass.config_entries.async_update_entry(
+        mock_config_entry,
+        data={**mock_config_entry.data, CONF_INCLUDE_VIRTUAL_DEVICES: True},
+    )
+    floorplan = Floorplan.from_config(
+        {"floorplan": {"floors": {"01": {"name": "Ground", "rooms": {}}}}}
+    )
+    floorplan_rooms = Floorplan.from_config(
+        {
+            "floorplan": {
+                "floors": {"01": {"name": "Ground", "rooms": {"02": {"name": "Hall"}}}}
+            }
+        }
+    )
+    switch = Device(
+        "6000AAAA0002",
+        "0002",
+        "Virtual switch",
+        interface=Interface.VIRTUAL_DEVICE,
+        api=MagicMock(),
+        native_id="ha-switch",
+        floor_name="Ground",
+        channels_data={
+            "ch0001": {"functionID": "7"},
+            "ch0000": {
+                "functionID": "7",
+                "displayName": "Lamp",
+                "floor": "01",
+                "room": "02",
+            },
+        },
+    )
+    switch.load_channels(floorplan_rooms)
+    unplaced = Device(
+        "6000AAAA0001",
+        "0001",
+        "Unplaced",
+        interface=Interface.VIRTUAL_DEVICE,
+        api=MagicMock(),
+        unresponsive=True,
+    )
+    unplaced.load_channels(floorplan)
+    virtual_device_service.get_devices.return_value = {
+        "ABB700000001": _device(),
+        "6000AAAA0002": switch,
+        "6000AAAA0001": unplaced,
+    }
+
+    result = await hass.services.async_call(
+        DOMAIN, LIST_VIRTUAL_DEVICES, {}, blocking=True, return_response=True
+    )
+
+    assert result == {
+        "virtual_devices": [
+            {
+                "native_id": None,
+                "serial": "6000AAAA0001",
+                "display_name": "Unplaced",
+                "floor": None,
+                "room": None,
+                "unresponsive": True,
+                "channels": [],
+            },
+            {
+                "native_id": "ha-switch",
+                "serial": "6000AAAA0002",
+                "display_name": "Virtual switch",
+                "floor": "Ground",
+                "room": None,
+                "unresponsive": False,
+                "channels": [
+                    {
+                        "channel_id": "ch0000",
+                        "channel_name": "Lamp",
+                        "channel_type": "VirtualSwitchActuator",
+                        "floor": "Ground",
+                        "room": "Hall",
+                    },
+                    {
+                        "channel_id": "ch0001",
+                        "channel_name": "Channel ch0001",
+                        "channel_type": "VirtualSwitchActuator",
+                        "floor": "Ground",
+                        "room": None,
+                    },
+                ],
+            },
+        ]
+    }
+
+
+async def test_list_virtual_devices_requires_virtual_devices_option(
+    hass: HomeAssistant, virtual_device_service
+) -> None:
+    """Explain how to enable virtual devices instead of returning an empty list."""
+    with pytest.raises(ServiceValidationError) as exc_info:
+        await hass.services.async_call(
+            DOMAIN, LIST_VIRTUAL_DEVICES, {}, blocking=True, return_response=True
+        )
+    assert exc_info.value.translation_key == "list_virtual_devices_disabled"
+    virtual_device_service.get_devices.assert_not_called()
 
 
 async def test_async_setup_entry_device_without_channels(
