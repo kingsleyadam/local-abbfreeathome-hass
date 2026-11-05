@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   versions:
-    name: Select Home Assistant versions
+    name: Get HA Versions
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
@@ -72,7 +72,7 @@ jobs:
   coverage:
     # Stable name for branch protection; the matrix job names change with
     # every Home Assistant release.
-    name: Coverage (all HA versions)
+    name: Full Code Coverage
     needs: test
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
