@@ -52,8 +52,9 @@ current matrix. The coverage of all versions is combined, and the combined repor
 must also reach 100%, so code that branches on the Home Assistant version needs
 tests that cover each branch on some version in the matrix.
 
-To reproduce this locally, `python .github/scripts/test_ha_versions.py` runs the
-whole matrix in isolated uv environments and applies the same coverage gate.
+To reproduce this locally, `python .github/scripts/test_ha_versions.py` (aliased
+to `run-tests` in the Dev Container) runs the whole matrix in isolated uv
+environments and applies the same coverage gate.
 `--ha 2026.6` runs that version instead, any release with a pytest plugin even
 outside the supported range; `--with PACKAGE` adds an extra package or constraint,
 such as `'pycares<5'` for 2025.12. `--html` also writes `htmlcov/`, and arguments

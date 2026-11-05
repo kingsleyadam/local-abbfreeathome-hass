@@ -47,5 +47,8 @@
       }
     }
   },
-  "postCreateCommand": "uv venv --clear && uv pip install -r dev-requirements.txt && uv pip install $(jq -r '.requirements[]' custom_components/abbfreeathome_ci/manifest.json) && pre-commit install"
+  "postCreateCommand": {
+    "setup": "uv venv --clear && uv pip install -r dev-requirements.txt && uv pip install $(jq -r '.requirements[]' custom_components/abbfreeathome_ci/manifest.json) && pre-commit install",
+    "aliases": "for rc in ~/.bashrc ~/.zshrc; do grep -qs 'alias run-tests=' \"$rc\" || echo \"alias run-tests='python3 ${containerWorkspaceFolder}/.github/scripts/test_ha_versions.py'\" >> \"$rc\"; done"
+  }
 }
