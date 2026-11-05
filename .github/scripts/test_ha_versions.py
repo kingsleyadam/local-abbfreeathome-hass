@@ -7,8 +7,10 @@ without extra pytest arguments.
 
 Examples:
     python .github/scripts/test_ha_versions.py
+    python .github/scripts/test_ha_versions.py --html
     python .github/scripts/test_ha_versions.py --ha 2026.6
     python .github/scripts/test_ha_versions.py --ha 2026.11 -- tests/test_light.py -x
+    python .github/scripts/test_ha_versions.py -- -rA
 
 """
 
@@ -56,6 +58,11 @@ def main() -> None:
         default=[],
         metavar="VERSION",
         help="only run versions starting with VERSION, e.g. 2026.6 (repeatable)",
+    )
+    parser.add_argument(
+        "--html",
+        action="store_true",
+        help="also write an HTML coverage report to htmlcov/",
     )
     args, pytest_args = parser.parse_known_args()
     if pytest_args[:1] == ["--"]:
@@ -108,10 +115,13 @@ def main() -> None:
         ) or uv_run(
             python,
             ["coverage"],
-            ["coverage", "report", "--show-missing", "--skip-covered"]
+            ["coverage", "report", "--show-missing"]
             + (["--fail-under=100"] if not args.ha and not pytest_args else []),
             coverage_env,
         )
+        if args.html:
+            uv_run(python, ["coverage"], ["coverage", "html", "-q"], coverage_env)
+            print(f"HTML report: {REPO_ROOT / 'htmlcov/index.html'}")
 
     print("\n=== Results")
     for version, code in results.items():

@@ -54,9 +54,9 @@ tests that cover each branch on some version in the matrix.
 
 To reproduce this locally, `python .github/scripts/test_ha_versions.py` runs the
 whole matrix in isolated uv environments and applies the same coverage gate.
-`--ha 2026.6` limits it to matching versions, and arguments after `--` go to
-pytest (for example `-- tests/test_light.py -x`); the gate applies only to a full
-run without pytest arguments.
+`--ha 2026.6` limits it to matching versions, `--html` also writes `htmlcov/`,
+and arguments after `--` go to pytest (for example `-- tests/test_light.py -x`);
+the gate applies only to a full run without pytest arguments.
 
 ## Architecture
 
