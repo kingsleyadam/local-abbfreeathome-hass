@@ -27,7 +27,7 @@ CUSTOM_COMPONENT_PLUGIN = "pytest-homeassistant-custom-component"
 
 STABLE_VERSION = re.compile(r"^\d+\.\d+\.\d+$")
 HA_PIN = re.compile(r"^homeassistant==(\d+\.\d+\.\d+)$")
-MIN_PYTHON = re.compile(r">=\s*(\d+\.\d+)")
+MIN_PYTHON = re.compile(r">=\s*(\d+\.\d+(?:\.\d+)?)")
 
 
 def fetch(package: str, version: str | None = None) -> dict[str, Any]:

@@ -33,7 +33,9 @@ MANIFEST = REPO_ROOT / "custom_components/abbfreeathome_ci/manifest.json"
 
 def uv_run(python: str, packages: list[str], args: list[str], env: dict) -> int:
     """Run a command in a throwaway uv environment and return its exit code."""
-    command = ["uv", "run", "--isolated", "--no-project", "--python", python]
+    minor = ".".join(python.split(".")[:2])
+    request = f">={python},=={minor}.*"
+    command = ["uv", "run", "--isolated", "--no-project", "--python", request]
     for package in packages:
         command += ["--with", package]
     return subprocess.run(
@@ -84,6 +86,13 @@ def main() -> None:
 
     requirements = json.loads(MANIFEST.read_text(encoding="utf-8"))["requirements"]
     env = {key: value for key, value in os.environ.items() if key != "VIRTUAL_ENV"}
+    # Home Assistant pins its own uv, which may be too old to know the
+    # required Python, so keep the active virtual environment off the PATH.
+    if venv := os.environ.get("VIRTUAL_ENV"):
+        venv_bin = str(Path(venv, "bin"))
+        env["PATH"] = os.pathsep.join(
+            path for path in env.get("PATH", "").split(os.pathsep) if path != venv_bin
+        )
     results: dict[str, int] = {}
 
     with tempfile.TemporaryDirectory(prefix="ha-coverage-") as coverage_dir:
