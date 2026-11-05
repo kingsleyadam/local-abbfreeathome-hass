@@ -1,0 +1,124 @@
+"""Run the test suite against the supported Home Assistant releases, like CI.
+
+Mirrors `.github/workflows/test-ha-versions.yaml`: runs pytest with coverage in
+an isolated uv environment for each version from `ha_test_matrix.py`, then
+combines the coverage. The 100% gate applies only when the full matrix ran
+without extra pytest arguments.
+
+Examples:
+    python .github/scripts/test_ha_versions.py
+    python .github/scripts/test_ha_versions.py --ha 2026.6
+    python .github/scripts/test_ha_versions.py --ha 2026.11 -- tests/test_light.py -x
+
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+from ha_test_matrix import build_matrix
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+MANIFEST = REPO_ROOT / "custom_components/abbfreeathome_ci/manifest.json"
+
+
+def uv_run(python: str, packages: list[str], args: list[str], env: dict) -> int:
+    """Run a command in a throwaway uv environment and return its exit code."""
+    command = ["uv", "run", "--isolated", "--no-project", "--python", python]
+    for package in packages:
+        command += ["--with", package]
+    return subprocess.run(
+        command + args, cwd=REPO_ROOT, env=env, check=False
+    ).returncode
+
+
+def main() -> None:
+    """Run the matrix and report the results."""
+    parser = argparse.ArgumentParser(
+        description=__doc__.splitlines()[0],
+        epilog="Arguments after -- are passed to pytest.",
+    )
+    parser.add_argument(
+        "--count",
+        type=int,
+        default=7,
+        help="number of latest minor releases to include (default: 7)",
+    )
+    parser.add_argument(
+        "--ha",
+        action="append",
+        default=[],
+        metavar="VERSION",
+        help="only run versions starting with VERSION, e.g. 2026.6 (repeatable)",
+    )
+    args, pytest_args = parser.parse_known_args()
+    if pytest_args[:1] == ["--"]:
+        pytest_args = pytest_args[1:]
+
+    matrix = build_matrix(args.count)
+    if args.ha:
+        matrix = [
+            entry
+            for entry in matrix
+            if any(
+                f"{entry['homeassistant']}.".startswith(f"{version}.")
+                for version in args.ha
+            )
+        ]
+        if not matrix:
+            sys.exit(f"No supported Home Assistant version matches {args.ha}")
+
+    requirements = json.loads(MANIFEST.read_text(encoding="utf-8"))["requirements"]
+    env = {key: value for key, value in os.environ.items() if key != "VIRTUAL_ENV"}
+    results: dict[str, int] = {}
+
+    with tempfile.TemporaryDirectory(prefix="ha-coverage-") as coverage_dir:
+        for entry in matrix:
+            version = entry["homeassistant"]
+            print(f"\n=== Home Assistant {version} ({entry['plugin']})", flush=True)
+            results[version] = uv_run(
+                entry["python"],
+                [entry["plugin"], "pytest-cov", *requirements],
+                [
+                    "python",
+                    "-m",
+                    "pytest",
+                    "-p",
+                    "no:cacheprovider",
+                    "--cov",
+                    "--cov-branch",
+                    "--cov-report=",
+                    *pytest_args,
+                ],
+                {**env, "COVERAGE_FILE": f"{coverage_dir}/.coverage.{version}"},
+            )
+
+        print("\n=== Combined coverage", flush=True)
+        data_file = f"{coverage_dir}/.coverage"
+        coverage_env = {**env, "COVERAGE_FILE": data_file}
+        python = matrix[0]["python"]
+        coverage_failed = uv_run(
+            python, ["coverage"], ["coverage", "combine", coverage_dir], coverage_env
+        ) or uv_run(
+            python,
+            ["coverage"],
+            ["coverage", "report", "--show-missing", "--skip-covered"]
+            + (["--fail-under=100"] if not args.ha and not pytest_args else []),
+            coverage_env,
+        )
+
+    print("\n=== Results")
+    for version, code in results.items():
+        print(f"{version}: {'passed' if code == 0 else 'FAILED'}")
+    print(f"coverage: {'FAILED' if coverage_failed else 'passed'}")
+    sys.exit(1 if coverage_failed or any(results.values()) else 0)
+
+
+if __name__ == "__main__":
+    main()
