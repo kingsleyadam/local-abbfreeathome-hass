@@ -44,6 +44,24 @@ modules that tests import; a module without tests is invisible to the gate. Do
 not treat a passing gate as proof that a new or changed module is covered; check
 that it appears in the report.
 
+CI also runs the suite against the newest patch of each of the latest seven Home
+Assistant minor releases (`.github/workflows/test-ha-versions.yaml`), weekly and
+on pushes and PRs. `.github/scripts/ha_test_matrix.py` picks the versions from
+PyPI, with the matching pytest plugin and Python version; run it to see the
+current matrix. The coverage of all versions is combined, and the combined report
+must also reach 100%, so code that branches on the Home Assistant version needs
+tests that cover each branch on some version in the matrix.
+
+To reproduce this locally, `python .github/scripts/test_ha_versions.py` (aliased
+to `run-tests` in the Dev Container, and available under VS Code's Run and Debug
+through `.vscode/launch.json`) runs the whole matrix in isolated uv
+environments and applies the same coverage gate.
+`--ha 2026.6` runs that version instead, any release with a pytest plugin even
+outside the supported range; `--with PACKAGE` adds an extra package or constraint,
+such as `'pycares<5'` for 2025.12. `--html` also writes `htmlcov/`, and arguments
+after `--` go to pytest (for example `-- tests/test_light.py -x`); the gate
+applies only to a full run without `--ha` or pytest arguments.
+
 ## Architecture
 
 The integration is a thin Home Assistant layer over the

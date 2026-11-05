@@ -175,6 +175,7 @@ addopts = "-p no:respx"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["SLF001"]
+".github/scripts/*" = ["INP001", "T201"]
 
 [tool.coverage.run]
 branch = true

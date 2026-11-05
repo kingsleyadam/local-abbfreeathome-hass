@@ -1,0 +1,38 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Test Home Assistant versions",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/.github/scripts/test_ha_versions.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Test Home Assistant versions (HTML coverage)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/.github/scripts/test_ha_versions.py",
+      "args": ["--html"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Test one Home Assistant version",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/.github/scripts/test_ha_versions.py",
+      "args": ["--ha", "${input:haVersion}"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "haVersion",
+      "type": "promptString",
+      "description": "Home Assistant version, e.g. 2026.6 (newest patch) or 2026.6.2"
+    }
+  ]
+}

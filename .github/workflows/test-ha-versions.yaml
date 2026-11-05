@@ -1,0 +1,111 @@
+name: Test Home Assistant Versions
+
+# Runs the test suite against the newest patch of each supported Home Assistant
+# minor release, and combines the coverage of all of them into one gate. The
+# weekly run catches new Home Assistant releases between pull requests.
+
+on:
+  push:
+    branches: [main, 'beta/*', 'alpha/*', 'release/*']
+  pull_request:
+    branches: [main, 'beta/*', 'alpha/*', 'release/*']
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  versions:
+    name: Get HA Versions
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: Checkout Repo Code
+        uses: actions/checkout@v7
+
+      - name: Build test matrix
+        id: matrix
+        run: python3 .github/scripts/ha_test_matrix.py --count 7
+
+  test:
+    name: HA ${{ matrix.homeassistant }}
+    needs: versions
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.versions.outputs.matrix) }}
+    env:
+      COVERAGE_FILE: .coverage.${{ matrix.homeassistant }}
+    steps:
+      - name: Checkout Repo Code
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          python-version: ${{ matrix.python }}
+          activate-environment: true
+          enable-cache: true
+          cache-suffix: ${{ matrix.homeassistant }}
+          cache-dependency-glob: custom_components/abbfreeathome_ci/manifest.json
+
+      - name: Install dependencies
+        run: |
+          uv pip install "${{ matrix.plugin }}" pytest-cov \
+            $(jq -r '.requirements[]' custom_components/abbfreeathome_ci/manifest.json)
+
+      - name: Test with pytest
+        run: python -m pytest --cov --cov-branch --cov-report=term-missing
+
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-${{ matrix.homeassistant }}
+          path: ${{ env.COVERAGE_FILE }}
+          include-hidden-files: true
+          if-no-files-found: error
+
+  results:
+    # Stable name for branch protection; the matrix job names change with
+    # every Home Assistant release.
+    name: Test Results
+    needs: test
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all versions to pass
+        if: needs.test.result != 'success'
+        run: |
+          echo "Tests failed on at least one Home Assistant version."
+          exit 1
+
+      - name: Checkout Repo Code
+        uses: actions/checkout@v7
+
+      - name: Install Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+
+      - name: Install coverage
+        run: pip install coverage
+
+      - name: Download coverage data
+        uses: actions/download-artifact@v8
+        with:
+          pattern: coverage-*
+          path: coverage-data
+          merge-multiple: true
+
+      - name: Combine coverage
+        run: coverage combine coverage-data
+
+      - name: Write coverage to job summary
+        run: coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Require 100% line and branch coverage
+        run: coverage report --show-missing --fail-under=100
