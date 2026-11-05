@@ -69,10 +69,10 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
 
-  coverage:
+  results:
     # Stable name for branch protection; the matrix job names change with
     # every Home Assistant release.
-    name: Full Code Coverage
+    name: Test Results
     needs: test
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
