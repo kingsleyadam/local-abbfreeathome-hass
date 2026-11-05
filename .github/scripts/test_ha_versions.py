@@ -88,7 +88,9 @@ def main() -> None:
     env = {key: value for key, value in os.environ.items() if key != "VIRTUAL_ENV"}
     # Home Assistant pins its own uv, which may be too old to know the
     # required Python, so keep the active virtual environment off the PATH.
-    if venv := os.environ.get("VIRTUAL_ENV"):
+    if venv := os.environ.get("VIRTUAL_ENV") or (
+        sys.prefix if sys.prefix != sys.base_prefix else None
+    ):
         venv_bin = str(Path(venv, "bin"))
         env["PATH"] = os.pathsep.join(
             path for path in env.get("PATH", "").split(os.pathsep) if path != venv_bin
