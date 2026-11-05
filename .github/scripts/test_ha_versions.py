@@ -9,6 +9,7 @@ Examples:
     python .github/scripts/test_ha_versions.py
     python .github/scripts/test_ha_versions.py --html
     python .github/scripts/test_ha_versions.py --ha 2026.6
+    python .github/scripts/test_ha_versions.py --ha 2025.12.1 --with 'pycares<5'
     python .github/scripts/test_ha_versions.py --ha 2026.11 -- tests/test_light.py -x
     python .github/scripts/test_ha_versions.py -- -rA
 
@@ -57,29 +58,29 @@ def main() -> None:
         action="append",
         default=[],
         metavar="VERSION",
-        help="only run versions starting with VERSION, e.g. 2026.6 (repeatable)",
+        help=(
+            "run this Home Assistant version instead of the supported ones, "
+            "e.g. 2026.1 (newest patch) or 2026.1.2 (repeatable)"
+        ),
     )
     parser.add_argument(
         "--html",
         action="store_true",
         help="also write an HTML coverage report to htmlcov/",
     )
+    parser.add_argument(
+        "--with",
+        action="append",
+        default=[],
+        dest="packages",
+        metavar="PACKAGE",
+        help="install an extra package or constraint, e.g. 'pycares<5' (repeatable)",
+    )
     args, pytest_args = parser.parse_known_args()
     if pytest_args[:1] == ["--"]:
         pytest_args = pytest_args[1:]
 
-    matrix = build_matrix(args.count)
-    if args.ha:
-        matrix = [
-            entry
-            for entry in matrix
-            if any(
-                f"{entry['homeassistant']}.".startswith(f"{version}.")
-                for version in args.ha
-            )
-        ]
-        if not matrix:
-            sys.exit(f"No supported Home Assistant version matches {args.ha}")
+    matrix = build_matrix(args.count, args.ha)
 
     requirements = json.loads(MANIFEST.read_text(encoding="utf-8"))["requirements"]
     env = {key: value for key, value in os.environ.items() if key != "VIRTUAL_ENV"}
@@ -91,7 +92,7 @@ def main() -> None:
             print(f"\n=== Home Assistant {version} ({entry['plugin']})", flush=True)
             results[version] = uv_run(
                 entry["python"],
-                [entry["plugin"], "pytest-cov", *requirements],
+                [entry["plugin"], "pytest-cov", *requirements, *args.packages],
                 [
                     "python",
                     "-m",

@@ -76,21 +76,39 @@ def custom_component_plugins(oldest: tuple[int, ...]) -> dict[str, str]:
     return plugins
 
 
-def build_matrix(count: int) -> list[dict[str, str]]:
-    """Return one matrix entry for each of the latest `count` minor releases."""
+def build_matrix(count: int, versions: list[str] | None = None) -> list[dict[str, str]]:
+    """Return the matrix entries for the latest `count` minor releases.
+
+    With `versions`, return one entry for each given version instead, which may
+    be a full release such as 2026.1.2 or a prefix such as 2026.1, matching its
+    newest patch. Any release with a pytest plugin works, supported or not.
+    """
     releases = stable_releases(fetch(HA_PACKAGE))
 
-    minors: dict[tuple[int, ...], list[str]] = {}
-    for version in releases:
-        minors.setdefault(version_key(version)[:2], []).append(version)
-    selected = sorted(minors, reverse=True)[:count]
+    groups: list[tuple[str, list[str]]] = []
+    if versions:
+        for spec in versions:
+            matches = [v for v in releases if f"{v}.".startswith(f"{spec}.")]
+            if not matches:
+                sys.exit(f"No Home Assistant release matches {spec}")
+            groups.append((spec, matches))
+    else:
+        minors: dict[tuple[int, ...], list[str]] = {}
+        for version in releases:
+            minors.setdefault(version_key(version)[:2], []).append(version)
+        groups = [
+            (".".join(map(str, minor)), minors[minor])
+            for minor in sorted(minors, reverse=True)[:count]
+        ]
 
     ha_plugins = set(stable_releases(fetch(HA_PLUGIN)))
-    custom_plugins = custom_component_plugins(min(selected))
+    custom_plugins = custom_component_plugins(
+        min(version_key(version) for _, group in groups for version in group)
+    )
 
     matrix = []
-    for minor in selected:
-        for version in sorted(minors[minor], key=version_key, reverse=True):
+    for name, group in groups:
+        for version in sorted(group, key=version_key, reverse=True):
             if version in ha_plugins:
                 plugin = f"{HA_PLUGIN}=={version}"
             elif version in custom_plugins:
@@ -105,9 +123,7 @@ def build_matrix(count: int) -> list[dict[str, str]]:
             )
             break
         else:
-            sys.exit(
-                f"No pytest plugin found for Home Assistant {'.'.join(map(str, minor))}"
-            )
+            sys.exit(f"No pytest plugin found for Home Assistant {name}")
     return matrix
 
 
