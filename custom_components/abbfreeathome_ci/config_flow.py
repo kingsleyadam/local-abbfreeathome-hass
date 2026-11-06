@@ -551,6 +551,9 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
                 verify_ssl=entry.data.get(CONF_VERIFY_SSL),
                 client_session=async_get_clientsession(self.hass),
             )
+            # The form only has credential fields, so show certificate errors as base.
+            if CONF_SSL_CERT_FILE_PATH in errors:
+                errors = {"base": errors[CONF_SSL_CERT_FILE_PATH]}
             if not errors:
                 return self.async_update_reload_and_abort(
                     entry,

@@ -1586,6 +1586,8 @@ async def test_reauth_flow(
         (ForbiddenAuthException("/api/rest", 403), "invalid_auth"),
         (ClientConnectionError(TEST_HOST_HTTP), "cannot_connect"),
         (Exception("Unexpected error"), "unknown"),
+        # The form has no certificate field, so certificate errors show as base.
+        (FileNotFoundError(), "ssl_invalid_cert_path"),
     ],
 )
 async def test_reauth_flow_errors(
