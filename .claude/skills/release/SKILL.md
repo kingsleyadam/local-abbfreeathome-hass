@@ -75,6 +75,14 @@ Read the `local-abbfreeathome` pin in `manifest.json` and confirm:
    names the relevant integration options as they appear in the UI, and a link
    to the wiki or README for setup details. If nothing stands out or the user
    declines, rely on the generated notes.
+
+   If the minimum Home Assistant version changed since the last tag (check with
+   `git diff <last-tag> HEAD -- hacs.json`, usually from a `raise-ha-minimum`
+   PR), highlights are required, even if nothing else stands out. Put it first
+   in the file, before any other section, as
+   `## Requires Home Assistant X.Y or newer`. Say that HACS does not offer this
+   release to older installations, so users must update Home Assistant first,
+   and link to the README prerequisites.
 5. Run the validation from `.github/copilot-instructions.md` (`ruff check .`,
    `ruff format --check .`, and `pytest` with coverage) and record the results.
 6. Open a PR to `main` titled `Bump version to X.Y.Z`, or
