@@ -208,10 +208,11 @@ async def test_user_form_https_with_ssl(
 
 async def test_user_form_invalid_auth(
     hass: HomeAssistant,
+    mock_setup_entry: AsyncMock,
     mock_free_at_home_settings: AsyncMock,
     mock_free_at_home_api: AsyncMock,
 ) -> None:
-    """Test we handle invalid auth error."""
+    """Test we handle invalid auth error and can recover."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
@@ -227,12 +228,24 @@ async def test_user_form_invalid_auth(
     assert result2["type"] is FlowResultType.FORM
     assert result2["errors"] == {"base": "invalid_auth"}
 
+    mock_free_at_home_api.get_sysap.side_effect = None
+
+    result3 = await hass.config_entries.flow.async_configure(
+        result["flow_id"], get_user_input()
+    )
+    await hass.async_block_till_done()
+
+    assert result3["type"] is FlowResultType.CREATE_ENTRY
+    assert result3["data"] == get_expected_entry_data()
+
 
 async def test_user_form_cannot_connect(
     hass: HomeAssistant,
+    mock_setup_entry: AsyncMock,
     mock_free_at_home_settings: AsyncMock,
+    mock_free_at_home_api: AsyncMock,
 ) -> None:
-    """Test we handle cannot connect error."""
+    """Test we handle cannot connect error and can recover."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
@@ -248,13 +261,24 @@ async def test_user_form_cannot_connect(
     assert result2["type"] is FlowResultType.FORM
     assert result2["errors"] == {"base": "cannot_connect"}
 
+    mock_free_at_home_settings.load.side_effect = None
+
+    result3 = await hass.config_entries.flow.async_configure(
+        result["flow_id"], get_user_input()
+    )
+    await hass.async_block_till_done()
+
+    assert result3["type"] is FlowResultType.CREATE_ENTRY
+    assert result3["data"] == get_expected_entry_data()
+
 
 async def test_user_form_unsupported_version(
     hass: HomeAssistant,
+    mock_setup_entry: AsyncMock,
     mock_free_at_home_settings: AsyncMock,
     mock_free_at_home_api: AsyncMock,
 ) -> None:
-    """Test we handle unsupported SysAP version."""
+    """Test we handle unsupported SysAP version and can recover."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
@@ -267,6 +291,16 @@ async def test_user_form_unsupported_version(
 
     assert result2["type"] is FlowResultType.FORM
     assert result2["errors"] == {"base": "unsupported_sysap_version"}
+
+    mock_free_at_home_settings.has_api_support = True
+
+    result3 = await hass.config_entries.flow.async_configure(
+        result["flow_id"], get_user_input()
+    )
+    await hass.async_block_till_done()
+
+    assert result3["type"] is FlowResultType.CREATE_ENTRY
+    assert result3["data"] == get_expected_entry_data()
 
 
 async def test_user_form_already_configured(
@@ -377,9 +411,11 @@ async def test_import_flow(
 
 async def test_ssl_cert_required_when_verify_enabled(
     hass: HomeAssistant,
+    mock_setup_entry: AsyncMock,
     mock_free_at_home_settings: AsyncMock,
+    mock_free_at_home_api: AsyncMock,
 ) -> None:
-    """Test SSL cert path required when verification enabled."""
+    """Test SSL cert path required when verification enabled, and recovery."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
@@ -406,12 +442,25 @@ async def test_ssl_cert_required_when_verify_enabled(
         "ssl_cert_file_path": "ssl_cert_required_when_verify_enabled"
     }
 
+    result4 = await hass.config_entries.flow.async_configure(
+        result2["flow_id"],
+        {CONF_VERIFY_SSL: True, CONF_SSL_CERT_FILE_PATH: TEST_CERT_PATH},
+    )
+    await hass.async_block_till_done()
+
+    assert result4["type"] is FlowResultType.CREATE_ENTRY
+    assert result4["data"] == get_expected_entry_data(
+        host=TEST_HOST_HTTPS, ssl_cert_file_path=TEST_CERT_PATH, verify_ssl=True
+    )
+
 
 async def test_ssl_cert_invalid_path(
     hass: HomeAssistant,
+    mock_setup_entry: AsyncMock,
     mock_free_at_home_settings: AsyncMock,
+    mock_free_at_home_api: AsyncMock,
 ) -> None:
-    """Test SSL cert path validation."""
+    """Test SSL cert path validation and recovery."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
@@ -433,6 +482,19 @@ async def test_ssl_cert_invalid_path(
 
     assert result3["type"] is FlowResultType.FORM
     assert result3["errors"] == {"ssl_cert_file_path": "ssl_invalid_cert_path"}
+
+    mock_free_at_home_settings.load.side_effect = None
+
+    result4 = await hass.config_entries.flow.async_configure(
+        result2["flow_id"],
+        {CONF_VERIFY_SSL: True, CONF_SSL_CERT_FILE_PATH: TEST_CERT_PATH},
+    )
+    await hass.async_block_till_done()
+
+    assert result4["type"] is FlowResultType.CREATE_ENTRY
+    assert result4["data"] == get_expected_entry_data(
+        host=TEST_HOST_HTTPS, ssl_cert_file_path=TEST_CERT_PATH, verify_ssl=True
+    )
 
 
 async def test_reconfigure_flow(
@@ -540,10 +602,11 @@ async def test_reconfigure_different_sysap(
 
 async def test_forbidden_auth_exception(
     hass: HomeAssistant,
+    mock_setup_entry: AsyncMock,
     mock_free_at_home_settings: AsyncMock,
     mock_free_at_home_api: AsyncMock,
 ) -> None:
-    """Test we handle forbidden auth error."""
+    """Test we handle forbidden auth error and can recover."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
@@ -559,12 +622,24 @@ async def test_forbidden_auth_exception(
     assert result2["type"] is FlowResultType.FORM
     assert result2["errors"] == {"base": "invalid_auth"}
 
+    mock_free_at_home_api.get_sysap.side_effect = None
+
+    result3 = await hass.config_entries.flow.async_configure(
+        result["flow_id"], get_user_input()
+    )
+    await hass.async_block_till_done()
+
+    assert result3["type"] is FlowResultType.CREATE_ENTRY
+    assert result3["data"] == get_expected_entry_data()
+
 
 async def test_client_connection_error(
     hass: HomeAssistant,
+    mock_setup_entry: AsyncMock,
     mock_free_at_home_settings: AsyncMock,
+    mock_free_at_home_api: AsyncMock,
 ) -> None:
-    """Test we handle client connection error."""
+    """Test we handle client connection error and can recover."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
@@ -578,13 +653,24 @@ async def test_client_connection_error(
     assert result2["type"] is FlowResultType.FORM
     assert result2["errors"] == {"base": "cannot_connect"}
 
+    mock_free_at_home_settings.load.side_effect = None
+
+    result3 = await hass.config_entries.flow.async_configure(
+        result["flow_id"], get_user_input()
+    )
+    await hass.async_block_till_done()
+
+    assert result3["type"] is FlowResultType.CREATE_ENTRY
+    assert result3["data"] == get_expected_entry_data()
+
 
 async def test_unexpected_exception(
     hass: HomeAssistant,
+    mock_setup_entry: AsyncMock,
     mock_free_at_home_settings: AsyncMock,
     mock_free_at_home_api: AsyncMock,
 ) -> None:
-    """Test we handle unexpected exception."""
+    """Test we handle unexpected exception and can recover."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
@@ -597,6 +683,16 @@ async def test_unexpected_exception(
 
     assert result2["type"] is FlowResultType.FORM
     assert result2["errors"] == {"base": "unknown"}
+
+    mock_free_at_home_api.get_sysap.side_effect = None
+
+    result3 = await hass.config_entries.flow.async_configure(
+        result["flow_id"], get_user_input()
+    )
+    await hass.async_block_till_done()
+
+    assert result3["type"] is FlowResultType.CREATE_ENTRY
+    assert result3["data"] == get_expected_entry_data()
 
 
 async def test_zeroconf_ipv6_abort(
@@ -679,7 +775,7 @@ async def test_reconfigure_with_errors(
     mock_config_entry,
     mock_setup_entry: AsyncMock,
 ) -> None:
-    """Test reconfigure flow with validation errors."""
+    """Test reconfigure flow with validation errors and recovery."""
     await hass.config_entries.async_add(mock_config_entry)
 
     result = await hass.config_entries.flow.async_init(
@@ -703,6 +799,18 @@ async def test_reconfigure_with_errors(
     assert result2["type"] is FlowResultType.FORM
     assert result2["errors"] == {"base": "cannot_connect"}
 
+    mock_free_at_home_settings.load.side_effect = None
+
+    result3 = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        get_user_input(host="http://192.168.1.200", verify_ssl=False),
+    )
+    await hass.async_block_till_done()
+
+    assert result3["type"] is FlowResultType.ABORT
+    assert result3["reason"] == "reconfigure_successful"
+    assert mock_config_entry.data[CONF_HOST] == "http://192.168.1.200"
+
 
 async def test_reconfigure_with_api_errors(
     hass: HomeAssistant,
@@ -711,7 +819,7 @@ async def test_reconfigure_with_api_errors(
     mock_config_entry,
     mock_setup_entry: AsyncMock,
 ) -> None:
-    """Test reconfigure flow with API validation errors."""
+    """Test reconfigure flow with API validation errors and recovery."""
     await hass.config_entries.async_add(mock_config_entry)
 
     result = await hass.config_entries.flow.async_init(
@@ -737,6 +845,18 @@ async def test_reconfigure_with_api_errors(
 
     assert result2["type"] is FlowResultType.FORM
     assert result2["errors"] == {"base": "invalid_auth"}
+
+    mock_free_at_home_api.get_sysap.side_effect = None
+
+    result3 = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        get_user_input(host="http://192.168.1.200", verify_ssl=False),
+    )
+    await hass.async_block_till_done()
+
+    assert result3["type"] is FlowResultType.ABORT
+    assert result3["reason"] == "reconfigure_successful"
+    assert mock_config_entry.data[CONF_HOST] == "http://192.168.1.200"
 
 
 async def test_validate_settings_ssl_verification_error(hass: HomeAssistant) -> None:
@@ -926,9 +1046,12 @@ async def test_import_updates_existing_entry(
 
 
 async def test_zeroconf_confirm_with_settings_errors(
-    hass: HomeAssistant, mock_free_at_home_settings: AsyncMock
+    hass: HomeAssistant,
+    mock_setup_entry: AsyncMock,
+    mock_free_at_home_settings: AsyncMock,
+    mock_free_at_home_api: AsyncMock,
 ) -> None:
-    """Test zeroconf_confirm when settings validation fails."""
+    """Test zeroconf_confirm when settings validation fails, and recovery."""
     # Start a zeroconf flow first to set up the flow context
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
@@ -956,13 +1079,24 @@ async def test_zeroconf_confirm_with_settings_errors(
     assert result2["step_id"] == "zeroconf_confirm"
     assert result2["errors"] == {"base": "cannot_connect"}
 
+    mock_free_at_home_settings.load.side_effect = None
+
+    result3 = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input=get_user_input(password="password")
+    )
+    await hass.async_block_till_done()
+
+    assert result3["type"] is FlowResultType.CREATE_ENTRY
+    assert result3["data"] == get_expected_entry_data(password="password")
+
 
 async def test_zeroconf_confirm_with_api_errors(
     hass: HomeAssistant,
+    mock_setup_entry: AsyncMock,
     mock_free_at_home_settings: AsyncMock,
     mock_free_at_home_api: AsyncMock,
 ) -> None:
-    """Test zeroconf_confirm when API validation fails."""
+    """Test zeroconf_confirm when API validation fails, and recovery."""
     # Start a zeroconf flow first to set up the flow context
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
@@ -993,6 +1127,16 @@ async def test_zeroconf_confirm_with_api_errors(
     assert result2["type"] is FlowResultType.FORM
     assert result2["step_id"] == "zeroconf_confirm"
     assert result2["errors"] == {"base": "invalid_auth"}
+
+    mock_free_at_home_api.get_sysap.side_effect = None
+
+    result3 = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input=get_user_input(password="password")
+    )
+    await hass.async_block_till_done()
+
+    assert result3["type"] is FlowResultType.CREATE_ENTRY
+    assert result3["data"] == get_expected_entry_data(password="password")
 
 
 async def test_zeroconf_confirm_https_flow(
@@ -1027,10 +1171,11 @@ async def test_zeroconf_confirm_https_flow(
 
 async def test_ssl_config_with_api_errors(
     hass: HomeAssistant,
+    mock_setup_entry: AsyncMock,
     mock_free_at_home_settings: AsyncMock,
     mock_free_at_home_api: AsyncMock,
 ) -> None:
-    """Test SSL config step when API validation fails."""
+    """Test SSL config step when API validation fails, and recovery."""
     # Start user flow with HTTPS host to get to SSL config step
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
@@ -1059,6 +1204,18 @@ async def test_ssl_config_with_api_errors(
     assert result2["type"] is FlowResultType.FORM
     assert result2["step_id"] == "ssl_config"
     assert result2["errors"] == {"base": "invalid_auth"}
+
+    mock_free_at_home_api.get_sysap.side_effect = None
+
+    result3 = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_VERIFY_SSL: False}
+    )
+    await hass.async_block_till_done()
+
+    assert result3["type"] is FlowResultType.CREATE_ENTRY
+    assert result3["data"] == get_expected_entry_data(
+        host=TEST_HOST_HTTPS, password="password"
+    )
 
 
 async def test_validate_settings_invalid_host_exception(
