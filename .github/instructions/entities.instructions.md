@@ -83,7 +83,8 @@ starts with a full-line marker comment:
   cannot hold comments; name strings to delete in the reason of the marker on
   the Python code using them.
 - Do not mark compatibility with users' existing data, such as legacy
-  `unique_id` suffixes or event types; it does not depend on a version.
+  `unique_id` suffixes, event types, or registry entries created by older
+  versions; it does not depend on the minimum supported version.
 - `python .github/scripts/check_compat.py` fails on expired or malformed
   markers and runs in pre-commit and CI; `--list` lists all markers by version,
   and `--minimum 2026.8` previews what a minimum version would expire.
