@@ -695,6 +695,7 @@ async def test_async_setup_entry_device_via_device_id(
     assert "via_device" not in device_call.kwargs
 
 
+# compat: homeassistant<2026.8 - via_device_id replaced via_device
 async def test_async_setup_entry_device_via_device_fallback(
     hass: HomeAssistant, mock_config_entry, mock_free_at_home_settings
 ) -> None:
@@ -1903,6 +1904,7 @@ def _get_device(
     async_get_device_by_identifier; older versions only have async_get_device.
     """
     device_registry = dr.async_get(hass)
+    # compat: homeassistant<2026.8 - async_get_device_by_identifier replaced async_get_device
     if not hasattr(device_registry, "async_get_device_by_identifier"):
         return device_registry.async_get_device(identifiers={(DOMAIN, serial)})
     return device_registry.async_get_device_by_identifier(
@@ -2009,6 +2011,7 @@ async def test_sub_devices_linked_to_parent_device(
     device_registry.async_update_device(
         old_sub_device.id, area_id=area.id, name_by_user="Ceiling light"
     )
+    # compat: homeassistant<2026.9 - child devices were added; drop child_devices_supported
     child_devices_supported = hasattr(dr, "ChildDeviceInfo")
     if child_devices_supported:
         # Like a restart, so the earlier registration can be converted.
@@ -2042,6 +2045,7 @@ async def test_sub_devices_linked_to_parent_device(
             assert sub_device.id == old_sub_device.id
             assert sub_device.area_id == area.id
             assert sub_device.name_by_user == "Ceiling light"
+        # compat: homeassistant<2026.9 - child devices were added
         if child_devices_supported:
             assert sub_device.parent_device_id == parent_device.id
             assert sub_device.name == channel_id

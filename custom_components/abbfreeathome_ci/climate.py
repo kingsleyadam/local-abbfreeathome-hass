@@ -180,9 +180,8 @@ class FreeAtHomeClimateEntity(FreeAtHomeEntity, ClimateEntity):
             return None
         return self._channel.target_temperature
 
+    # compat: homeassistant<2026.11 - native_* temperature properties replaced the legacy names
     if not hasattr(ClimateEntity, "native_temperature_unit"):
-        # HA Core 2026.11 introduced native_*; legacy names are removed in 2027.11.
-        # Keep these aliases only for HA versions older than 2026.11.
         temperature_unit = native_temperature_unit
         current_temperature = native_current_temperature
         target_temperature = native_target_temperature

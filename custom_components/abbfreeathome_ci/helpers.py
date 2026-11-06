@@ -36,6 +36,7 @@ def async_get_via_device_kwargs(
     """
     device_registry = dr.async_get(hass)
 
+    # compat: homeassistant<2026.8 - via_device_id replaced via_device
     if (
         "via_device_id"
         not in inspect.signature(device_registry.async_get_or_create).parameters
@@ -70,6 +71,7 @@ def async_get_sub_device_info(
 
     # A child device needs a registered parent; without one, fall back to an
     # unlinked sub-device.
+    # compat: homeassistant<2026.9 - drop the ChildDeviceInfo check; child devices were added
     if hasattr(dr, "ChildDeviceInfo") and (
         parent_device := dr.async_get(hass).async_get_device_by_identifier(
             (DOMAIN, channel.device_serial), config_entry_id

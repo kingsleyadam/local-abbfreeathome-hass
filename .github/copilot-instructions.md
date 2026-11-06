@@ -62,6 +62,14 @@ such as `'pycares<5'` for 2025.12. `--html` also writes `htmlcov/`, and argument
 after `--` go to pytest (for example `-- tests/test_light.py -x`); the gate
 applies only to a full run without `--ha` or pytest arguments.
 
+The minimum supported Home Assistant version is `homeassistant` in `hacs.json`.
+Compatibility code for older versions carries `# compat:` markers, described in
+`entities.instructions.md`; `python .github/scripts/check_compat.py` fails on
+markers the minimum has passed and runs in pre-commit and CI. The Home
+Assistant test workflow, including its weekly run, warns when the oldest tested
+release is newer than the minimum, which is the cue to raise it and remove the
+code the checker then reports.
+
 ## Architecture
 
 The integration is a thin Home Assistant layer over the

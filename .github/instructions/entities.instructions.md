@@ -47,8 +47,9 @@ applyTo: "custom_components/**/*.py,tests/**/*.py"
   instead belong to a `<device_serial>_<channel_id>` sub-device linked to the
   parent through `async_get_via_device_kwargs()`. Follow the existing platforms'
   `device_info` implementation.
-- Keep Home Assistant version differences behind feature detection in
-  `helpers.py` rather than version checks.
+- Keep Home Assistant version differences behind feature detection, preferably
+  in `helpers.py`, rather than version checks. Mark every such block, and the
+  tests that exist only to cover it, with a compatibility marker (see below).
 - Config entry options live in `entry.data` with keys from `const.py`. Adding an
   option requires bumping `MINOR_VERSION` in `config_flow.py`, adding a step to
   `async_migrate_entry()` in `__init__.py` that fills a default, adding it to the
@@ -61,3 +62,31 @@ applyTo: "custom_components/**/*.py,tests/**/*.py"
   `TO_REDACT` in `diagnostics.py` when exposing new fields.
 - When an entity or platform is added for a new function ID, update the "Device
   Support" table in `README.md`.
+
+## Compatibility markers
+
+Code that exists only to support an older Home Assistant or library version
+starts with a full-line marker comment:
+
+```python
+# compat: homeassistant<2026.8 - via_device_id replaced via_device
+```
+
+- The package is `homeassistant` or `local-abbfreeathome`, and the reason is
+  required. The block is needed only while the minimum supported version is
+  below the marker's version: `homeassistant` in `hacs.json`, or the library pin
+  in `manifest.json`.
+- Place the marker directly above the smallest block that is deleted once the
+  minimum version passes it, such as a `try`, an `if`, an alias, a helper, or a
+  test. Use the identical marker on every test or `parametrize` case that exists
+  only to cover that block, so one search finds everything to remove. JSON
+  cannot hold comments; name strings to delete in the reason of the marker on
+  the Python code using them.
+- Do not mark compatibility with users' existing data, such as legacy
+  `unique_id` suffixes, event types, or registry entries created by older
+  versions; it does not depend on the minimum supported version.
+- `python .github/scripts/check_compat.py` fails on expired or malformed
+  markers and runs in pre-commit and CI; `--list` lists all markers by version,
+  and `--minimum 2026.8` previews what a minimum version would expire.
+  After raising the minimum version, delete the code it reports together with
+  its tests and any now-unused imports or strings.

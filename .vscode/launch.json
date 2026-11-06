@@ -26,6 +26,24 @@
       "args": ["--ha", "${input:haVersion}"],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
+    },
+    {
+      "name": "Check compatibility markers",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/.github/scripts/check_compat.py",
+      "args": ["--list"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Preview compatibility code to remove",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/.github/scripts/check_compat.py",
+      "args": ["--minimum", "${input:haMinimum}"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
     }
   ],
   "inputs": [
@@ -33,6 +51,11 @@
       "id": "haVersion",
       "type": "promptString",
       "description": "Home Assistant version, e.g. 2026.6 (newest patch) or 2026.6.2"
+    },
+    {
+      "id": "haMinimum",
+      "type": "promptString",
+      "description": "Minimum Home Assistant version to preview, e.g. 2026.8"
     }
   ]
 }

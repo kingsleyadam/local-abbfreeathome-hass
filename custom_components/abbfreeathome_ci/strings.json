@@ -86,7 +86,6 @@
       "not_ipv4address": "Only IPv4 addresses are supported.",
       "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
       "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]",
-      "reconfigure_not_supported": "Reconfigure for this integration is only supported on Home Assistant version 2024.11.0 or newer.",
       "unique_id_mismatch": "The host belongs to a different System Access Point."
     }
   },

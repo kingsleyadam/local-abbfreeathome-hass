@@ -29,3 +29,6 @@ jobs:
 
       - name: Run Ruff Formatter
         run: ruff format --check .
+
+      - name: Check compatibility markers
+        run: python .github/scripts/check_compat.py

@@ -616,6 +616,7 @@ async def test_rtc_entity_update() -> None:
     channel.refresh_state.assert_awaited_once()
 
 
+# compat: homeassistant<2026.11 - native_* temperature properties replaced the legacy names
 @pytest.mark.parametrize("native_api", [False, True])
 @pytest.mark.parametrize(
     ("entity_class", "channel_factory"),

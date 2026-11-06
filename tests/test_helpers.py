@@ -16,6 +16,7 @@ from homeassistant.helpers import device_registry as dr
 from .common import MockConfigEntry
 
 
+# compat: homeassistant<2026.8 - via_device_id replaced via_device
 def _mock_device_registry(*, supports_via_device_id: bool) -> MagicMock:
     """Return a mocked device registry mimicking an old or new HA core."""
     mock_device_registry = MagicMock()
@@ -61,6 +62,7 @@ async def test_via_device_kwargs_parent_not_registered(hass: HomeAssistant) -> N
     assert result == {}
 
 
+# compat: homeassistant<2026.8 - via_device_id replaced via_device
 async def test_via_device_kwargs_falls_back_to_via_device(
     hass: HomeAssistant,
 ) -> None:
@@ -139,7 +141,11 @@ async def test_sub_device_info_uses_child_device(
 
 @pytest.mark.parametrize(
     ("child_devices_supported", "parent_registered"),
-    [(False, True), (True, False)],
+    [
+        # compat: homeassistant<2026.9 - child devices were added
+        (False, True),
+        (True, False),
+    ],
 )
 async def test_sub_device_info_falls_back_to_linked_device(
     hass: HomeAssistant,

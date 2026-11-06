@@ -548,6 +548,7 @@ async def test_setup_heating_cooling_sensor(hass, mock_config_entry):
     assert entity.native_value == "cooling"
 
 
+# compat: homeassistant<2026.7 - UnitOfRatio replaced CONCENTRATION_PARTS_PER_MILLION
 @pytest.mark.parametrize("modern_units", [False, True])
 def test_parts_per_million_compatibility(monkeypatch, modern_units):
     """Use the modern unit when available, otherwise use the legacy constant."""
