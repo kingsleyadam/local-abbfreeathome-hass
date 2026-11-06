@@ -68,7 +68,7 @@ Compatibility code for older versions carries `# compat:` markers, described in
 markers the minimum has passed and runs in pre-commit and CI. The Home
 Assistant test workflow, including its weekly run, warns when the oldest tested
 release is newer than the minimum, which is the cue to raise it and remove the
-code the checker then reports.
+code the checker then reports with the `raise-ha-minimum` skill.
 
 ## Architecture
 

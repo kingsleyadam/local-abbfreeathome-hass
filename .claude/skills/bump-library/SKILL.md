@@ -70,6 +70,9 @@ ruff check . && ruff format --check .
 
 - If breaking changes require integration changes, make them in the same PR so
   `main` never pins a library it is incompatible with (as in #261), with tests.
+- The new pin can expire `# compat: local-abbfreeathome<X.Y` markers; run
+  `python .github/scripts/check_compat.py` and remove the code it reports, as
+  described in the `raise-ha-minimum` skill.
 - Keep new entities for new library features out of this PR; list them as
   follow-up and implement them with `add-entity` afterwards (as #289 and #291
   did). A bump with no code changes should only touch `manifest.json`.
