@@ -529,6 +529,58 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return self._async_update_reload_and_abort()
 
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> ConfigFlowResult:
+        """Handle reauthentication after the SysAP rejected the credentials."""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Ask for new credentials and validate them against the SysAP."""
+        entry = self._get_reauth_entry()
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            errors = await validate_api(
+                host=entry.data[CONF_HOST],
+                username=user_input[CONF_USERNAME],
+                password=user_input[CONF_PASSWORD],
+                ssl_cert_file_path=entry.data.get(CONF_SSL_CERT_FILE_PATH),
+                verify_ssl=entry.data.get(CONF_VERIFY_SSL),
+                client_session=async_get_clientsession(self.hass),
+            )
+            # The form only has credential fields, so show certificate errors as base.
+            if CONF_SSL_CERT_FILE_PATH in errors:
+                errors = {"base": errors[CONF_SSL_CERT_FILE_PATH]}
+            if not errors:
+                return self.async_update_reload_and_abort(
+                    entry,
+                    data_updates={
+                        CONF_USERNAME: user_input[CONF_USERNAME],
+                        CONF_PASSWORD: user_input[CONF_PASSWORD],
+                    },
+                )
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=self.add_suggested_values_to_schema(
+                vol.Schema(
+                    {
+                        vol.Required(CONF_USERNAME): str,
+                        vol.Required(CONF_PASSWORD): str,
+                    }
+                ),
+                {CONF_USERNAME: (user_input or entry.data)[CONF_USERNAME]},
+            ),
+            description_placeholders={
+                CONF_NAME: entry.data.get(CONF_NAME),
+                CONF_HOST: entry.data[CONF_HOST],
+            },
+            errors=errors,
+        )
+
     @callback
     def _async_create_entry(self) -> ConfigFlowResult:
         return self.async_create_entry(

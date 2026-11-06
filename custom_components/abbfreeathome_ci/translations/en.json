@@ -20,6 +20,18 @@
       "unsupported_sysap_version": "The current version {sysap_version} of the SysAP is not supported. Only version 2.6.0 or newer is supported."
     },
     "step": {
+      "reauth_confirm": {
+        "data": {
+          "password": "Password",
+          "username": "Username"
+        },
+        "data_description": {
+          "password": "The password you use to log in to the System Access Point.",
+          "username": "The local API username, usually `installer`."
+        },
+        "description": "The System Access Point {name} at {host} rejected the credentials. Enter a valid username and password for its local API.",
+        "title": "ABB-free@home - Re-authenticate"
+      },
       "reconfigure": {
         "data": {
           "include_orphan_channels": "Include channels NOT on the ABB-free@home floorplan?",
@@ -475,7 +487,7 @@
       "message": "The SSL connection to the System Access Point at {host} failed. Check the SSL certificate and reconfigure the integration."
     },
     "setup_invalid_auth": {
-      "message": "The System Access Point at {host} rejected the credentials. Reconfigure the integration with a valid username and password."
+      "message": "The System Access Point at {host} rejected the credentials. Re-authenticate the integration with a valid username and password."
     },
     "list_virtual_devices_disabled": {
       "message": "Virtual devices are not included for this System Access Point. Enable \"Include virtual devices?\" through Reconfigure on the integration and try again."

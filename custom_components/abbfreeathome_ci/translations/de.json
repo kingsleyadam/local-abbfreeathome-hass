@@ -20,6 +20,18 @@
       "unsupported_sysap_version": "Die aktuelle Version {sysap_version} des SysAP wird nicht unterstützt. Nur Version 2.6.0 oder neuer wird unterstützt."
     },
     "step": {
+      "reauth_confirm": {
+        "data": {
+          "password": "Passwort",
+          "username": "Benutzername"
+        },
+        "data_description": {
+          "password": "Das Passwort, mit dem Sie sich am System Access Point anmelden.",
+          "username": "Der Benutzername der lokalen API, normalerweise `installer`."
+        },
+        "description": "Der System Access Point {name} unter {host} hat die Zugangsdaten abgelehnt. Geben Sie einen gültigen Benutzernamen und ein gültiges Passwort für die lokale API ein.",
+        "title": "ABB-free@home - Erneut authentifizieren"
+      },
       "reconfigure": {
         "data": {
           "include_orphan_channels": "Kanäle einschließen, die NICHT im ABB-free@home Grundriss enthalten sind?",
@@ -475,7 +487,7 @@
       "message": "Die SSL-Verbindung zum System Access Point unter {host} ist fehlgeschlagen. Prüfen Sie das SSL-Zertifikat und konfigurieren Sie die Integration neu."
     },
     "setup_invalid_auth": {
-      "message": "Der System Access Point unter {host} hat die Zugangsdaten abgelehnt. Konfigurieren Sie die Integration mit gültigem Benutzernamen und Passwort neu."
+      "message": "Der System Access Point unter {host} hat die Zugangsdaten abgelehnt. Authentifizieren Sie die Integration erneut mit gültigem Benutzernamen und Passwort."
     },
     "list_virtual_devices_disabled": {
       "message": "Virtuelle Geräte sind für diesen System Access Point nicht eingebunden. Aktivieren Sie „Virtuelle Geräte einschließen?“ über „Neu konfigurieren“ der Integration und versuchen Sie es erneut."

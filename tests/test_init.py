@@ -46,7 +46,12 @@ from custom_components.abbfreeathome_ci.const import (
 )
 from custom_components.abbfreeathome_ci.entity import FreeAtHomeEntity
 from custom_components.abbfreeathome_ci.helpers import async_get_via_device_kwargs
-from homeassistant.config_entries import SOURCE_IGNORE, SOURCE_IMPORT, ConfigEntryState
+from homeassistant.config_entries import (
+    SOURCE_IGNORE,
+    SOURCE_IMPORT,
+    SOURCE_REAUTH,
+    ConfigEntryState,
+)
 from homeassistant.const import (
     CONF_HOST,
     CONF_PASSWORD,
@@ -1040,6 +1045,35 @@ async def test_async_setup_entry_sysap_errors(
         host="http://192.168.1.100"
     ).rstrip(".")
     mock_free_at_home.load.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        InvalidCredentialsException("installer"),
+        ForbiddenAuthException("/rest/configuration", 403),
+    ],
+)
+async def test_async_setup_entry_invalid_auth_starts_reauth(
+    hass: HomeAssistant,
+    mock_config_entry,
+    mock_free_at_home,
+    mock_free_at_home_settings,
+    error,
+) -> None:
+    """Test rejected credentials during setup start a reauthentication flow."""
+    mock_free_at_home.get_config.side_effect = error
+
+    await _async_setup_entry_via_hass(
+        hass, mock_config_entry, mock_free_at_home, mock_free_at_home_settings
+    )
+
+    assert mock_config_entry.state is ConfigEntryState.SETUP_ERROR
+    flows = hass.config_entries.flow.async_progress()
+    assert len(flows) == 1
+    assert flows[0]["context"]["source"] == SOURCE_REAUTH
+    assert flows[0]["context"]["entry_id"] == mock_config_entry.entry_id
+    assert flows[0]["step_id"] == "reauth_confirm"
 
 
 async def test_async_setup_service_already_registered(

@@ -56,6 +56,18 @@
           "ssl_cert_file_path": "Path to SSL certificate file to verify HTTPS/SSL connections.",
           "verify_ssl": "Enable SSL certificate verification. When disabled, HTTPS connections will not verify the server certificate."
         }
+      },
+      "reauth_confirm": {
+        "title": "ABB-free@home - Re-authenticate",
+        "description": "The System Access Point {name} at {host} rejected the credentials. Enter a valid username and password for its local API.",
+        "data": {
+          "username": "[%key:common::config_flow::data::username%]",
+          "password": "[%key:common::config_flow::data::password%]"
+        },
+        "data_description": {
+          "username": "The local API username, usually `installer`.",
+          "password": "The password you use to log in to the System Access Point."
+        }
       }
     },
     "error": {
@@ -475,7 +487,7 @@
       "message": "The SSL connection to the System Access Point at {host} failed. Check the SSL certificate and reconfigure the integration."
     },
     "setup_invalid_auth": {
-      "message": "The System Access Point at {host} rejected the credentials. Reconfigure the integration with a valid username and password."
+      "message": "The System Access Point at {host} rejected the credentials. Re-authenticate the integration with a valid username and password."
     },
     "list_virtual_devices_disabled": {
       "message": "Virtual devices are not included for this System Access Point. Enable \"Include virtual devices?\" through Reconfigure on the integration and try again."

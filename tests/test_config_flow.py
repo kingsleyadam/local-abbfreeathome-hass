@@ -9,6 +9,7 @@ from abbfreeathome.api import (
     InvalidCredentialsException,
     InvalidHostException,
 )
+import pytest
 
 from custom_components.abbfreeathome_ci.config_flow import (
     FreeAtHomeConfigFlow,
@@ -32,6 +33,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
+
+from .common import MockConfigEntry
 
 # Test constants
 TEST_HOST_HTTP = "http://192.168.1.100"
@@ -1539,3 +1542,125 @@ async def test_show_form_with_sysap_version(
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "user"
     assert result["description_placeholders"]["sysap_version"] == "2.6.0"
+
+
+async def test_reauth_flow(
+    hass: HomeAssistant,
+    mock_free_at_home_api: AsyncMock,
+    mock_config_entry,
+    mock_setup_entry: AsyncMock,
+) -> None:
+    """Test reauthentication stores the new credentials and reloads the entry."""
+    mock_config_entry.add_to_hass(hass)
+    original_data = dict(mock_config_entry.data)
+
+    result = await mock_config_entry.start_reauth_flow(hass)
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "reauth_confirm"
+    assert result["description_placeholders"] == {
+        "name": TEST_NAME,
+        "host": TEST_HOST_HTTP,
+    }
+
+    result2 = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_USERNAME: "new_username", CONF_PASSWORD: "new_password"},
+    )
+    await hass.async_block_till_done()
+
+    assert result2["type"] is FlowResultType.ABORT
+    assert result2["reason"] == "reauth_successful"
+    assert mock_config_entry.data == {
+        **original_data,
+        CONF_USERNAME: "new_username",
+        CONF_PASSWORD: "new_password",
+    }
+    assert len(mock_setup_entry.mock_calls) == 1
+
+
+@pytest.mark.parametrize(
+    ("error", "expected_error"),
+    [
+        (InvalidCredentialsException(TEST_USERNAME), "invalid_auth"),
+        (ForbiddenAuthException("/api/rest", 403), "invalid_auth"),
+        (ClientConnectionError(TEST_HOST_HTTP), "cannot_connect"),
+        (Exception("Unexpected error"), "unknown"),
+        # The form has no certificate field, so certificate errors show as base.
+        (FileNotFoundError(), "ssl_invalid_cert_path"),
+    ],
+)
+async def test_reauth_flow_errors(
+    hass: HomeAssistant,
+    mock_free_at_home_api: AsyncMock,
+    mock_config_entry,
+    mock_setup_entry: AsyncMock,
+    error: Exception,
+    expected_error: str,
+) -> None:
+    """Test reauthentication shows errors and can recover."""
+    mock_config_entry.add_to_hass(hass)
+
+    result = await mock_config_entry.start_reauth_flow(hass)
+
+    mock_free_at_home_api.get_sysap.side_effect = error
+
+    result2 = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_USERNAME: TEST_USERNAME, CONF_PASSWORD: TEST_PASSWORD_WRONG},
+    )
+
+    assert result2["type"] is FlowResultType.FORM
+    assert result2["step_id"] == "reauth_confirm"
+    assert result2["errors"] == {"base": expected_error}
+    assert mock_config_entry.data[CONF_PASSWORD] == TEST_PASSWORD
+
+    mock_free_at_home_api.get_sysap.side_effect = None
+
+    result3 = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_USERNAME: TEST_USERNAME, CONF_PASSWORD: "new_password"},
+    )
+    await hass.async_block_till_done()
+
+    assert result3["type"] is FlowResultType.ABORT
+    assert result3["reason"] == "reauth_successful"
+    assert mock_config_entry.data[CONF_PASSWORD] == "new_password"
+
+
+async def test_reauth_flow_uses_entry_ssl_settings(
+    hass: HomeAssistant,
+    mock_free_at_home_api: AsyncMock,
+    mock_setup_entry: AsyncMock,
+) -> None:
+    """Test reauthentication validates with the entry's host and SSL settings."""
+    entry = MockConfigEntry(
+        version=1,
+        minor_version=6,
+        domain=DOMAIN,
+        title=TEST_TITLE,
+        data=get_expected_entry_data(
+            host=TEST_HOST_HTTPS,
+            ssl_cert_file_path=TEST_CERT_PATH,
+            verify_ssl=True,
+        ),
+        unique_id=TEST_SERIAL,
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.abbfreeathome_ci.config_flow.FreeAtHomeApi",
+        return_value=mock_free_at_home_api,
+    ) as mock_api_class:
+        result = await entry.start_reauth_flow(hass)
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_USERNAME: TEST_USERNAME, CONF_PASSWORD: "new_password"},
+        )
+        await hass.async_block_till_done()
+
+    assert result2["type"] is FlowResultType.ABORT
+    assert result2["reason"] == "reauth_successful"
+    assert mock_api_class.call_args.kwargs["host"] == TEST_HOST_HTTPS
+    assert mock_api_class.call_args.kwargs["verify_ssl"] is True
+    assert mock_api_class.call_args.kwargs["ssl_cert_ca_file"] == TEST_CERT_PATH

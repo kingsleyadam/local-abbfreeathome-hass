@@ -38,7 +38,11 @@ from homeassistant.core import (
     SupportsResponse,
     callback,
 )
-from homeassistant.exceptions import ConfigEntryError, ConfigEntryNotReady
+from homeassistant.exceptions import (
+    ConfigEntryAuthFailed,
+    ConfigEntryError,
+    ConfigEntryNotReady,
+)
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
@@ -289,8 +293,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 def _raise_on_sysap_error(host: str) -> Iterator[None]:
     """Raise SysAP errors during setup as config entry setup errors.
 
-    Connection problems let Home Assistant retry the setup; configuration
-    problems fail it until the user reconfigures the entry.
+    Connection problems let Home Assistant retry the setup; rejected credentials
+    start a reauthentication flow; other configuration problems fail it until the
+    user reconfigures the entry.
     """
     placeholders = {"host": host}
     try:
@@ -319,7 +324,7 @@ def _raise_on_sysap_error(host: str) -> Iterator[None]:
             translation_placeholders=placeholders,
         ) from err
     except (InvalidCredentialsException, ForbiddenAuthException) as err:
-        raise ConfigEntryError(
+        raise ConfigEntryAuthFailed(
             translation_domain=DOMAIN,
             translation_key="setup_invalid_auth",
             translation_placeholders=placeholders,
