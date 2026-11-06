@@ -4,11 +4,12 @@ applyTo: "tests/**"
 
 ## Tests
 
-Tests run with `pytest-homeassistant-custom-component` on the pinned Home
-Assistant version, or with Home Assistant's own `pytest-homeassistant` on HA dev
-and newer releases. Both load as pytest plugins automatically. Import their
-helpers, such as `MockConfigEntry`, from `tests/common.py`, which picks the
-installed plugin; add further helpers there as needed. `tests/conftest.py` has an
+Tests run with Home Assistant's own `pytest-homeassistant` on 2026.11 and newer,
+including the version pinned for local development, or with
+`pytest-homeassistant-custom-component` on the older releases in the CI matrix.
+Both load as pytest plugins automatically. Import their helpers, such as
+`MockConfigEntry`, from `tests/common.py`, which picks the installed plugin; add
+further helpers there as needed. `tests/conftest.py` has an
 autouse fixture that enables custom integrations. Import the integration as
 `custom_components.abbfreeathome_ci.*`. `asyncio_mode = "auto"`,
 so async tests and fixtures need no `asyncio` marker. Use the `hass` fixture for a

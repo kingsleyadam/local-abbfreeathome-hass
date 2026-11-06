@@ -4,10 +4,10 @@
 
 This is the ABB-free@home Home Assistant custom integration, distributed through
 HACS. The integration lives in `custom_components/abbfreeathome_ci` with domain
-`abbfreeathome_ci`. The Dev Container and CI tests use Python 3.13; the Ruff CI
-job uses Python 3.12. Use `uv` to manage the virtual environment; it is the Dev
-Container default. Run commands from the repository root with the virtual
-environment active.
+`abbfreeathome_ci`. The Dev Container uses Python 3.14, and CI tests each Home
+Assistant version on the Python it requires; the Ruff CI job uses Python 3.12.
+Use `uv` to manage the virtual environment; it is the Dev Container default. Run
+commands from the repository root with the virtual environment active.
 
 ```sh
 uv venv
@@ -25,9 +25,9 @@ ruff format --check .
 ```
 
 The Dev Container's `postCreateCommand` already runs these install steps and
-`pre-commit install`. `dev-requirements.txt` pins
-`pytest-homeassistant-custom-component`, which in turn pins the Home Assistant
-version used in tests. The library version comes from `requirements` in
+`pre-commit install`. `dev-requirements.txt` pins Home Assistant's
+`pytest-homeassistant` plugin, which in turn pins the latest Home Assistant
+release for local tests. The library version comes from `requirements` in
 `manifest.json`; reinstall from it after changing the pin.
 
 Pre-commit runs Ruff with `--fix` and the Ruff formatter. Ruff configuration lives
@@ -36,7 +36,7 @@ in `pyproject.toml`, including docstring checks, import sorting with
 `asyncio.timeout` and `zoneinfo`. CI also runs `hassfest`, which validates
 `manifest.json`, `strings.json`, `icons.json`, and `services.yaml`.
 
-CI's coverage-summary gate requires 100% line and branch coverage; every change
+CI's `Test Results` gate requires 100% line and branch coverage; every change
 must keep it there by adding tests for new or changed code. Only when a path is
 genuinely untestable may it be excluded with `# pragma: no cover`, ideally with a
 short reason. `custom_components` has no `__init__.py`, so coverage only reports
@@ -44,12 +44,12 @@ modules that tests import; a module without tests is invisible to the gate. Do
 not treat a passing gate as proof that a new or changed module is covered; check
 that it appears in the report.
 
-CI also runs the suite against the newest patch of each of the latest seven Home
+CI runs the suite against the newest patch of each of the latest seven Home
 Assistant minor releases (`.github/workflows/test-ha-versions.yaml`), weekly and
 on pushes and PRs. `.github/scripts/ha_test_matrix.py` picks the versions from
 PyPI, with the matching pytest plugin and Python version; run it to see the
 current matrix. The coverage of all versions is combined, and the combined report
-must also reach 100%, so code that branches on the Home Assistant version needs
+must reach 100%, so code that branches on the Home Assistant version needs
 tests that cover each branch on some version in the matrix.
 
 To reproduce this locally, `python .github/scripts/test_ha_versions.py` (aliased
