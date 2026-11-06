@@ -11,14 +11,23 @@ Because of this, the integration will adhere to the strict [styling and code gui
 
 ## Prerequisites
 
-There are two main prerequisites before being able to use this integration.
+These are the prerequisites before being able to use this integration.
 
+- Home Assistant 2026.5 or newer
 - ABB-free@home System Access Point 2.0
 - System Access Point running version 2.6.0 or newer
 
 [ABB-free@home Local API Prerequisites](https://developer.eu.mybuildings.abb.com/fah_local/prerequisites)
 
 > Note: Earlier hardware versions may also work, as reported [here](https://github.com/kingsleyadam/local-abbfreeathome-hass/discussions/148), if they are running firmware version 2.6.0 or newer. Your results may vary.
+
+### Supported Home Assistant versions
+
+The integration supports the Home Assistant releases from about the last six
+months: the latest seven monthly releases, which are the versions it is tested
+against. The minimum version moves forward as Home Assistant publishes new
+releases, and HACS does not offer updates to older Home Assistant installations.
+Update Home Assistant to keep receiving integration updates.
 
 ## Device Support
 
