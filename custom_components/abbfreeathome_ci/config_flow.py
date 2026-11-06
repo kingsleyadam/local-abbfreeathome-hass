@@ -465,13 +465,7 @@ class FreeAtHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle user initiated reconfigure flow."""
-        try:
-            entry = self._get_reconfigure_entry()
-        except AttributeError:  # pragma: no cover
-            return self.async_abort(
-                reason="reconfigure_not_supported"
-            )  # pragma: no cover
-
+        entry = self._get_reconfigure_entry()
         self._host = entry.data.get(CONF_HOST)
         self._name = entry.data.get(CONF_NAME)
         self._serial_number = entry.data.get(CONF_SERIAL)

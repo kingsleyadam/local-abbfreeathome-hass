@@ -47,10 +47,10 @@ from .entity import (
 )
 from .helpers import AnyDeviceInfo, async_get_sub_device_info
 
+# compat: homeassistant<2026.7 - UnitOfRatio replaced CONCENTRATION_PARTS_PER_MILLION
 try:
     from homeassistant.const import UnitOfRatio
 except ImportError:
-    # Older supported HA versions do not yet have UnitOfRatio.
     from homeassistant.const import CONCENTRATION_PARTS_PER_MILLION as PARTS_PER_MILLION
 else:
     PARTS_PER_MILLION = UnitOfRatio.PARTS_PER_MILLION

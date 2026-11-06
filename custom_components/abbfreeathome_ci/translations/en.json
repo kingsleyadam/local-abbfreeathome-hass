@@ -7,7 +7,6 @@
       "invalid_settings": "Could not read the settings of the System Access Point.",
       "not_ipv4address": "Only IPv4 addresses are supported.",
       "reauth_successful": "Re-authentication was successful",
-      "reconfigure_not_supported": "Reconfigure for this integration is only supported on Home Assistant version 2024.11.0 or newer.",
       "reconfigure_successful": "Re-configuration was successful",
       "unique_id_mismatch": "The host belongs to a different System Access Point."
     },

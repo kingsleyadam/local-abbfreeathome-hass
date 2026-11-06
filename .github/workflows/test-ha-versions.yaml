@@ -30,6 +30,16 @@ jobs:
         id: matrix
         run: python3 .github/scripts/ha_test_matrix.py --count 7
 
+      # Warns when the oldest tested release is newer than the minimum in
+      # hacs.json. Expired markers fail the lint workflow, not the tests.
+      - name: Check minimum Home Assistant version
+        continue-on-error: true
+        env:
+          MATRIX: ${{ steps.matrix.outputs.matrix }}
+        run: |
+          oldest=$(jq -r 'map(.homeassistant) | sort_by(split(".") | map(tonumber)) | first' <<< "$MATRIX")
+          python3 .github/scripts/check_compat.py --oldest-tested "$oldest"
+
   test:
     name: HA ${{ matrix.homeassistant }}
     needs: versions
