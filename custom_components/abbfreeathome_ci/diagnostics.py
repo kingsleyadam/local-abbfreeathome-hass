@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from copy import deepcopy
 from typing import Any
 
 from abbfreeathome import FreeAtHome
@@ -98,9 +99,10 @@ async def async_get_config_entry_diagnostics(
     """Return diagnostics for a config entry."""
     _free_at_home: FreeAtHome = hass.data[DOMAIN][entry.entry_id]
 
-    # Inject Function and Pairing names into configuration.
-    inject_function_pairing_parameter_names(
-        (await _free_at_home.get_config()).get("devices")
-    )
+    # Copy the cached configuration so diagnostics never modify the library's state.
+    _config = deepcopy(await _free_at_home.get_config())
 
-    return async_redact_data(await _free_at_home.get_config(), TO_REDACT)
+    # Inject Function and Pairing names into configuration.
+    inject_function_pairing_parameter_names(_config.get("devices"))
+
+    return async_redact_data(_config, TO_REDACT)

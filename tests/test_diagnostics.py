@@ -70,6 +70,23 @@ async def _async_get_diagnostics(hass, config_entry):
     return await async_get_config_entry_diagnostics(hass, config_entry)
 
 
+async def test_diagnostics_does_not_modify_cached_config(
+    hass: HomeAssistant, mock_config_entry
+) -> None:
+    """Test downloading diagnostics leaves the library's cached config unchanged."""
+    diagnostics = await _async_get_diagnostics(hass, mock_config_entry)
+    channel = diagnostics["devices"]["ABB7F57FFFE12345"]["channels"]["ch0000"]
+
+    assert "parameterNames" in diagnostics["devices"]["ABB7F57FFFE12345"]
+    assert "parameterNames" in channel
+    assert "function" in channel
+    assert "pairing" in channel["inputs"]["idp0000"]
+    assert "pairing" in channel["outputs"]["odp0000"]
+
+    free_at_home = hass.data[DOMAIN][mock_config_entry.entry_id]
+    assert await free_at_home.get_config() == _configuration()
+
+
 async def test_diagnostics_redacts_identifying_fields(
     hass: HomeAssistant, mock_config_entry
 ) -> None:
