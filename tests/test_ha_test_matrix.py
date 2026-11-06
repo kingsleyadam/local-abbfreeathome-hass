@@ -1,10 +1,12 @@
 """Test the Home Assistant test matrix builder."""
 
 import importlib.util
+import io
 import json
 from pathlib import Path
 import sys
 from typing import Any
+import urllib.request
 
 import pytest
 
@@ -18,7 +20,7 @@ _SPEC.loader.exec_module(ha_test_matrix)
 
 
 def _files(
-    requires_python: str = ">=3.14.2", *, yanked: bool = False
+    requires_python: str | None = ">=3.14.2", *, yanked: bool = False
 ) -> list[dict[str, Any]]:
     """Return the files of a PyPI release."""
     return [{"requires_python": requires_python, "yanked": yanked}]
@@ -57,10 +59,14 @@ def pypi(monkeypatch: pytest.MonkeyPatch) -> dict[str, dict[str, Any]]:
             }
         },
         "pytest-homeassistant-custom-component": {
-            "releases": {"0.13.375": _files(">=3.13.2")}
+            "releases": {"0.13.375": _files(">=3.13.2"), "0.13.376": _files()}
         },
         "pytest-homeassistant-custom-component/0.13.375": {
             "info": {"requires_dist": ["homeassistant==2026.10.4", "pytest==9.0.0"]}
+        },
+        # Skipped, because it pins a beta.
+        "pytest-homeassistant-custom-component/0.13.376": {
+            "info": {"requires_dist": ["homeassistant==2026.11.0b3"]}
         },
     }
     monkeypatch.setattr(
@@ -71,6 +77,29 @@ def pypi(monkeypatch: pytest.MonkeyPatch) -> dict[str, dict[str, Any]]:
         ],
     )
     return metadata
+
+
+def test_fetch(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test metadata is fetched from the PyPI JSON API once per package."""
+    requests: list[urllib.request.Request] = []
+
+    def urlopen(request: urllib.request.Request, timeout: float) -> io.BytesIO:
+        requests.append(request)
+        return io.BytesIO(b'{"info": {}}')
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    ha_test_matrix.fetch.cache_clear()
+
+    for _ in range(2):
+        assert ha_test_matrix.fetch("homeassistant") == {"info": {}}
+        assert ha_test_matrix.fetch("homeassistant", "2026.11.0") == {"info": {}}
+
+    ha_test_matrix.fetch.cache_clear()
+    assert [request.full_url for request in requests] == [
+        "https://pypi.org/pypi/homeassistant/json",
+        "https://pypi.org/pypi/homeassistant/2026.11.0/json",
+    ]
+    assert requests[0].get_header("User-agent") == "ha-test-matrix"
 
 
 def test_version_key() -> None:
@@ -126,6 +155,16 @@ def test_build_matrix_versions_unavailable(spec: str, message: str) -> None:
         ha_test_matrix.build_matrix(7, [spec])
 
 
+def test_build_matrix_without_python_version(pypi: dict[str, dict[str, Any]]) -> None:
+    """Test a release without a minimum Python version exits."""
+    pypi["homeassistant"]["releases"]["2026.11.0"] = _files(None)
+
+    with pytest.raises(
+        SystemExit, match="Cannot read the Python version of homeassistant 2026.11.0"
+    ):
+        ha_test_matrix.build_matrix(7, ["2026.11"])
+
+
 def test_beta_matrix(pypi: dict[str, dict[str, Any]]) -> None:
     """Test the newest beta of an upcoming release is selected."""
     pypi["pytest-homeassistant"]["releases"]["2026.12.0b1"] = _files()
@@ -165,6 +204,18 @@ def test_main(
     matrix = [_entry("2026.12.0b1")]
     assert json.loads(capsys.readouterr().out) == matrix
     assert output.read_text() == f"matrix={json.dumps(matrix)}\n"
+
+
+@pytest.mark.usefixtures("pypi")
+def test_main_outside_github_actions(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test --ha only prints the matrix without a step output."""
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+
+    ha_test_matrix.main(["--ha", "2026.12"])
+
+    assert json.loads(capsys.readouterr().out) == [_entry("2026.12.0b0")]
 
 
 @pytest.mark.usefixtures("pypi")
