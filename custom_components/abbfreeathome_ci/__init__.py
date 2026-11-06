@@ -384,7 +384,9 @@ def _async_remove_devices(
         if _device_entry is None:
             continue
 
-        # compat: homeassistant<2026.9 - child devices are removed with their parent
+        # Child devices are removed with their parent, but sub-devices registered
+        # before child devices existed stay linked with via_device_id until their
+        # entities load again, so remove those explicitly.
         for _sub_device in device_entries:
             if _sub_device.via_device_id == _device_entry.id:
                 device_registry.async_remove_device(_sub_device.id)
