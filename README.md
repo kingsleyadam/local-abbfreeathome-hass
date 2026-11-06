@@ -88,6 +88,8 @@ Navigate to: `SysAP Configuration` > `Settings` > `free@home - Settings` > `Loca
 
 Copy the username listed within that window (usually `installer`) to be used when invoking the api. The password will be your personally set password to login to the app and web interface.
 
+If the SysAP later rejects the stored credentials, for example after a password change, Home Assistant asks you to re-authenticate the integration. Enter the new username and password; the other settings are kept.
+
 ### Add Integration
 
 #### Configuration Options
