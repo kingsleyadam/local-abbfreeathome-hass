@@ -55,9 +55,12 @@ tests that cover each branch on some version in the matrix.
 While a Home Assistant beta leads up to the next release,
 `.github/workflows/test-ha-beta.yaml` runs the suite against the newest beta
 (`ha_test_matrix.py --beta`) hourly, once per beta and commit of `main`. It has no
-coverage gate and is not a required check. A failure opens an issue labeled
-`bug`, or comments on the open one, and the next passing run closes it. To test a
-given version with it, run the workflow manually with that version.
+coverage gate and is not a required check. Failing tests open an issue labeled
+`bug`, or comment on the open one, and the next passing run closes it; after a
+failure before the tests, such as a PyPI error, the next hourly run retries. A
+fix that keeps the old code path for older supported releases marks it with a
+`# compat:` marker, described below. To test a given version, run the workflow
+manually with that version.
 
 To reproduce this locally, `python .github/scripts/test_ha_versions.py` (aliased
 to `run-tests` in the Dev Container, and available under VS Code's Run and Debug
