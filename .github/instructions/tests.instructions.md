@@ -21,7 +21,9 @@ fixtures are torn down: a `report_usage()` warning of Home Assistant, or another
 warning that says something is deprecated or will stop working in Home
 Assistant (`tests/deprecations.py`). Deprecated constants and enum members are
 reported only while a module is imported, so `test_deprecations.py` also
-imports every module of the integration in a fresh interpreter. Adopt the
+imports every module of the integration in a fresh interpreter. To check the
+hooks in `conftest.py` themselves, it runs `tests/deprecation_samples.py`, which
+logs deprecations on purpose, in a separate pytest run. Adopt the
 replacement rather than avoiding the warning, and keep the old code path behind
 a compatibility marker while supported releases lack the replacement.
 

@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -32,6 +33,40 @@ def test_integration_imports_without_deprecation() -> None:
     )
 
     assert result.returncode == 0, result.stderr
+
+
+def test_logged_deprecation_fails_the_test() -> None:
+    """Fail exactly the tests that logged a deprecation, also while hass stopped.
+
+    Two tests of deprecation_samples.py fail by design, so they run in a
+    separate pytest run, which applies the hooks of conftest.py to them.
+    """
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            # Keep the failures by design out of the last-failed cache.
+            "-p",
+            "no:cacheprovider",
+            # Print whole summary lines, as on CI.
+            "-vv",
+            "tests/deprecation_samples.py",
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    reported = re.findall(r"^(?:ERROR|FAILED) tests/.*", result.stdout, re.MULTILINE)
+    error = "ERROR tests/deprecation_samples.py::test_deprecation"
+    message = "Failed: tests.deprecation_samples logged a deprecation"
+    assert reported == [
+        f"{error}_in_test - {message}: The test uses something deprecated",
+        f"{error}_on_hass_stop - {message}: Stopping uses something deprecated",
+    ], result.stdout
+    assert "::test_without_deprecation PASSED" in result.stdout
 
 
 async def test_report_usage_fails_the_test(
