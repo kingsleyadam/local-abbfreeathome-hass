@@ -82,7 +82,7 @@ The easiest way to install this integration is through the Home Assistant Market
 
    [![Open your Home Assistant instance and open this repository in the Marketplace or HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=kingsleyadam&repository=local-abbfreeathome-hass&category=integration)
 
-2. Download the integration and restart Home Assistant.
+2. Download the integration. With HACS on Home Assistant versions before 2026.11, restart Home Assistant afterwards; the Marketplace doesn't need a restart.
 
 ### Manually
 
