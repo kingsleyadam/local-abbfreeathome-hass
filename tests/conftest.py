@@ -1,6 +1,7 @@
 """Global fixtures for ABB-free@home integration tests."""
 
 from collections.abc import Generator
+import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -8,6 +9,46 @@ import pytest
 from custom_components.abbfreeathome_ci.const import DOMAIN
 
 from .common import MockConfigEntry
+from .deprecations import DeprecationLog
+
+_DEPRECATION_LOG = DeprecationLog()
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Collect the deprecations logged while the tests run."""
+    logging.getLogger().addHandler(_DEPRECATION_LOG)
+
+
+def pytest_unconfigure(config: pytest.Config) -> None:
+    """Stop collecting deprecations."""
+    logging.getLogger().removeHandler(_DEPRECATION_LOG)
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_runtest_setup(item: pytest.Item) -> Generator[None]:
+    """Forget the deprecations logged before the test, such as on import.
+
+    A test in test_deprecations.py checks those of the integration's imports.
+    """
+    _DEPRECATION_LOG.pop()
+    return (yield)
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_runtest_teardown(item: pytest.Item) -> Generator[None]:
+    """Fail the test if a deprecation was logged during it.
+
+    A hook instead of a fixture also covers the teardown of all fixtures,
+    including the hass fixture.
+    """
+    yield
+    _DEPRECATION_LOG.check()
+
+
+@pytest.fixture
+def deprecation_log() -> DeprecationLog:
+    """Return the deprecations logged, for a test expecting one to pop() it."""
+    return _DEPRECATION_LOG
 
 
 @pytest.fixture(autouse=True)
