@@ -30,6 +30,13 @@ The Dev Container's `postCreateCommand` already runs these install steps and
 release for local tests. The library version comes from `requirements` in
 `manifest.json`; reinstall from it after changing the pin.
 
+To run Home Assistant with the integration, start the `Home Assistant`
+configuration under VS Code's Run and Debug. It runs Home Assistant from the
+virtual environment under the debugger, with the git-ignored `config/` directory
+as its configuration, and loads the integration from `custom_components` through
+`PYTHONPATH`, so breakpoints in the integration, Home Assistant, and the library
+work. The frontend listens on port 8123.
+
 Pre-commit runs Ruff with `--fix` and the Ruff formatter. Ruff configuration lives
 in `pyproject.toml`, including docstring checks, import sorting with
 `homeassistant` as first party, and bans on `async_timeout` and `pytz` in favor of
