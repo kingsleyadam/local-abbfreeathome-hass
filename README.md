@@ -82,9 +82,7 @@ The easiest way to install this integration is through the Home Assistant Market
 
    [![Open your Home Assistant instance and open this repository in the Marketplace or HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=kingsleyadam&repository=local-abbfreeathome-hass&category=integration)
 
-2. In the Marketplace, select **Install**. You go straight to the setup flow, without a restart. Updates still need a restart; a repair tells you when, and can restart Home Assistant for you.
-
-   With HACS on Home Assistant versions before 2026.11, download the integration, restart Home Assistant, and then add "ABB-free@home" under **Settings** > **Devices & services**.
+2. Install the integration, and restart Home Assistant if needed.
 
 ### Manually
 
