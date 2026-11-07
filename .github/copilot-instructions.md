@@ -69,6 +69,9 @@ environments and applies the same coverage gate.
 `--ha 2026.6` runs that version instead, any release with a pytest plugin even
 outside the supported range, or a beta such as `--ha 2026.12.0b1`; a prefix such
 as `--ha 2026.12` picks the newest beta until that release is out.
+`--ha dev` runs the newest commit of Home Assistant's `dev` branch, built from a
+GitHub archive in about a minute, which shows failures weeks before a beta; CI
+never runs it, so a failure there blocks nothing.
 `--with PACKAGE` adds an extra package or constraint, such as `'pycares<5'` for
 2025.12. `--html` also writes `htmlcov/`, and arguments after `--` go to pytest
 (for example `-- tests/test_light.py -x`); the gate applies only to a full run

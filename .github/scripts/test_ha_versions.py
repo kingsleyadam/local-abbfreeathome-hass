@@ -3,13 +3,15 @@
 Mirrors `.github/workflows/test-ha-versions.yaml`: runs pytest with coverage in
 an isolated uv environment for each version from `ha_test_matrix.py`, then
 combines the coverage. The 100% gate applies only when the full matrix ran
-without extra pytest arguments.
+without extra pytest arguments. `--ha dev` runs the newest commit of Home
+Assistant's dev branch, which CI never tests.
 
 Examples:
     python .github/scripts/test_ha_versions.py
     python .github/scripts/test_ha_versions.py --html
     python .github/scripts/test_ha_versions.py --ha 2026.6
     python .github/scripts/test_ha_versions.py --ha 2026.12.0b1
+    python .github/scripts/test_ha_versions.py --ha dev
     python .github/scripts/test_ha_versions.py --ha 2025.12.1 --with 'pycares<5'
     python .github/scripts/test_ha_versions.py --ha 2026.11 -- tests/test_light.py -x
     python .github/scripts/test_ha_versions.py -- -rA
@@ -25,11 +27,18 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import tomllib
+from typing import Any
+import urllib.request
 
-from ha_test_matrix import build_matrix
+from ha_test_matrix import MIN_PYTHON, build_matrix
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = REPO_ROOT / "custom_components/abbfreeathome_ci/manifest.json"
+
+CORE_REPOSITORY = "home-assistant/core"
+DEV = "dev"
+PLUGIN_DIRECTORY = "packages/pytest-homeassistant"
 
 
 def uv_run(python: str, packages: list[str], args: list[str], env: dict) -> int:
@@ -44,7 +53,60 @@ def uv_run(python: str, packages: list[str], args: list[str], env: dict) -> int:
     ).returncode
 
 
-def main() -> None:
+def fetch_text(url: str, accept: str | None = None) -> str:
+    """Return the text at a GitHub URL, optionally as the given media type."""
+    headers = {"User-Agent": "ha-test-versions"}
+    if accept:
+        headers["Accept"] = accept
+    request = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(request, timeout=30) as response:
+        return response.read().decode()
+
+
+def dev_entry() -> dict[str, Any]:
+    """Return the matrix entry of the newest commit of Home Assistant's dev branch.
+
+    The pytest plugin does not pin Home Assistant on dev, so the entry installs
+    both from a GitHub archive of that commit, Home Assistant as an extra
+    package. The archive is much smaller than a clone of the core repository,
+    but lacks the translations of Home Assistant's own integrations, which only
+    releases include.
+    """
+    sha = fetch_text(
+        f"https://api.github.com/repos/{CORE_REPOSITORY}/commits/{DEV}",
+        accept="application/vnd.github.sha",
+    ).strip()
+    pyproject = tomllib.loads(
+        fetch_text(
+            f"https://raw.githubusercontent.com/{CORE_REPOSITORY}/{sha}/pyproject.toml"
+        )
+    )
+    requires_python = pyproject["project"].get("requires-python", "")
+    if not (python := MIN_PYTHON.search(requires_python)):
+        sys.exit(f"Cannot read the Python version of Home Assistant {DEV} at {sha}")
+    archive = f"https://github.com/{CORE_REPOSITORY}/archive/{sha}.tar.gz"
+    return {
+        "homeassistant": f"{DEV}@{sha[:7]}",
+        "python": python[1],
+        "plugin": f"pytest-homeassistant @ {archive}#subdirectory={PLUGIN_DIRECTORY}",
+        "packages": [f"homeassistant @ {archive}"],
+    }
+
+
+def select_matrix(count: int, versions: list[str]) -> list[dict[str, Any]]:
+    """Return the matrix entries of the given versions or the latest releases.
+
+    `dev` selects the newest commit of Home Assistant's dev branch; the other
+    versions select releases from PyPI with `build_matrix()`.
+    """
+    releases = [version for version in versions if version != DEV]
+    matrix = build_matrix(count, releases) if releases or not versions else []
+    if DEV in versions:
+        matrix.append(dev_entry())
+    return matrix
+
+
+def main(argv: list[str] | None = None) -> None:
     """Run the matrix and report the results."""
     parser = argparse.ArgumentParser(
         description=__doc__.splitlines()[0],
@@ -63,7 +125,8 @@ def main() -> None:
         metavar="VERSION",
         help=(
             "run this Home Assistant version instead of the supported ones, "
-            "e.g. 2026.1 (newest patch), 2026.1.2, or 2026.2.0b1 (repeatable)"
+            "e.g. 2026.1 (newest patch), 2026.1.2, 2026.2.0b1, or dev (newest "
+            "commit of the dev branch) (repeatable)"
         ),
     )
     parser.add_argument(
@@ -79,11 +142,11 @@ def main() -> None:
         metavar="PACKAGE",
         help="install an extra package or constraint, e.g. 'pycares<5' (repeatable)",
     )
-    args, pytest_args = parser.parse_known_args()
+    args, pytest_args = parser.parse_known_args(argv)
     if pytest_args[:1] == ["--"]:
         pytest_args = pytest_args[1:]
 
-    matrix = build_matrix(args.count, args.ha)
+    matrix = select_matrix(args.count, args.ha)
 
     requirements = json.loads(MANIFEST.read_text(encoding="utf-8"))["requirements"]
     env = {key: value for key, value in os.environ.items() if key != "VIRTUAL_ENV"}
@@ -104,7 +167,13 @@ def main() -> None:
             print(f"\n=== Home Assistant {version} ({entry['plugin']})", flush=True)
             results[version] = uv_run(
                 entry["python"],
-                [entry["plugin"], "pytest-cov", *requirements, *args.packages],
+                [
+                    *entry.get("packages", []),
+                    entry["plugin"],
+                    "pytest-cov",
+                    *requirements,
+                    *args.packages,
+                ],
                 [
                     "python",
                     "-m",
