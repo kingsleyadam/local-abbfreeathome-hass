@@ -50,7 +50,9 @@ on pushes and PRs. `.github/scripts/ha_test_matrix.py` picks the versions from
 PyPI, with the matching pytest plugin and Python version; run it to see the
 current matrix. The coverage of all versions is combined, and the combined report
 must reach 100%, so code that branches on the Home Assistant version needs
-tests that cover each branch on some version in the matrix.
+tests that cover each branch on some version in the matrix. Tests also fail when
+a deprecation is logged (see `tests.instructions.md`), so a deprecation shows up
+with the first tested release or beta that reports it.
 
 While a Home Assistant beta leads up to the next release,
 `.github/workflows/test-ha-beta.yaml` runs the suite against the newest beta

@@ -26,6 +26,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from homeassistant.util.unit_system import METRIC_SYSTEM, US_CUSTOMARY_SYSTEM
 
+from .common import async_setup_entity_platform
+
 
 def _radiator_outputs(
     *,
@@ -506,10 +508,10 @@ def test_rtc_entity_hvac_action_from_state_indication(
 
 
 async def test_rtc_entity_hvac_action_follows_state_indication_updates(
-    hass: HomeAssistant,
+    hass: HomeAssistant, mock_config_entry
 ) -> None:
     """Test a state indication push updates the action without a value update."""
-    device = MagicMock(unresponsive=False)
+    device = MagicMock(unresponsive=False, device_serial="ABB7F57FFFE12345")
     channel = RoomTemperatureController(
         device=device,
         channel_id="ch0000",
@@ -532,8 +534,8 @@ async def test_rtc_entity_hvac_action_follows_state_indication_updates(
     entity = _rtc_entity(channel)
     entity.entity_id = "climate.rt_andi"
 
-    assert await async_setup_component(hass, "climate", {})
-    await hass.data["climate"].async_add_entities([entity])
+    mock_config_entry.add_to_hass(hass)
+    await async_setup_entity_platform(hass, mock_config_entry, "climate", [entity])
     assert hass.states.get(entity.entity_id).attributes["hvac_action"] == "idle"
 
     channel.update_channel("AL_STATE_INDICATION/odp0009", "33")
@@ -683,7 +685,11 @@ def test_temperature_api_compatibility(
     [(METRIC_SYSTEM, 21.3, 21.0), (US_CUSTOMARY_SYSTEM, 70.3, 69.8)],
 )
 async def test_temperature_state_and_service_unit_conversion(
-    hass: HomeAssistant, unit_system, current_temperature, target_temperature
+    hass: HomeAssistant,
+    mock_config_entry,
+    unit_system,
+    current_temperature,
+    target_temperature,
 ) -> None:
     """Keep display and service temperature conversion working on older HA."""
     channel = _mock_rtc_channel()
@@ -693,7 +699,8 @@ async def test_temperature_state_and_service_unit_conversion(
     hass.config.units = unit_system
 
     assert await async_setup_component(hass, "climate", {})
-    await hass.data["climate"].async_add_entities([entity])
+    mock_config_entry.add_to_hass(hass)
+    await async_setup_entity_platform(hass, mock_config_entry, "climate", [entity])
     state = hass.states.get(entity.entity_id)
     assert state.attributes["current_temperature"] == current_temperature
     assert state.attributes[ATTR_TEMPERATURE] == target_temperature
