@@ -9,6 +9,7 @@ Examples:
     python .github/scripts/test_ha_versions.py
     python .github/scripts/test_ha_versions.py --html
     python .github/scripts/test_ha_versions.py --ha 2026.6
+    python .github/scripts/test_ha_versions.py --ha 2026.12.0b1
     python .github/scripts/test_ha_versions.py --ha 2025.12.1 --with 'pycares<5'
     python .github/scripts/test_ha_versions.py --ha 2026.11 -- tests/test_light.py -x
     python .github/scripts/test_ha_versions.py -- -rA
@@ -62,7 +63,7 @@ def main() -> None:
         metavar="VERSION",
         help=(
             "run this Home Assistant version instead of the supported ones, "
-            "e.g. 2026.1 (newest patch) or 2026.1.2 (repeatable)"
+            "e.g. 2026.1 (newest patch), 2026.1.2, or 2026.2.0b1 (repeatable)"
         ),
     )
     parser.add_argument(

@@ -52,15 +52,27 @@ current matrix. The coverage of all versions is combined, and the combined repor
 must reach 100%, so code that branches on the Home Assistant version needs
 tests that cover each branch on some version in the matrix.
 
+While a Home Assistant beta leads up to the next release,
+`.github/workflows/test-ha-beta.yaml` runs the suite against the newest beta
+(`ha_test_matrix.py --beta`) hourly, once per beta and commit of `main`. It has no
+coverage gate and is not a required check. Failing tests open an issue labeled
+`bug`, or comment on the open one, and the next passing run closes it; after a
+failure before the tests, such as a PyPI error, the next hourly run retries. A
+fix that keeps the old code path for older supported releases marks it with a
+`# compat:` marker, described below. To test a given version, run the workflow
+manually with that version.
+
 To reproduce this locally, `python .github/scripts/test_ha_versions.py` (aliased
 to `run-tests` in the Dev Container, and available under VS Code's Run and Debug
 through `.vscode/launch.json`) runs the whole matrix in isolated uv
 environments and applies the same coverage gate.
 `--ha 2026.6` runs that version instead, any release with a pytest plugin even
-outside the supported range; `--with PACKAGE` adds an extra package or constraint,
-such as `'pycares<5'` for 2025.12. `--html` also writes `htmlcov/`, and arguments
-after `--` go to pytest (for example `-- tests/test_light.py -x`); the gate
-applies only to a full run without `--ha` or pytest arguments.
+outside the supported range, or a beta such as `--ha 2026.12.0b1`; a prefix such
+as `--ha 2026.12` picks the newest beta until that release is out.
+`--with PACKAGE` adds an extra package or constraint, such as `'pycares<5'` for
+2025.12. `--html` also writes `htmlcov/`, and arguments after `--` go to pytest
+(for example `-- tests/test_light.py -x`); the gate applies only to a full run
+without `--ha` or pytest arguments.
 
 The minimum supported Home Assistant version is `homeassistant` in `hacs.json`.
 Compatibility code for older versions carries `# compat:` markers, described in

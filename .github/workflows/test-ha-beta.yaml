@@ -1,0 +1,201 @@
+name: Test Home Assistant Beta
+
+# Tests the newest Home Assistant beta while one leads up to a new release, so
+# breaking changes show up before users update. Runs hourly and tests each beta
+# once on each commit of the default branch. It has no coverage gate and is not
+# a required check, so a broken beta never blocks pull requests or releases.
+#
+# GitHub emails failures of scheduled runs only to whoever last changed the
+# schedule, so failing tests open an issue, or comment on the open one, and the
+# next passing run closes it. A failure before the tests, such as a PyPI or
+# network error, opens no issue, and the next scheduled run retries.
+
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: >-
+          Home Assistant version to test instead of the newest beta, such as
+          2026.12.0b1; its result is not reported in an issue
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+
+jobs:
+  detect:
+    name: Find HA Beta
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.beta.outputs.version }}
+      python: ${{ steps.beta.outputs.python }}
+      plugin: ${{ steps.beta.outputs.plugin }}
+      tested: ${{ steps.tested.outputs.cache-hit }}
+    steps:
+      - name: Checkout Repo Code
+        uses: actions/checkout@v7
+
+      - name: Find the newest beta
+        id: beta
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [ -n "$VERSION" ]; then
+            python3 .github/scripts/ha_test_matrix.py --ha "$VERSION" > matrix.json
+          else
+            python3 .github/scripts/ha_test_matrix.py --beta > matrix.json
+          fi
+          jq -r '.[0] // {} | "version=\(.homeassistant // "")",
+            "python=\(.python // "")", "plugin=\(.plugin // "")"' matrix.json \
+            >> "$GITHUB_OUTPUT"
+          if [ "$(jq length matrix.json)" = 0 ]; then
+            echo "No beta of an upcoming Home Assistant release with a pytest plugin." \
+              >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # Scheduled runs test each beta once per commit; manual runs always test.
+      - name: Check whether this commit was tested against the beta
+        id: tested
+        if: steps.beta.outputs.version != '' && github.event_name == 'schedule'
+        uses: actions/cache/restore@v6
+        with:
+          path: .ha-beta-tested
+          key: ha-beta-${{ steps.beta.outputs.version }}-${{ github.sha }}
+          lookup-only: true
+
+      - name: Skip the tested beta
+        if: steps.tested.outputs.cache-hit == 'true'
+        env:
+          VERSION: ${{ steps.beta.outputs.version }}
+        run: |
+          echo "Home Assistant $VERSION was already tested on this commit." \
+            >> "$GITHUB_STEP_SUMMARY"
+
+  test:
+    name: HA ${{ needs.detect.outputs.version }}
+    needs: detect
+    if: needs.detect.outputs.version != '' && needs.detect.outputs.tested != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      outcome: ${{ steps.pytest.outcome }}
+      failures: ${{ steps.failures.outputs.tests }}
+    steps:
+      - name: Checkout Repo Code
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          python-version: ${{ needs.detect.outputs.python }}
+          activate-environment: true
+          enable-cache: true
+          cache-suffix: ${{ needs.detect.outputs.version }}
+          cache-dependency-glob: custom_components/abbfreeathome_ci/manifest.json
+
+      - name: Install dependencies
+        env:
+          PLUGIN: ${{ needs.detect.outputs.plugin }}
+        run: |
+          mapfile -t requirements < <(
+            jq -r '.requirements[]' custom_components/abbfreeathome_ci/manifest.json
+          )
+          uv pip install "$PLUGIN" "${requirements[@]}"
+
+      # The step timeout fails a hanging test run, so it is reported like a
+      # failing one; the job timeout would cancel it instead.
+      - name: Test with pytest
+        id: pytest
+        timeout-minutes: 15
+        run: |
+          set -o pipefail
+          python -m pytest | tee pytest.log
+
+      - name: Collect failed tests
+        id: failures
+        if: failure() && steps.pytest.outcome == 'failure'
+        run: |
+          delimiter="EOF_$(openssl rand -hex 8)"
+          {
+            echo "tests<<$delimiter"
+            grep -E '^(FAILED|ERROR) ' pytest.log | cut -c1-300 | head -n 30
+            echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"
+
+  report:
+    name: Report Result
+    needs: [detect, test]
+    # Reports only the outcome of the tests, so after a failure before them the
+    # beta and commit stay untested and the next scheduled run retries. A manual
+    # run of a given version shows its result only in the run.
+    if: >-
+      ${{ !cancelled() && !inputs.version
+      && (needs.test.outputs.outcome == 'success'
+      || needs.test.outputs.outcome == 'failure') }}
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    env:
+      VERSION: ${{ needs.detect.outputs.version }}
+    steps:
+      - name: Open, update, or close the beta issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          OUTCOME: ${{ needs.test.outputs.outcome }}
+          FAILURES: ${{ needs.test.outputs.failures }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMPAT_URL: ${{ github.server_url }}/${{ github.repository }}/blob/HEAD/.github/instructions/entities.instructions.md#compatibility-markers
+        run: |
+          marker='<!-- ha-beta-tests -->'
+          issue=$(gh issue list --state open --limit 500 --json number,body \
+            --jq "map(select(.body // \"\" | contains(\"$marker\"))) | first | .number // empty")
+          run="Home Assistant $VERSION on $GITHUB_SHA ([workflow run]($RUN_URL))"
+
+          if [ "$OUTCOME" = success ]; then
+            if [ -n "$issue" ]; then
+              gh issue close "$issue" --comment "Tests pass again against $run."
+            fi
+            exit 0
+          fi
+
+          details="Tests fail against $run."
+          if [ -n "$FAILURES" ]; then
+            details+=$'\n\n```\n'"$FAILURES"$'\n```'
+          fi
+          title="Tests fail against Home Assistant $VERSION"
+          if [ -n "$issue" ]; then
+            gh issue comment "$issue" --body "$details"
+            gh issue edit "$issue" --title "$title"
+          else
+            # Issues keep single line breaks, so lines within a paragraph end in \.
+            release=${VERSION%.*}
+            gh issue create --title "$title" --label bug --body "$details
+
+          The scheduled tests against the newest Home Assistant beta failed, so \
+          the integration may break with the upcoming release. Later failures \
+          are added as comments, and the next passing run closes this issue.
+
+          A fix usually adopts the new API and keeps the old code path for the \
+          older releases still supported. Mark that path with \
+          \`# compat: homeassistant<$release - <reason>\`, as described in \
+          [Compatibility markers]($COMPAT_URL), so that it is removed once the \
+          minimum supported version reaches $release.
+
+          $marker"
+          fi
+
+      - name: Remember the tested beta and commit
+        run: echo "$VERSION $GITHUB_SHA" > .ha-beta-tested
+
+      - name: Save the tested beta and commit
+        uses: actions/cache/save@v6
+        with:
+          path: .ha-beta-tested
+          key: ha-beta-${{ needs.detect.outputs.version }}-${{ github.sha }}

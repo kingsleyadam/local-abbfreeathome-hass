@@ -50,7 +50,7 @@
     {
       "id": "haVersion",
       "type": "promptString",
-      "description": "Home Assistant version, e.g. 2026.6 (newest patch) or 2026.6.2"
+      "description": "Home Assistant version, e.g. 2026.6 (newest patch), 2026.6.2, or 2026.7.0b1"
     },
     {
       "id": "haMinimum",
