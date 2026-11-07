@@ -1,10 +1,7 @@
 """Test repair issues for unresponsive ABB-free@home devices."""
 
-from unittest.mock import AsyncMock, MagicMock
-
 from abbfreeathome import DevicesChangedEvent
 from abbfreeathome.bin.interface import Interface
-from abbfreeathome.device import Device
 from freezegun.api import FrozenDateTimeFactory
 import pytest
 
@@ -20,8 +17,15 @@ from custom_components.abbfreeathome_ci.unresponsive import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
 
-from .common import MockConfigEntry, async_fire_time_changed
-from .test_init import _devices_changed, _get_device, _setup_with_channels, _trigger
+from .common import (
+    MockConfigEntry,
+    async_fire_time_changed,
+    build_device,
+    build_trigger,
+    devices_changed,
+    get_device_entry,
+    setup_with_channels,
+)
 
 SERIAL = "ABB700000001"
 
@@ -30,18 +34,6 @@ SERIAL = "ABB700000001"
 def no_platforms(monkeypatch: pytest.MonkeyPatch) -> None:
     """Skip the entity platforms, the tracker works on devices only."""
     monkeypatch.setattr("custom_components.abbfreeathome_ci.PLATFORMS", [])
-
-
-@pytest.fixture
-def mock_free_at_home_settings() -> MagicMock:
-    """Mock FreeAtHomeSettings with serializable values."""
-    mock = MagicMock()
-    mock.load = AsyncMock()
-    mock.name = "Test SysAP"
-    mock.version = "3.0.0"
-    mock.hardware_version = "1.0"
-    mock.serial_number = "TEST123456"
-    return mock
 
 
 @pytest.fixture
@@ -55,23 +47,6 @@ def repairs_config_entry(mock_config_entry: MockConfigEntry) -> MockConfigEntry:
         data={**mock_config_entry.data, CONF_CREATE_UNRESPONSIVE_REPAIRS: True},
         source=mock_config_entry.source,
         unique_id=mock_config_entry.unique_id,
-    )
-
-
-def _device(
-    serial: str = SERIAL,
-    *,
-    unresponsive: bool = False,
-    interface: Interface | None = None,
-) -> Device:
-    """Build a real free@home device."""
-    return Device(
-        serial,
-        "1234",
-        "Runtime Device",
-        api=MagicMock(),
-        interface=interface,
-        unresponsive=unresponsive,
     )
 
 
@@ -95,9 +70,9 @@ async def test_disabled_by_default(
     hass: HomeAssistant, mock_config_entry, mock_free_at_home_settings, freezer
 ) -> None:
     """Test no repair issue is created when the option is disabled."""
-    device = _device(unresponsive=True)
-    await _setup_with_channels(
-        hass, mock_config_entry, mock_free_at_home_settings, [_trigger(device)]
+    device = build_device(unresponsive=True)
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [build_trigger(device)]
     )
 
     await _pass_delay(hass, freezer, 2)
@@ -109,9 +84,9 @@ async def test_unresponsive_at_startup(
     hass: HomeAssistant, repairs_config_entry, mock_free_at_home_settings, freezer
 ) -> None:
     """Test a device unresponsive at startup gets an issue after the delay."""
-    device = _device(unresponsive=True)
-    await _setup_with_channels(
-        hass, repairs_config_entry, mock_free_at_home_settings, [_trigger(device)]
+    device = build_device(unresponsive=True)
+    await setup_with_channels(
+        hass, repairs_config_entry, mock_free_at_home_settings, [build_trigger(device)]
     )
 
     await _pass_delay(hass, freezer, 0.5)
@@ -134,9 +109,9 @@ async def test_repeated_report_keeps_delay(
     hass: HomeAssistant, repairs_config_entry, mock_free_at_home_settings, freezer
 ) -> None:
     """Test a repeated unresponsive report does not restart the delay."""
-    device = _device(unresponsive=True)
-    await _setup_with_channels(
-        hass, repairs_config_entry, mock_free_at_home_settings, [_trigger(device)]
+    device = build_device(unresponsive=True)
+    await setup_with_channels(
+        hass, repairs_config_entry, mock_free_at_home_settings, [build_trigger(device)]
     )
     tracker = async_get_unresponsive_tracker(hass, repairs_config_entry.entry_id)
 
@@ -151,9 +126,9 @@ async def test_recovers_within_delay(
     hass: HomeAssistant, repairs_config_entry, mock_free_at_home_settings, freezer
 ) -> None:
     """Test a brief dropout does not create an issue."""
-    device = _device()
-    await _setup_with_channels(
-        hass, repairs_config_entry, mock_free_at_home_settings, [_trigger(device)]
+    device = build_device()
+    await setup_with_channels(
+        hass, repairs_config_entry, mock_free_at_home_settings, [build_trigger(device)]
     )
 
     device.update_unresponsive(True)
@@ -168,9 +143,9 @@ async def test_issue_removed_when_device_responds(
     hass: HomeAssistant, repairs_config_entry, mock_free_at_home_settings, freezer
 ) -> None:
     """Test the issue is removed once the device responds again."""
-    device = _device()
-    await _setup_with_channels(
-        hass, repairs_config_entry, mock_free_at_home_settings, [_trigger(device)]
+    device = build_device()
+    await setup_with_channels(
+        hass, repairs_config_entry, mock_free_at_home_settings, [build_trigger(device)]
     )
 
     device.update_unresponsive(True)
@@ -186,9 +161,9 @@ async def test_virtual_device(
     hass: HomeAssistant, repairs_config_entry, mock_free_at_home_settings, freezer
 ) -> None:
     """Test virtual devices get their own issue text."""
-    device = _device(unresponsive=True, interface=Interface.VIRTUAL_DEVICE)
-    await _setup_with_channels(
-        hass, repairs_config_entry, mock_free_at_home_settings, [_trigger(device)]
+    device = build_device(unresponsive=True, interface=Interface.VIRTUAL_DEVICE)
+    await setup_with_channels(
+        hass, repairs_config_entry, mock_free_at_home_settings, [build_trigger(device)]
     )
 
     await _pass_delay(hass, freezer, 1.5)
@@ -202,12 +177,12 @@ async def test_device_without_visible_channels(
     hass: HomeAssistant, repairs_config_entry, mock_free_at_home_settings, freezer
 ) -> None:
     """Test devices without a device registry entry are not tracked."""
-    mock_fah = await _setup_with_channels(
+    mock_fah = await setup_with_channels(
         hass, repairs_config_entry, mock_free_at_home_settings, []
     )
-    device = _device(unresponsive=True)
+    device = build_device(unresponsive=True)
 
-    _devices_changed(mock_fah, DevicesChangedEvent(added_devices=(device,)))
+    devices_changed(mock_fah, DevicesChangedEvent(added_devices=(device,)))
     await _pass_delay(hass, freezer, 1.5)
 
     assert _issue(hass, repairs_config_entry) is None
@@ -217,25 +192,25 @@ async def test_runtime_device_added_and_removed(
     hass: HomeAssistant, repairs_config_entry, mock_free_at_home_settings, freezer
 ) -> None:
     """Test devices added at runtime are tracked until removed by the SysAP."""
-    mock_fah = await _setup_with_channels(
+    mock_fah = await setup_with_channels(
         hass, repairs_config_entry, mock_free_at_home_settings, []
     )
-    device = _device()
-    channel = _trigger(device)
+    device = build_device()
+    channel = build_trigger(device)
     mock_fah.channels.append(channel)
 
-    _devices_changed(
+    devices_changed(
         mock_fah,
         DevicesChangedEvent(added_devices=(device,), added_channels=(channel,)),
     )
     # A repeated channel must not track the device twice.
-    _devices_changed(mock_fah, DevicesChangedEvent(added_channels=(channel,)))
+    devices_changed(mock_fah, DevicesChangedEvent(added_channels=(channel,)))
     device.update_unresponsive(True)
     await _pass_delay(hass, freezer, 1.5)
     assert _issue(hass, repairs_config_entry) is not None
 
     mock_fah.channels.remove(channel)
-    _devices_changed(
+    devices_changed(
         mock_fah, DevicesChangedEvent(removed_device_serials=(SERIAL, "UNKNOWN"))
     )
     await hass.async_block_till_done()
@@ -252,13 +227,13 @@ async def test_removal_cancels_pending_issue(
     hass: HomeAssistant, repairs_config_entry, mock_free_at_home_settings, freezer
 ) -> None:
     """Test removing a device before the delay elapsed creates no issue."""
-    device = _device(unresponsive=True)
-    mock_fah = await _setup_with_channels(
-        hass, repairs_config_entry, mock_free_at_home_settings, [_trigger(device)]
+    device = build_device(unresponsive=True)
+    mock_fah = await setup_with_channels(
+        hass, repairs_config_entry, mock_free_at_home_settings, [build_trigger(device)]
     )
 
     mock_fah.channels.clear()
-    _devices_changed(mock_fah, DevicesChangedEvent(removed_device_serials=(SERIAL,)))
+    devices_changed(mock_fah, DevicesChangedEvent(removed_device_serials=(SERIAL,)))
     await _pass_delay(hass, freezer, 1.5)
 
     assert _issue(hass, repairs_config_entry) is None
@@ -268,14 +243,14 @@ async def test_manual_device_removal(
     hass: HomeAssistant, repairs_config_entry, mock_free_at_home_settings, freezer
 ) -> None:
     """Test removing a device in Home Assistant removes its issue."""
-    device = _device(unresponsive=True)
-    await _setup_with_channels(
-        hass, repairs_config_entry, mock_free_at_home_settings, [_trigger(device)]
+    device = build_device(unresponsive=True)
+    await setup_with_channels(
+        hass, repairs_config_entry, mock_free_at_home_settings, [build_trigger(device)]
     )
     await _pass_delay(hass, freezer, 1.5)
     assert _issue(hass, repairs_config_entry) is not None
 
-    device_entry = _get_device(hass, repairs_config_entry.entry_id, SERIAL)
+    device_entry = get_device_entry(hass, repairs_config_entry.entry_id, SERIAL)
     assert await async_remove_config_entry_device(
         hass, repairs_config_entry, device_entry
     )
@@ -287,13 +262,13 @@ async def test_unload_removes_issues(
     hass: HomeAssistant, repairs_config_entry, mock_free_at_home_settings, freezer
 ) -> None:
     """Test unloading the entry removes issues and pending timers."""
-    first = _device(unresponsive=True)
-    second = _device("ABB700000002")
-    await _setup_with_channels(
+    first = build_device(unresponsive=True)
+    second = build_device("ABB700000002")
+    await setup_with_channels(
         hass,
         repairs_config_entry,
         mock_free_at_home_settings,
-        [_trigger(first), _trigger(second)],
+        [build_trigger(first), build_trigger(second)],
     )
     await _pass_delay(hass, freezer, 1.5)
     second.update_unresponsive(True)

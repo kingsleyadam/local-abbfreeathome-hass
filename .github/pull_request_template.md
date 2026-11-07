@@ -23,8 +23,8 @@ None
 ## Checklist
 
 - [ ] Focused on one bug, feature, or refactor, with no unrelated changes
-- [ ] Labels applied: `documentation` for docs-only; `chore` for CI, tooling,
-      or config only; otherwise exactly one of
+- [ ] Labels applied: `documentation` for docs-only; `chore` for tests, CI,
+      tooling, or config only; otherwise exactly one of
       `Semver-Major` (+ `breaking-change`), `Semver-Minor` (+ `enhancement`), or
       `Semver-Patch` (+ `bug` for fixes)
 - [ ] Existing entity `unique_id`s are unchanged, or the break is labeled and described

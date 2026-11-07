@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from abbfreeathome import DevicesChangedEvent
 from abbfreeathome.bin.interface import Interface
-from abbfreeathome.channels.trigger import Trigger
 from abbfreeathome.device import Device
 from abbfreeathome.exceptions import (
     BadRequestException,
@@ -66,7 +65,14 @@ from homeassistant.helpers import (
     entity_registry as er,
 )
 
-from .common import MockConfigEntry
+from .common import (
+    MockConfigEntry,
+    build_device,
+    build_trigger,
+    devices_changed,
+    get_device_entry,
+    setup_with_channels,
+)
 
 
 @pytest.fixture
@@ -87,18 +93,6 @@ def mock_free_at_home():
     mock.unload_device = MagicMock()
     mock.api = MagicMock()
     mock.api.virtualdevice = AsyncMock()
-    return mock
-
-
-@pytest.fixture
-def mock_free_at_home_settings():
-    """Mock FreeAtHomeSettings instance."""
-    mock = MagicMock()
-    mock.load = AsyncMock()
-    mock.name = "Test SysAP"
-    mock.version = "3.0.0"
-    mock.hardware_version = "1.0"
-    mock.serial_number = "TEST123456"
     return mock
 
 
@@ -1606,7 +1600,7 @@ async def test_list_virtual_devices(
     )
     unplaced.load_channels(floorplan)
     virtual_device_service.get_devices.return_value = {
-        "ABB700000001": _device(),
+        "ABB700000001": build_device(),
         "6000AAAA0002": switch,
         "6000AAAA0001": unplaced,
     }
@@ -1804,51 +1798,6 @@ async def test_async_unload_entry_failure(
     assert mock_config_entry.entry_id in hass.data[DOMAIN]
 
 
-async def _setup_with_channels(
-    hass: HomeAssistant, entry, settings, channels: list
-) -> MagicMock:
-    """Set up the integration with a mocked FreeAtHome holding mutable channels."""
-
-    async def ws_listen_coro():
-        """Mock coroutine for ws_listen."""
-
-    mock_fah = MagicMock()
-    mock_fah.channels = channels
-    mock_fah.get_config = AsyncMock()
-    mock_fah.load = AsyncMock()
-    mock_fah.ws_listen = MagicMock(side_effect=ws_listen_coro)
-    mock_fah.ws_close = AsyncMock()
-    mock_fah.get_devices = MagicMock(
-        side_effect=lambda: {
-            channel.device_serial: channel.device for channel in channels
-        }
-    )
-    mock_fah.get_channels_by_device = MagicMock(
-        side_effect=lambda serial: [c for c in channels if c.device_serial == serial]
-    )
-    mock_fah.get_channels_by_class = MagicMock(
-        side_effect=lambda channel_class: [
-            c for c in channels if type(c) is channel_class
-        ]
-    )
-    if hass.config_entries.async_get_entry(entry.entry_id) is None:
-        entry.add_to_hass(hass)
-
-    with (
-        patch(
-            "custom_components.abbfreeathome_ci.FreeAtHomeSettings",
-            return_value=settings,
-        ),
-        patch("custom_components.abbfreeathome_ci.FreeAtHome", return_value=mock_fah),
-        patch("custom_components.abbfreeathome_ci.FreeAtHomeApi"),
-        patch("custom_components.abbfreeathome_ci.async_get_clientsession"),
-    ):
-        assert await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
-    return mock_fah
-
-
 @pytest.fixture
 def lifecycle_platforms(monkeypatch: pytest.MonkeyPatch) -> None:
     """Load only the platforms used by the lifecycle tests' channels."""
@@ -1866,49 +1815,8 @@ async def loaded_free_at_home(
     lifecycle_platforms,
 ) -> MagicMock:
     """Set up the integration without any channels."""
-    return await _setup_with_channels(
+    return await setup_with_channels(
         hass, mock_config_entry, mock_free_at_home_settings, []
-    )
-
-
-def _trigger(device: Device, channel_id: str = "ch0000", parameters=None) -> Trigger:
-    """Build a real Trigger channel (button entity)."""
-    return Trigger(
-        device, channel_id, f"Trigger {channel_id}", {}, {}, parameters or {}
-    )
-
-
-def _device(serial: str = "ABB700000001", parameters=None) -> Device:
-    """Build a real free@home device."""
-    return Device(
-        serial,
-        "1234",
-        "Runtime Device",
-        api=MagicMock(),
-        room_name="Hall",
-        parameters=parameters,
-    )
-
-
-def _devices_changed(mock_fah, event: DevicesChangedEvent) -> None:
-    """Invoke the registered devices-changed callback."""
-    mock_fah.register_devices_changed_callback.call_args.args[0](event)
-
-
-def _get_device(
-    hass: HomeAssistant, config_entry_id: str, serial: str
-) -> dr.DeviceEntry | None:
-    """Return the device a config entry registered for a serial.
-
-    HA 2026.8 deprecated async_get_device in favor of
-    async_get_device_by_identifier; older versions only have async_get_device.
-    """
-    device_registry = dr.async_get(hass)
-    # compat: homeassistant<2026.8 - async_get_device_by_identifier replaced async_get_device
-    if not hasattr(device_registry, "async_get_device_by_identifier"):
-        return device_registry.async_get_device(identifiers={(DOMAIN, serial)})
-    return device_registry.async_get_device_by_identifier(
-        (DOMAIN, serial), config_entry_id
     )
 
 
@@ -1921,23 +1829,21 @@ async def test_runtime_device_added_unavailable_and_removed(
     """Test a device added at runtime, its availability, and its removal."""
     device_registry = dr.async_get(hass)
     entity_registry = er.async_get(hass)
-    device = _device()
-    channel = _trigger(device)
+    device = build_device()
+    channel = build_trigger(device)
     loaded_free_at_home.channels.append(channel)
 
-    _devices_changed(
+    devices_changed(
         loaded_free_at_home,
         DevicesChangedEvent(added_devices=(device,), added_channels=(channel,)),
     )
     # A repeated channel must not create a duplicate entity.
-    _devices_changed(
-        loaded_free_at_home, DevicesChangedEvent(added_channels=(channel,))
-    )
+    devices_changed(loaded_free_at_home, DevicesChangedEvent(added_channels=(channel,)))
     await hass.async_block_till_done()
 
-    device_entry = _get_device(hass, mock_config_entry.entry_id, "ABB700000001")
+    device_entry = get_device_entry(hass, mock_config_entry.entry_id, "ABB700000001")
     assert device_entry is not None
-    sysap_entry = _get_device(hass, mock_config_entry.entry_id, "TEST123456")
+    sysap_entry = get_device_entry(hass, mock_config_entry.entry_id, "TEST123456")
     assert device_entry.via_device_id == sysap_entry.id
     entities = er.async_entries_for_device(entity_registry, device_entry.id)
     assert len(entities) == 1
@@ -1958,7 +1864,7 @@ async def test_runtime_device_added_unavailable_and_removed(
         identifiers={(DOMAIN, "ABB700000001_ch0000")},
         **async_get_via_device_kwargs(hass, mock_config_entry.entry_id, "ABB700000001"),
     )
-    _devices_changed(
+    devices_changed(
         loaded_free_at_home,
         DevicesChangedEvent(removed_device_serials=("ABB700000001", "UNKNOWN")),
     )
@@ -1990,9 +1896,9 @@ async def test_sub_devices_linked_to_parent_device(
         unique_id=mock_config_entry.unique_id,
     )
     entry.add_to_hass(hass)
-    device = _device()
+    device = build_device()
     for channel_id in ("ch0000", "ch0001"):
-        device.channels[channel_id] = _trigger(device, channel_id)
+        device.channels[channel_id] = build_trigger(device, channel_id)
     assert device.is_multi_device
 
     # Registry entries left by an earlier version linking sub-devices with via_device.
@@ -2017,7 +1923,7 @@ async def test_sub_devices_linked_to_parent_device(
         # Like a restart, so the earlier registration can be converted.
         device_registry.async_config_entry_unloaded(entry.entry_id)
 
-    mock_fah = await _setup_with_channels(
+    mock_fah = await setup_with_channels(
         hass, entry, mock_free_at_home_settings, list(device.channels.values())
     )
 
@@ -2053,7 +1959,7 @@ async def test_sub_devices_linked_to_parent_device(
             assert sub_device.via_device_id == parent_device.id
             assert sub_device.name == f"Runtime Device ({channel_id})"
 
-    _devices_changed(
+    devices_changed(
         mock_fah, DevicesChangedEvent(removed_device_serials=("ABB700000001",))
     )
     await hass.async_block_till_done()
@@ -2067,20 +1973,18 @@ async def test_runtime_channel_placed_later(
     hass: HomeAssistant, mock_config_entry, loaded_free_at_home
 ) -> None:
     """Test a device without visible channels appears once a channel is placed."""
-    device = _device()
+    device = build_device()
 
-    _devices_changed(loaded_free_at_home, DevicesChangedEvent(added_devices=(device,)))
+    devices_changed(loaded_free_at_home, DevicesChangedEvent(added_devices=(device,)))
     await hass.async_block_till_done()
-    assert _get_device(hass, mock_config_entry.entry_id, "ABB700000001") is None
+    assert get_device_entry(hass, mock_config_entry.entry_id, "ABB700000001") is None
 
-    channel = _trigger(device)
+    channel = build_trigger(device)
     loaded_free_at_home.channels.append(channel)
-    _devices_changed(
-        loaded_free_at_home, DevicesChangedEvent(added_channels=(channel,))
-    )
+    devices_changed(loaded_free_at_home, DevicesChangedEvent(added_channels=(channel,)))
     await hass.async_block_till_done()
 
-    device_entry = _get_device(hass, mock_config_entry.entry_id, "ABB700000001")
+    device_entry = get_device_entry(hass, mock_config_entry.entry_id, "ABB700000001")
     assert device_entry.name == "Runtime Device"
     assert device_entry.area_id == "hall"
     assert er.async_entries_for_device(er.async_get(hass), device_entry.id)
@@ -2090,13 +1994,13 @@ async def test_runtime_device_adds_parameter_sensor(
     hass: HomeAssistant, mock_config_entry, loaded_free_at_home
 ) -> None:
     """Test a device added at runtime gets one parameter sensor."""
-    device = _device()
-    channel = _trigger(device, parameters={"par0001": "0"})
+    device = build_device()
+    channel = build_trigger(device, parameters={"par0001": "0"})
     loaded_free_at_home.channels.append(channel)
 
     # The repeated channel is already exposed and must not change the sensor.
     for _ in range(2):
-        _devices_changed(
+        devices_changed(
             loaded_free_at_home, DevicesChangedEvent(added_channels=(channel,))
         )
         await hass.async_block_till_done()
@@ -2125,9 +2029,9 @@ async def test_runtime_channels_while_addition_pending(
 ) -> None:
     """Test notifications arriving before entities are added create no duplicates."""
     entity_registry = er.async_get(hass)
-    device = _device()
-    first = _trigger(device, "ch0000", parameters={"par0001": "0"})
-    second = _trigger(device, "ch0001", parameters={"par0002": "1"})
+    device = build_device()
+    first = build_trigger(device, "ch0000", parameters={"par0001": "0"})
+    second = build_trigger(device, "ch0001", parameters={"par0002": "1"})
     loaded_free_at_home.channels.append(first)
 
     release = asyncio.Event()
@@ -2141,7 +2045,7 @@ async def test_runtime_channels_while_addition_pending(
         for channels in ((first,), (first,), (second,)):
             if channels == (second,):
                 loaded_free_at_home.channels.append(second)
-            _devices_changed(
+            devices_changed(
                 loaded_free_at_home, DevicesChangedEvent(added_channels=channels)
             )
             for _ in range(5):
@@ -2177,7 +2081,7 @@ async def test_runtime_channels_while_addition_pending(
     ] == {"PID_LED_NIGHT_BRIGHTNESS": "5"}
 
     # Removing an unrelated device keeps the tracked entities.
-    _devices_changed(
+    devices_changed(
         loaded_free_at_home,
         DevicesChangedEvent(removed_device_serials=("ABB700000002",)),
     )
@@ -2185,7 +2089,7 @@ async def test_runtime_channels_while_addition_pending(
     assert hass.states.get(sensor_id) is not None
 
     # A removed device's entities are created again when it returns.
-    _devices_changed(
+    devices_changed(
         loaded_free_at_home,
         DevicesChangedEvent(
             removed_device_serials=("ABB700000001",), added_channels=(first, second)
@@ -2210,10 +2114,10 @@ async def test_runtime_channel_extends_parameter_sensor(
     lifecycle_platforms,
 ) -> None:
     """Test a channel placed later is added to the existing parameter sensor."""
-    device = _device()
-    first = _trigger(device, "ch0000", parameters={"par0001": "0"})
+    device = build_device()
+    first = build_trigger(device, "ch0000", parameters={"par0001": "0"})
 
-    mock_fah = await _setup_with_channels(
+    mock_fah = await setup_with_channels(
         hass, mock_config_entry, mock_free_at_home_settings, [first]
     )
     entity_id = er.async_get(hass).async_get_entity_id(
@@ -2223,9 +2127,9 @@ async def test_runtime_channel_extends_parameter_sensor(
         "ch0000"
     }
 
-    second = _trigger(device, "ch0001", parameters={"par0002": "1"})
+    second = build_trigger(device, "ch0001", parameters={"par0002": "1"})
     mock_fah.channels.append(second)
-    _devices_changed(mock_fah, DevicesChangedEvent(added_channels=(second,)))
+    devices_changed(mock_fah, DevicesChangedEvent(added_channels=(second,)))
     await hass.async_block_till_done()
 
     assert set(hass.states.get(entity_id).attributes["channel_parameters"]) == {

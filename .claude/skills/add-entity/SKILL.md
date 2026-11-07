@@ -100,15 +100,19 @@ does not fit; binary sensors need an `on` state icon.
 
 ## 5. Tests
 
-Extend `tests/test_<platform>.py` with mock channels built from the evidence in
-step 1. Cover:
+Extend `tests/test_<platform>.py` as described in `tests.instructions.md`:
+build real library channels with `build_channel()` from the pairings and
+parameters found in step 1, set up the entry with `setup_with_channels()`, and
+test only through Home Assistant. Cover:
 
-- `async_setup_entry()` creates the entity for the channel class, and skips it
-  when the attribute is `None`.
-- Each state value maps to the expected entity state, including `None`.
-- Each command awaits the expected channel method with the expected arguments.
-- Callback registration and removal for the attributes the entity reads.
-- `unique_id` and `device_info`, including the `create_subdevices` branch.
+- The new entity in the platform's `snapshot_entities()` snapshot, which shows
+  its unique ID, name, translation, device, and state; review the `.ambr` diff.
+- No entity when the channel attribute is `None`.
+- Each state value the SysAP reports (`channel.update_channel()`) maps to the
+  expected state in `hass.states`.
+- Each service call sets the expected datapoints with
+  `device.api.set_datapoint`.
+- The device the entity belongs to, with and without `create_subdevices`.
 
 ```sh
 python -m pytest --cov=. --cov-branch --cov-report=term-missing

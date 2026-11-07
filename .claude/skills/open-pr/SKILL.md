@@ -25,7 +25,7 @@ Follow the "Pull request scope" and "Issue and pull request labels" sections of
   | `refactor/` | Behavior-preserving code changes                            |
   | `docs/`     | Documentation, instructions, and skills                     |
   | `ci/`       | GitHub Actions workflows                                    |
-  | `chore/`    | Tooling, dev dependencies, Dev Container, and repo config   |
+  | `chore/`    | Tests, tooling, dev dependencies, Dev Container, and config |
   | `release/`  | Version bumps and release preparation (see `release` skill) |
 
 - Library pin bumps follow their version impact (see the `bump-library` skill).
