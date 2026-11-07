@@ -10,7 +10,8 @@
       "cwd": "${workspaceFolder}",
       "env": { "PYTHONPATH": "${workspaceFolder}" },
       "justMyCode": false,
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "preLaunchTask": "Create Home Assistant config directory"
     },
     {
       "name": "Test Home Assistant versions",

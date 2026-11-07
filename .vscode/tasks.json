@@ -1,0 +1,13 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Create Home Assistant config directory",
+      "type": "shell",
+      "command": "mkdir -p '${workspaceFolder}/config'",
+      "presentation": { "reveal": "silent", "close": true },
+      "problemMatcher": [],
+      "hide": true
+    }
+  ]
+}
