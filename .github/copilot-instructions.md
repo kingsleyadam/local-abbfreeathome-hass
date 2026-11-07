@@ -32,11 +32,17 @@ release for local tests. The library version comes from `requirements` in
 
 To run Home Assistant with the integration, start the `Home Assistant`
 configuration under VS Code's Run and Debug. It runs Home Assistant from the
-virtual environment under the debugger, with the git-ignored `config/` directory
-as its configuration, created on first launch by a task in `.vscode/tasks.json`,
-and loads the integration from `custom_components` through `PYTHONPATH`, so
-breakpoints in the integration, Home Assistant, and the library work. The frontend
-listens on port 8123, which the Dev Container forwards.
+virtual environment under the debugger and loads the integration from
+`custom_components` through `PYTHONPATH`, so breakpoints in the integration, Home
+Assistant, and the library work. Its configuration lives in the git-ignored
+`config/` directory; a task in `.vscode/tasks.json` creates it on first launch
+with a copy of `.vscode/configuration.yaml`, a minimal configuration without
+`default_config`, whose dependencies such as `go2rtc` and `ffmpeg` the Dev
+Container lacks. The first start is slower while Home Assistant installs the
+frontend and other requirements into the virtual environment. The configuration
+sets `subProcess` to false because debugpy otherwise takes over Home Assistant's
+`uv pip install` processes, which then install nothing without reporting an error.
+The frontend listens on port 8123, which the Dev Container forwards.
 
 Pre-commit runs Ruff with `--fix` and the Ruff formatter. Ruff configuration lives
 in `pyproject.toml`, including docstring checks, import sorting with

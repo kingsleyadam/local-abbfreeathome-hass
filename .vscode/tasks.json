@@ -2,9 +2,10 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Create Home Assistant config directory",
+      "label": "Prepare config",
       "type": "shell",
-      "command": "mkdir -p '${workspaceFolder}/config'",
+      "command": "mkdir -p config && [ -f config/configuration.yaml ] || cp .vscode/configuration.yaml config/",
+      "options": { "cwd": "${workspaceFolder}" },
       "presentation": { "reveal": "silent", "close": true },
       "problemMatcher": [],
       "hide": true
