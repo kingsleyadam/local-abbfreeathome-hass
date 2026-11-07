@@ -74,11 +74,15 @@ I (kingsleyadam) don't have access to the number of different ABB devices and wo
 
 ## Installation
 
-### HACS
+### Home Assistant Marketplace or HACS
 
-The easiest way to add this custom integration is via [HACS](https://www.hacs.xyz/) which the repo has been setup to support. With HACS setup on your Home Assistant installation you'll need to add this repo it as a [custom repository](https://www.hacs.xyz/docs/faq/custom_repositories/).
+The easiest way to install this integration is through the Home Assistant Marketplace (Home Assistant 2026.11 and newer) or [HACS](https://www.hacs.xyz/) on older versions. It's listed in their default catalog, so you don't need to add this repository yourself.
 
-Once added you'll be able to find it by searching for "ABB-free@home".
+1. Search for "ABB-free@home" in the Marketplace or HACS, or open it directly:
+
+   [![Open your Home Assistant instance and open this repository in the Marketplace or HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=kingsleyadam&repository=local-abbfreeathome-hass&category=integration)
+
+2. Download the integration and restart Home Assistant.
 
 ### Manually
 
