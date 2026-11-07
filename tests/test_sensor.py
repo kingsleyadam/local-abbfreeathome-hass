@@ -1,6 +1,5 @@
 """Tests for parameter diagnostic sensors."""
 
-import logging
 from runpy import run_path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -21,7 +20,8 @@ from custom_components.abbfreeathome_ci.sensor import (
 from homeassistant import const
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.helpers.entity import EntityCategory
-from homeassistant.helpers.entity_component import EntityComponent
+
+from .common import async_setup_entity_platform
 
 
 @pytest.fixture
@@ -189,14 +189,18 @@ async def test_parameter_callbacks(parameter_device):
         assert write_state.call_count == 4
 
 
-async def test_parameter_state_updates_in_hass(hass, parameter_device):
+async def test_parameter_state_updates_in_hass(
+    hass, mock_config_entry, parameter_device
+):
     """Publish attribute-only changes and stop updating after removal."""
     entity = FreeAtHomeParametersSensor(
         parameter_device, list(parameter_device.channels.values())
     )
     entity.entity_id = "sensor.living_room_actuator_parameters"
-    component = EntityComponent(logging.getLogger(__name__), "sensor", hass)
-    await component.async_add_entities([entity])
+    mock_config_entry.add_to_hass(hass)
+    platform = await async_setup_entity_platform(
+        hass, mock_config_entry, "sensor", [entity]
+    )
 
     old_state = hass.states.get(entity.entity_id)
     assert old_state.state == "4"
@@ -225,7 +229,7 @@ async def test_parameter_state_updates_in_hass(hass, parameter_device):
     parameter_device.channels["ch0002"].update_parameter("par1234", "0")
     assert hass.states.get(entity.entity_id).state == "5"
 
-    await component.async_remove_entity(entity.entity_id)
+    await platform.async_remove_entity(entity.entity_id)
     removed_state = hass.states.get(entity.entity_id)
     parameter_device.update_parameter("par0001", "2")
     assert hass.states.get(entity.entity_id) is removed_state
