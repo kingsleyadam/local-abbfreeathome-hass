@@ -7,6 +7,7 @@
   "documentation": "https://github.com/kingsleyadam/local-abbfreeathome-hass",
   "homekit": {},
   "iot_class": "local_push",
+  "issue_tracker": "https://github.com/kingsleyadam/local-abbfreeathome-hass/issues",
   "loggers": ["abbfreeathome"],
   "requirements": ["local-abbfreeathome==3.13.0"],
   "ssdp": [],
