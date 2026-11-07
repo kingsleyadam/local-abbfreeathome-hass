@@ -28,6 +28,15 @@
       "console": "integratedTerminal"
     },
     {
+      "name": "Test Home Assistant dev",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/.github/scripts/test_ha_versions.py",
+      "args": ["--ha", "dev"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
       "name": "Check compatibility markers",
       "type": "debugpy",
       "request": "launch",
@@ -50,7 +59,7 @@
     {
       "id": "haVersion",
       "type": "promptString",
-      "description": "Home Assistant version, e.g. 2026.6 (newest patch), 2026.6.2, or 2026.7.0b1"
+      "description": "Home Assistant version, e.g. 2026.6 (newest patch), 2026.6.2, 2026.7.0b1, or dev"
     },
     {
       "id": "haMinimum",
