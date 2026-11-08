@@ -2,6 +2,7 @@
 
 import asyncio
 from dataclasses import dataclass, field
+import logging
 from runpy import run_path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -21,6 +22,7 @@ from abbfreeathome.channels.temperature_sensor import TemperatureSensor
 from abbfreeathome.channels.wind_sensor import WindSensor
 from abbfreeathome.channels.window_door_sensor import WindowDoorSensor
 from abbfreeathome.device import Device
+from abbfreeathome.exceptions import ClientConnectionError
 import pytest
 from syrupy.assertion import SnapshotAssertion
 
@@ -29,10 +31,15 @@ from custom_components.abbfreeathome_ci.const import CONF_CREATE_SUBDEVICES, DOM
 from custom_components.abbfreeathome_ci.entity import FreeAtHomeEntity
 from custom_components.abbfreeathome_ci.sensor import SENSOR_DESCRIPTIONS
 from homeassistant import const
+from homeassistant.components.homeassistant import (
+    DOMAIN as HOMEASSISTANT_DOMAIN,
+    SERVICE_UPDATE_ENTITY,
+)
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
-from homeassistant.const import STATE_UNKNOWN, Platform
+from homeassistant.const import ATTR_ENTITY_ID, STATE_UNKNOWN, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.setup import async_setup_component
 
 from .common import (
     MockConfigEntry,
@@ -355,6 +362,100 @@ async def test_sensor_removes_callbacks_on_unload(
     await hass.async_block_till_done()
     assert hass.states.get(entity_id) == state
     assert channel._callbacks == {"co2": set(), "voc_index": set(), "humidity": set()}
+
+
+# The library refreshes whether a window is open, but not its position.
+@pytest.mark.parametrize(
+    "key", [key for key in SENSOR_CASES if key != "WindowDoorSensorPosition"]
+)
+async def test_sensor_update_entity(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    key: str,
+) -> None:
+    """Test updating a sensor refreshes its value from the SysAP."""
+    assert await async_setup_component(hass, HOMEASSISTANT_DOMAIN, {})
+    case = SENSOR_CASES[key]
+    device = build_device(SERIAL)
+    channel = _build_channels(device)[case.channel_id]
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    entity_id = _entity_id(entity_registry, f"{SERIAL}_{case.channel_id}_{key}")
+    sysap = {
+        datapoint_id: datapoint["value"]
+        for datapoint_id, datapoint in channel._outputs.items()
+    } | {case.datapoint: case.value}
+    device.api.get_datapoint.side_effect = lambda **kwargs: [sysap[kwargs["datapoint"]]]
+
+    await hass.services.async_call(
+        HOMEASSISTANT_DOMAIN,
+        SERVICE_UPDATE_ENTITY,
+        {ATTR_ENTITY_ID: entity_id},
+        blocking=True,
+    )
+
+    assert hass.states.get(entity_id).state == case.state
+    device.api.get_datapoint.assert_any_await(
+        device_serial=SERIAL, channel_id=case.channel_id, datapoint=case.datapoint
+    )
+
+
+@pytest.mark.parametrize(
+    ("outputs", "side_effect"),
+    [
+        pytest.param(
+            SENSOR_CASES["WindSensorSpeed"].outputs,
+            ClientConnectionError("http://sysap"),
+            id="sysap_unreachable",
+        ),
+        # The library also reads the wind alarm when it refreshes the channel.
+        pytest.param(
+            {Pairing.AL_WIND_SPEED: "5", Pairing.AL_WIND_FORCE: "3"},
+            None,
+            id="missing_datapoint",
+        ),
+    ],
+)
+async def test_sensor_update_entity_error(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    caplog: pytest.LogCaptureFixture,
+    outputs: dict[Pairing, str],
+    side_effect: Exception | None,
+) -> None:
+    """Test a failed refresh logs one warning without a traceback."""
+    assert await async_setup_component(hass, HOMEASSISTANT_DOMAIN, {})
+    device = build_device(SERIAL)
+    channel = build_channel(WindSensor, device, outputs=outputs)
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    entity_id = _entity_id(entity_registry, f"{SERIAL}_ch0000_WindSensorSpeed")
+    device.api.get_datapoint.return_value = ["5"]
+    device.api.get_datapoint.side_effect = side_effect
+    caplog.clear()
+
+    await hass.services.async_call(
+        HOMEASSISTANT_DOMAIN,
+        SERVICE_UPDATE_ENTITY,
+        {ATTR_ENTITY_ID: entity_id},
+        blocking=True,
+    )
+
+    assert hass.states.get(entity_id).state == "18.0"
+    warnings = [
+        record for record in caplog.records if record.levelno >= logging.WARNING
+    ]
+    assert [(record.levelno, record.exc_info) for record in warnings] == [
+        (logging.WARNING, None)
+    ]
+    prefix = f"Could not refresh {entity_id} from the SysAP: "
+    assert warnings[0].getMessage().startswith(prefix)
 
 
 @pytest.mark.parametrize(

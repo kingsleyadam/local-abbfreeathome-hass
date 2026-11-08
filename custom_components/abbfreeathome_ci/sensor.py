@@ -1,6 +1,7 @@
 """Create ABB-free@home sensor entities."""
 
 from collections.abc import Iterable
+import logging
 from typing import Any
 
 from abbfreeathome import FreeAtHome
@@ -22,6 +23,7 @@ from abbfreeathome.channels.window_door_sensor import (
     WindowDoorSensorPosition,
 )
 from abbfreeathome.device import Device
+from abbfreeathome.exceptions import FreeAtHomeException
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -54,6 +56,8 @@ except ImportError:
     from homeassistant.const import CONCENTRATION_PARTS_PER_MILLION as PARTS_PER_MILLION
 else:
     PARTS_PER_MILLION = UnitOfRatio.PARTS_PER_MILLION
+
+_LOGGER = logging.getLogger(__name__)
 
 SENSOR_DESCRIPTIONS = {
     "AirQualitySensorCO2": {
@@ -401,6 +405,21 @@ class FreeAtHomeSensorEntity(FreeAtHomeEntity, SensorEntity):
         self._channel.remove_callback(
             callback_attribute=self._value_attribute, callback=self.async_write_ha_state
         )
+
+    async def async_update(self) -> None:
+        """Refresh the channel's values from the SysAP.
+
+        The entity does not poll, so this runs only when the entity is updated
+        on request, such as with the homeassistant.update_entity action.
+        Library errors, such as an unreachable SysAP or a datapoint the channel
+        lacks, are logged as a warning without a traceback.
+        """
+        try:
+            await self._channel.refresh_state()
+        except FreeAtHomeException as err:
+            _LOGGER.warning(
+                "Could not refresh %s from the SysAP: %s", self.entity_id, err
+            )
 
     @property
     def device_info(self) -> AnyDeviceInfo:
