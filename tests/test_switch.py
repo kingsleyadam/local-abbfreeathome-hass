@@ -71,7 +71,7 @@ class SwitchCase:
     """A switch description with a real channel that is on.
 
     Turning the switch on and off sets command_datapoint to on and off. The
-    SysAP reports the new state on state_datapoint with off_state.
+    SysAP reports the state on state_datapoint with on_state and off_state.
     """
 
     channel_class: type[Base]
@@ -84,6 +84,7 @@ class SwitchCase:
     parameters: dict[Parameter, str] = field(default_factory=dict)
     on: str = "1"
     off: str = "0"
+    on_state: str = "1"
     off_state: str = "0"
 
 
@@ -169,6 +170,7 @@ SWITCH_CASES = {
         state_datapoint="odp0002",
         on="68",
         off="65",
+        on_state="68",
         off_state="65",
     ),
     "VirtualSwitchActuatorOnOff": SwitchCase(
@@ -296,6 +298,34 @@ async def test_switch_entities(
 
 
 @pytest.mark.parametrize("key", SWITCH_CASES)
+async def test_switch_follows_sysap(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    key: str,
+) -> None:
+    """Test a switch shows the state the SysAP reports without a command."""
+    case = SWITCH_CASES[key]
+    device = build_device(SERIAL)
+    channel = _build_channels(device)[case.channel_id]
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    entity_id = _entity_id(entity_registry, key)
+    datapoint_key = f"{SERIAL}/{case.channel_id}/{case.state_datapoint}"
+
+    channel.update_channel(datapoint_key, case.off_state)
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id).state == STATE_OFF
+
+    channel.update_channel(datapoint_key, case.on_state)
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id).state == STATE_ON
+    device.api.set_datapoint.assert_not_awaited()
+
+
+@pytest.mark.parametrize("key", SWITCH_CASES)
 async def test_switch_turn_off_on(
     hass: HomeAssistant,
     mock_config_entry: MockConfigEntry,
@@ -303,7 +333,7 @@ async def test_switch_turn_off_on(
     entity_registry: er.EntityRegistry,
     key: str,
 ) -> None:
-    """Test turning a switch off and on sets the datapoint and follows the SysAP."""
+    """Test turning a switch off and on sets its datapoint on the SysAP."""
     case = SWITCH_CASES[key]
     device = build_device(SERIAL)
     channel = _build_channels(device)[case.channel_id]
@@ -315,12 +345,6 @@ async def test_switch_turn_off_on(
     await hass.services.async_call(
         SWITCH_DOMAIN, SERVICE_TURN_OFF, {ATTR_ENTITY_ID: entity_id}, blocking=True
     )
-    channel.update_channel(
-        f"{SERIAL}/{case.channel_id}/{case.state_datapoint}", case.off_state
-    )
-    await hass.async_block_till_done()
-    assert hass.states.get(entity_id).state == STATE_OFF
-
     await hass.services.async_call(
         SWITCH_DOMAIN, SERVICE_TURN_ON, {ATTR_ENTITY_ID: entity_id}, blocking=True
     )

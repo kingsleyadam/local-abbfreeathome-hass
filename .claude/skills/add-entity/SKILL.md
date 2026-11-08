@@ -109,7 +109,7 @@ test only through Home Assistant. Cover:
   its unique ID, name, translation, device, and state; review the `.ambr` diff.
 - No entity when the channel attribute is `None`.
 - Each state value the SysAP reports (`channel.update_channel()`) maps to the
-  expected state in `hass.states`.
+  expected state in `hass.states`, in a test without commands.
 - Each service call sets the expected datapoints with
   `device.api.set_datapoint`.
 - The device the entity belongs to, with and without `create_subdevices`.

@@ -73,10 +73,12 @@ Platform tests:
   Assistant: `snapshot_entities()` for the entities, `hass.states`, and the
   entity and device registries.
 - Send commands with `hass.services.async_call(..., blocking=True)` and assert
-  the datapoints the library sets with `device.api.set_datapoint`. Simulate the
-  SysAP reporting a state with
+  the datapoints the library sets with `device.api.set_datapoint`.
+- Simulate the SysAP reporting a state with
   `channel.update_channel("<serial>/<channel>/<datapoint>", value)` and check
-  `hass.states` again.
+  `hass.states` after each report. Test reports in a test without commands: a
+  command already changes the library's cached state, so only then does the
+  state in Home Assistant prove the channel callback works.
 - Cover every description or channel class the platform maps, `None` attribute
   handling, both `create_subdevices` cases, updates, and unloading the entry.
 - Mock only what cannot be real, such as the SysAP connection. Instantiate an
