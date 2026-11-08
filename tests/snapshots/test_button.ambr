@@ -1,0 +1,49 @@
+# serializer version: 1
+# name: test_button_entities[ABB700000001_ch0000_button]
+  dict({
+    'attributes': dict({
+      'friendly_name': 'Runtime Device Trigger ch0000',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'button',
+    'entity_category': None,
+    'has_entity_name': False,
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Trigger ch0000',
+    'state': 'unknown',
+    'supported_features': 0,
+    'translation_key': None,
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_button_entities[ABB700000001_ch0001_button]
+  dict({
+    'attributes': dict({
+      'friendly_name': 'Runtime Device VirtualTrigger ch0001',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'button',
+    'entity_category': None,
+    'has_entity_name': False,
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'VirtualTrigger ch0001',
+    'state': 'unknown',
+    'supported_features': 0,
+    'translation_key': None,
+    'unit_of_measurement': None,
+  })
+# ---
