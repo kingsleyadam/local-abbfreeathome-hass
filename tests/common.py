@@ -16,6 +16,7 @@ from syrupy.assertion import SnapshotAssertion
 
 from custom_components.abbfreeathome_ci.const import DOMAIN
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.entity import Entity
@@ -91,14 +92,19 @@ async def setup_with_channels(
     entry: ConfigEntry,
     settings: MagicMock,
     channels: list[Base],
+    *,
+    devices: Iterable[Device] = (),
 ) -> MagicMock:
     """Set up the integration with a mocked FreeAtHome holding mutable channels.
 
     Only the SysAP connection is mocked: the integration sets up the entry
     through Home Assistant and builds its entities from the given library
     channels. Append to the returned mock's channels and call
-    devices_changed() to add channels at runtime.
+    devices_changed() to add channels at runtime. devices adds devices
+    without visible channels, such as a device whose channels are all
+    filtered out.
     """
+    devices = tuple(devices)
 
     async def ws_listen_coro():
         """Mock coroutine for ws_listen."""
@@ -111,7 +117,8 @@ async def setup_with_channels(
     mock_fah.ws_close = AsyncMock()
     mock_fah.get_devices = MagicMock(
         side_effect=lambda: {
-            channel.device_serial: channel.device for channel in channels
+            **{device.device_serial: device for device in devices},
+            **{channel.device_serial: channel.device for channel in channels},
         }
     )
     mock_fah.get_channels_by_device = MagicMock(
@@ -238,6 +245,15 @@ def get_device_entry(
     )
 
 
+def _str_unit(unit: str | None) -> str | None:
+    """Return a unit of measurement as a plain string.
+
+    Releases differ in using enum members or strings for units, for example
+    for parts per million before UnitOfRatio.
+    """
+    return None if unit is None else str(unit)
+
+
 def snapshot_entities(
     hass: HomeAssistant, snapshot: SnapshotAssertion, config_entry_id: str
 ) -> None:
@@ -248,7 +264,7 @@ def snapshot_entities(
     version in the test matrix: Home Assistant serializes registry entries
     differently between versions and builds entity IDs differently, for
     example with the area. The snapshots are named by unique ID for the same
-    reason.
+    reason, and keys and units are compared as strings.
     """
     entity_registry = er.async_get(hass)
     device_registry = dr.async_get(hass)
@@ -259,6 +275,11 @@ def snapshot_entities(
         state = hass.states.get(entity_entry.entity_id)
         assert state, f"State not found for {entity_entry.entity_id}"
         device_entry = device_registry.async_get(entity_entry.device_id)
+        attributes = _str_keys(state.attributes)
+        if ATTR_UNIT_OF_MEASUREMENT in attributes:
+            attributes[ATTR_UNIT_OF_MEASUREMENT] = _str_unit(
+                attributes[ATTR_UNIT_OF_MEASUREMENT]
+            )
         assert {
             "domain": entity_entry.domain,
             "device": sorted(device_entry.identifiers) if device_entry else None,
@@ -270,9 +291,9 @@ def snapshot_entities(
             "entity_category": entity_entry.entity_category,
             "capabilities": _str_keys(entity_entry.capabilities),
             "supported_features": entity_entry.supported_features,
-            "unit_of_measurement": entity_entry.unit_of_measurement,
+            "unit_of_measurement": _str_unit(entity_entry.unit_of_measurement),
             "state": state.state,
-            "attributes": _str_keys(state.attributes),
+            "attributes": attributes,
         } == snapshot(name=entity_entry.unique_id)
 
 
