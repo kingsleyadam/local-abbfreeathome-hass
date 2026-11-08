@@ -169,3 +169,4 @@ cython_debug/
 
 # Local development artifacts
 /.local/
+/config/
