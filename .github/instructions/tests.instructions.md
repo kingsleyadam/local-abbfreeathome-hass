@@ -31,35 +31,67 @@ Shared fixtures in `tests/conftest.py`:
 
 - `mock_config_entry`: a `MockConfigEntry` at the current config-entry version
   with every option set; keep it in sync with `config_flow.py`.
-- `mock_free_at_home_settings` and `mock_free_at_home_api`: patch the library
-  classes used by `config_flow.py`.
+- `mock_free_at_home_settings`: the SysAP settings; it patches the class used by
+  `config_flow.py` and is passed to `setup_with_channels()`.
+- `mock_free_at_home_api`: patches `FreeAtHomeApi` in `config_flow.py`.
 - `mock_setup_entry`: patches `async_setup_entry` for config-flow tests.
 - `deprecation_log`: the deprecations logged so far; a test that triggers one
   on purpose takes it with `pop()` and asserts on it.
+- `snapshot`: syrupy's snapshot with Home Assistant's extension, which stores
+  snapshots in `tests/snapshots/`.
 
-Patterns:
+Helpers in `tests/common.py`:
 
-- Platform tests build channels with `Mock`/`MagicMock`, setting the
-  identifiers entities read (`device_serial`, `channel_id`, `channel_name`,
-  `room_name`, `device_name`, and `device.is_multi_device`), the state
-  attributes, `AsyncMock` command methods, and `Mock` `register_callback` /
-  `remove_callback`. Use `Mock(spec=[...])` when a test depends on attributes
-  being absent. Instantiate the entity directly to test properties and
-  commands, and assert the channel methods were awaited with the right values.
-- To test an entity's state or services in Home Assistant, add the
-  `mock_config_entry` to `hass` and the entity with
-  `async_setup_entity_platform()` from `tests/common.py`. It adds entities on an
-  entity platform of the config entry, which Home Assistant requires for
-  entities with device info.
-- To test a platform's `async_setup_entry()`, put a mock `FreeAtHome` with
-  `get_channels_by_class` into `hass.data[DOMAIN][entry.entry_id]` and pass a
-  `Mock` as `async_add_entities`.
-- End-to-end and runtime lifecycle tests in `tests/test_init.py` set up the
-  entry through `hass.config_entries.async_setup()` with patched
-  `FreeAtHomeSettings`, `FreeAtHome`, `FreeAtHomeApi`, and
-  `async_get_clientsession`, and may use real library `Device` and channel
-  objects. Restrict loaded platforms with `monkeypatch` on `PLATFORMS` when only
-  a few are needed.
-- Cover the `create_subdevices` branch of `device_info`, `None` attribute
-  handling, and callback registration and removal for new entities; CI requires
-  100% line and branch coverage.
+- `setup_with_channels(hass, entry, settings, channels)`: sets up the config
+  entry through `hass.config_entries.async_setup()` with only the SysAP
+  connection mocked (`FreeAtHomeSettings`, `FreeAtHome`, `FreeAtHomeApi`, and
+  `async_get_clientsession`), and returns the mock `FreeAtHome` that serves the
+  channels.
+- `build_device()`: a real library `Device` whose `api` is a
+  `MagicMock(spec=FreeAtHomeApi)`, so `api.set_datapoint` and
+  `api.get_datapoint` are `AsyncMock`s.
+- `build_channel(channel_class, device, channel_id, inputs=..., outputs=...,
+  parameters=...)`: a real library channel added to the device. Inputs and
+  outputs map `Pairing` members to datapoint values and get the IDs `idp0000`,
+  `odp0000`, ... in order. A device without a room and with several channels is
+  a multi-device.
+- `build_trigger()`, `devices_changed()`, and `get_device_entry()` for runtime
+  device changes.
+- `snapshot_entities(hass, snapshot, entry_id)`: snapshots the registry entry
+  and state of every entity of the entry, named by unique ID. It keeps only the
+  fields the integration decides, so one snapshot fits every Home Assistant
+  version in the matrix; do not use the plugin's `snapshot_platform()`, whose
+  output differs between versions. Update snapshots with
+  `python -m pytest --snapshot-update` and review the `.ambr` diff.
+
+Platform tests:
+
+- Test entities through Home Assistant, as core integrations do: build real
+  library channels from the pairings and parameters the library reads, set up
+  the entry with `setup_with_channels()`, restrict `PLATFORMS` to the platform
+  under test with `monkeypatch`, and check the result only through Home
+  Assistant: `snapshot_entities()` for the entities, `hass.states`, and the
+  entity and device registries.
+- Send commands with `hass.services.async_call(..., blocking=True)` and assert
+  the datapoints the library sets with `device.api.set_datapoint`.
+- Simulate the SysAP reporting a state with
+  `channel.update_channel("<serial>/<channel>/<datapoint>", value)` and check
+  `hass.states` after each report. Test reports in a test without commands: a
+  command already changes the library's cached state, so only then does the
+  state in Home Assistant prove the channel callback works.
+- Cover every description or channel class the platform maps, `None` attribute
+  handling, both `create_subdevices` cases, updates, and unloading the entry.
+- Mock only what cannot be real, such as the SysAP connection. Instantiate an
+  entity directly only for a branch Home Assistant cannot reach, and say why in
+  the test's docstring.
+- Older platform tests still build `Mock` channels and instantiate entities
+  directly, or use `async_setup_entity_platform()`; convert them to this
+  pattern when touching them.
+
+Other patterns:
+
+- Runtime lifecycle tests in `tests/test_init.py` and
+  `tests/test_unresponsive.py` use `setup_with_channels()` as well, with real
+  `Trigger` channels.
+- CI requires 100% line and branch coverage; check that the platform module
+  is covered by its own test file.

@@ -5,10 +5,11 @@ import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from syrupy.assertion import SnapshotAssertion
 
 from custom_components.abbfreeathome_ci.const import DOMAIN
 
-from .common import MockConfigEntry
+from .common import HomeAssistantSnapshotExtension, MockConfigEntry
 from .deprecations import DeprecationLog
 
 _DEPRECATION_LOG = DeprecationLog()
@@ -51,6 +52,16 @@ def deprecation_log() -> DeprecationLog:
     return _DEPRECATION_LOG
 
 
+@pytest.fixture
+def snapshot(snapshot: SnapshotAssertion) -> SnapshotAssertion:
+    """Return the snapshot fixture with Home Assistant's extension.
+
+    The extension keeps snapshots in tests/snapshots; some releases of
+    pytest-homeassistant-custom-component do not apply it themselves.
+    """
+    return snapshot.use_extension(HomeAssistantSnapshotExtension)
+
+
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations):
     """Enable custom integrations."""
@@ -68,7 +79,11 @@ def mock_setup_entry() -> Generator[AsyncMock]:
 
 @pytest.fixture
 def mock_free_at_home_settings():
-    """Mock FreeAtHomeSettings class."""
+    """Mock FreeAtHomeSettings of the SysAP.
+
+    The config flow gets it through a patch; setup_with_channels() takes it as
+    an argument.
+    """
     with patch(
         "custom_components.abbfreeathome_ci.config_flow.FreeAtHomeSettings"
     ) as mock_settings:
@@ -78,6 +93,7 @@ def mock_free_at_home_settings():
         settings_instance.serial_number = "TEST123456"
         settings_instance.name = "Test SysAP"
         settings_instance.version = "3.0.0"
+        settings_instance.hardware_version = "1.0"
         mock_settings.return_value = settings_instance
         yield settings_instance
 

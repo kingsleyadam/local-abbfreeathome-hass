@@ -1,0 +1,351 @@
+# serializer version: 1
+# name: test_switch_entities[ABB700000001_ch0000_DimmingSensorLed]
+  dict({
+    'attributes': dict({
+      'device_class': 'switch',
+      'friendly_name': 'Runtime Device LED (ch0000)',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'switch',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SwitchDeviceClass.SWITCH: 'switch'>,
+    'original_icon': None,
+    'original_name': 'LED (ch0000)',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': 'sensor_led',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_switch_entities[ABB700000001_ch0001_switch]
+  dict({
+    'attributes': dict({
+      'device_class': 'switch',
+      'friendly_name': 'Runtime Device SwitchActuator ch0001',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'switch',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SwitchDeviceClass.SWITCH: 'switch'>,
+    'original_icon': None,
+    'original_name': 'SwitchActuator ch0001',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': None,
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_switch_entities[ABB700000001_ch0002_switch]
+  dict({
+    'attributes': dict({
+      'device_class': 'switch',
+      'friendly_name': 'Runtime Device MWireSwitchActuator ch0002',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'switch',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SwitchDeviceClass.SWITCH: 'switch'>,
+    'original_icon': None,
+    'original_name': 'MWireSwitchActuator ch0002',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': None,
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_switch_entities[ABB700000001_ch0003_SwitchSensorLed]
+  dict({
+    'attributes': dict({
+      'device_class': 'switch',
+      'friendly_name': 'Runtime Device LED (ch0003)',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'switch',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SwitchDeviceClass.SWITCH: 'switch'>,
+    'original_icon': None,
+    'original_name': 'LED (ch0003)',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': 'sensor_led',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_switch_entities[ABB700000001_ch0004_VirtualBrightessSensorAlarm]
+  dict({
+    'attributes': dict({
+      'device_class': 'switch',
+      'friendly_name': 'Runtime Device Virtual Brightness Alarm',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'switch',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SwitchDeviceClass.SWITCH: 'switch'>,
+    'original_icon': None,
+    'original_name': 'Virtual Brightness Alarm',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': 'virtual_brightness_sensor',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_switch_entities[ABB700000001_ch0005_VirtualRainSensorAlarm]
+  dict({
+    'attributes': dict({
+      'device_class': 'switch',
+      'friendly_name': 'Runtime Device Virtual Rain Alarm',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'switch',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SwitchDeviceClass.SWITCH: 'switch'>,
+    'original_icon': None,
+    'original_name': 'Virtual Rain Alarm',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': 'virtual_rain_sensor',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_switch_entities[ABB700000001_ch0006_VirtualRoomTemperatureControllerECOOnOff]
+  dict({
+    'attributes': dict({
+      'device_class': 'switch',
+      'friendly_name': 'Runtime Device Virtual RTC Eco Mode',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'switch',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SwitchDeviceClass.SWITCH: 'switch'>,
+    'original_icon': None,
+    'original_name': 'Virtual RTC Eco Mode',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': 'virtual_rtc_eco',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_switch_entities[ABB700000001_ch0006_VirtualRoomTemperatureControllerOnOff]
+  dict({
+    'attributes': dict({
+      'device_class': 'switch',
+      'friendly_name': 'Runtime Device Virtual RTC',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'switch',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SwitchDeviceClass.SWITCH: 'switch'>,
+    'original_icon': None,
+    'original_name': 'Virtual RTC',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': 'virtual_rtc',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_switch_entities[ABB700000001_ch0007_switch]
+  dict({
+    'attributes': dict({
+      'device_class': 'switch',
+      'friendly_name': 'Runtime Device VirtualSwitchActuator ch0007',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'switch',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SwitchDeviceClass.SWITCH: 'switch'>,
+    'original_icon': None,
+    'original_name': 'VirtualSwitchActuator ch0007',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': None,
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_switch_entities[ABB700000001_ch0008_VirtualWindSensorAlarm]
+  dict({
+    'attributes': dict({
+      'device_class': 'switch',
+      'friendly_name': 'Runtime Device Virtual Wind Alarm',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'switch',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SwitchDeviceClass.SWITCH: 'switch'>,
+    'original_icon': None,
+    'original_name': 'Virtual Wind Alarm',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': 'virtual_wind_sensor',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_switch_entities[ABB700000001_ch0009_switch]
+  dict({
+    'attributes': dict({
+      'device_class': 'switch',
+      'friendly_name': 'Runtime Device VirtualWindowDoorSensor ch0009',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'switch',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SwitchDeviceClass.SWITCH: 'switch'>,
+    'original_icon': None,
+    'original_name': 'VirtualWindowDoorSensor ch0009',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': None,
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_switch_entities[ABB700000001_ch000a_VirtualTemperatureSensorAlarm]
+  dict({
+    'attributes': dict({
+      'device_class': 'switch',
+      'friendly_name': 'Runtime Device Virtual Frost Alarm',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'switch',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SwitchDeviceClass.SWITCH: 'switch'>,
+    'original_icon': None,
+    'original_name': 'Virtual Frost Alarm',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': 'virtual_temperature_sensor',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_switch_entities[ABB700000001_ch000b_WelcomeIPMuteActuator]
+  dict({
+    'attributes': dict({
+      'device_class': 'switch',
+      'friendly_name': 'Runtime Device Mute',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'switch',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SwitchDeviceClass.SWITCH: 'switch'>,
+    'original_icon': None,
+    'original_name': 'Mute',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': 'welcome_ip_mute_actuator',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_switch_entities[ABB700000001_ch000c_BlockableMovementDetector]
+  dict({
+    'attributes': dict({
+      'device_class': 'switch',
+      'friendly_name': 'Runtime Device Block Movement Detection',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'switch',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SwitchDeviceClass.SWITCH: 'switch'>,
+    'original_icon': None,
+    'original_name': 'Block Movement Detection',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': 'movement_detector_block',
+    'unit_of_measurement': None,
+  })
+# ---
