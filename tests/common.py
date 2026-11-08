@@ -268,9 +268,20 @@ def snapshot_entities(
             "original_device_class": entity_entry.original_device_class,
             "original_icon": entity_entry.original_icon,
             "entity_category": entity_entry.entity_category,
-            "capabilities": entity_entry.capabilities,
+            "capabilities": _str_keys(entity_entry.capabilities),
             "supported_features": entity_entry.supported_features,
             "unit_of_measurement": entity_entry.unit_of_measurement,
             "state": state.state,
-            "attributes": {str(key): value for key, value in state.attributes.items()},
+            "attributes": _str_keys(state.attributes),
         } == snapshot(name=entity_entry.unique_id)
+
+
+def _str_keys(mapping: Mapping[Any, Any] | None) -> dict[str, Any] | None:
+    """Return a mapping with string keys.
+
+    Home Assistant releases differ in using enum members or strings as keys,
+    for example for the event types an event entity has.
+    """
+    if mapping is None:
+        return None
+    return {str(key): value for key, value in mapping.items()}

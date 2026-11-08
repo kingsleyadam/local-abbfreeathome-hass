@@ -1,0 +1,610 @@
+# serializer version: 1
+# name: test_event_entities[ABB700000001_ch0000_EventVirtualDimmingActuatorBrightness]
+  dict({
+    'attributes': dict({
+      'event_type': None,
+      'event_types': list([
+        'requested_brightness',
+      ]),
+      'friendly_name': 'Runtime Device Virtual Dimmer Brightness Request (ch0000)',
+    }),
+    'capabilities': dict({
+      'event_types': list([
+        'requested_brightness',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'event',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Virtual Dimmer Brightness Request (ch0000)',
+    'state': 'unknown',
+    'supported_features': 0,
+    'translation_key': 'virtual_dimming_actuator_brightness',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_event_entities[ABB700000001_ch0000_EventVirtualDimmingActuatorDimming]
+  dict({
+    'attributes': dict({
+      'device_class': 'button',
+      'event_type': None,
+      'event_types': list([
+        'longpress_up',
+        'longpress_up_release',
+        'longpress_down',
+        'longpress_down_release',
+        'step_up',
+        'step_down',
+        'stop',
+      ]),
+      'friendly_name': 'Runtime Device Virtual Dimmer Dimming Request (ch0000)',
+    }),
+    'capabilities': dict({
+      'event_types': list([
+        'longpress_up',
+        'longpress_up_release',
+        'longpress_down',
+        'longpress_down_release',
+        'step_up',
+        'step_down',
+        'stop',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'event',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <EventDeviceClass.BUTTON: 'button'>,
+    'original_icon': None,
+    'original_name': 'Virtual Dimmer Dimming Request (ch0000)',
+    'state': 'unknown',
+    'supported_features': 0,
+    'translation_key': 'virtual_dimming_actuator_dimming',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_event_entities[ABB700000001_ch0000_EventVirtualDimmingActuatorOnOff]
+  dict({
+    'attributes': dict({
+      'device_class': 'button',
+      'event_type': None,
+      'event_types': list([
+        'on',
+        'off',
+      ]),
+      'friendly_name': 'Runtime Device Virtual Dimmer Switch Request (ch0000)',
+    }),
+    'capabilities': dict({
+      'event_types': list([
+        'on',
+        'off',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'event',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <EventDeviceClass.BUTTON: 'button'>,
+    'original_icon': None,
+    'original_name': 'Virtual Dimmer Switch Request (ch0000)',
+    'state': 'unknown',
+    'supported_features': 0,
+    'translation_key': 'virtual_dimming_actuator_onoff',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_event_entities[ABB700000001_ch0001_EventAtticWindowActuatorRequestedPosition]
+  dict({
+    'attributes': dict({
+      'event_type': None,
+      'event_types': list([
+        'requested_position',
+      ]),
+      'friendly_name': 'Runtime Device Requested Position (ch0001)',
+    }),
+    'capabilities': dict({
+      'event_types': list([
+        'requested_position',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'event',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Requested Position (ch0001)',
+    'state': 'unknown',
+    'supported_features': 0,
+    'translation_key': 'cover_actuator_requested_position',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_event_entities[ABB700000001_ch0002_EventAwningActuatorRequestedPosition]
+  dict({
+    'attributes': dict({
+      'event_type': None,
+      'event_types': list([
+        'requested_position',
+      ]),
+      'friendly_name': 'Runtime Device Requested Position (ch0002)',
+    }),
+    'capabilities': dict({
+      'event_types': list([
+        'requested_position',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'event',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Requested Position (ch0002)',
+    'state': 'unknown',
+    'supported_features': 0,
+    'translation_key': 'cover_actuator_requested_position',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_event_entities[ABB700000001_ch0003_EventBlindActuatorRequestedPosition]
+  dict({
+    'attributes': dict({
+      'event_type': None,
+      'event_types': list([
+        'requested_position',
+      ]),
+      'friendly_name': 'Runtime Device Requested Position (ch0003)',
+    }),
+    'capabilities': dict({
+      'event_types': list([
+        'requested_position',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'event',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Requested Position (ch0003)',
+    'state': 'unknown',
+    'supported_features': 0,
+    'translation_key': 'cover_actuator_requested_position',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_event_entities[ABB700000001_ch0004_EventShutterActuatorRequestedPosition]
+  dict({
+    'attributes': dict({
+      'event_type': None,
+      'event_types': list([
+        'requested_position',
+      ]),
+      'friendly_name': 'Runtime Device Requested Position (ch0004)',
+    }),
+    'capabilities': dict({
+      'event_types': list([
+        'requested_position',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'event',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Requested Position (ch0004)',
+    'state': 'unknown',
+    'supported_features': 0,
+    'translation_key': 'cover_actuator_requested_position',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_event_entities[ABB700000001_ch0005_EventBlindSensorState]
+  dict({
+    'attributes': dict({
+      'device_class': 'button',
+      'event_type': None,
+      'event_types': list([
+        'unknown',
+        'step_up',
+        'step_down',
+        'move_up',
+        'move_down',
+      ]),
+      'friendly_name': 'Runtime Device Blind Event (ch0005)',
+    }),
+    'capabilities': dict({
+      'event_types': list([
+        'unknown',
+        'step_up',
+        'step_down',
+        'move_up',
+        'move_down',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'event',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <EventDeviceClass.BUTTON: 'button'>,
+    'original_icon': None,
+    'original_name': 'Blind Event (ch0005)',
+    'state': 'unknown',
+    'supported_features': 0,
+    'translation_key': 'blind_sensor',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_event_entities[ABB700000001_ch0006_EventDesDoorRingingSensorActivated]
+  dict({
+    'attributes': dict({
+      'device_class': 'doorbell',
+      'event_type': None,
+      'event_types': list([
+        'ring',
+        'activated',
+      ]),
+      'friendly_name': 'Runtime Device DesDoorRingingSensor ch0006',
+    }),
+    'capabilities': dict({
+      'event_types': list([
+        'ring',
+        'activated',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'event',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <EventDeviceClass.DOORBELL: 'doorbell'>,
+    'original_icon': None,
+    'original_name': 'DesDoorRingingSensor ch0006',
+    'state': 'unknown',
+    'supported_features': 0,
+    'translation_key': 'des_door_ringing_sensor',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_event_entities[ABB700000001_ch0007_EventDimmingSensorState]
+  dict({
+    'attributes': dict({
+      'device_class': 'button',
+      'event_type': None,
+      'event_types': list([
+        'unknown',
+        'off',
+        'on',
+        'longpress_up',
+        'longpress_up_release',
+        'longpress_down',
+        'longpress_down_release',
+      ]),
+      'friendly_name': 'Runtime Device Dimming Event (ch0007)',
+    }),
+    'capabilities': dict({
+      'event_types': list([
+        'unknown',
+        'off',
+        'on',
+        'longpress_up',
+        'longpress_up_release',
+        'longpress_down',
+        'longpress_down_release',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'event',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <EventDeviceClass.BUTTON: 'button'>,
+    'original_icon': None,
+    'original_name': 'Dimming Event (ch0007)',
+    'state': 'unknown',
+    'supported_features': 0,
+    'translation_key': 'dimming_sensor',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_event_entities[ABB700000001_ch0008_EventForceOnOffSensorOnOff]
+  dict({
+    'attributes': dict({
+      'device_class': 'button',
+      'event_type': None,
+      'event_types': list([
+        'unknown',
+        'off',
+        'on',
+      ]),
+      'friendly_name': 'Runtime Device Force Event (ch0008)',
+    }),
+    'capabilities': dict({
+      'event_types': list([
+        'unknown',
+        'off',
+        'on',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'event',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <EventDeviceClass.BUTTON: 'button'>,
+    'original_icon': None,
+    'original_name': 'Force Event (ch0008)',
+    'state': 'unknown',
+    'supported_features': 0,
+    'translation_key': 'force_on_off_sensor',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_event_entities[ABB700000001_ch0009_EventStaircaseLightSensorOnOff]
+  dict({
+    'attributes': dict({
+      'device_class': 'button',
+      'event_type': None,
+      'event_types': list([
+        'unknown',
+        'off',
+        'on',
+      ]),
+      'friendly_name': 'Runtime Device Timed Pulse Event (ch0009)',
+    }),
+    'capabilities': dict({
+      'event_types': list([
+        'unknown',
+        'off',
+        'on',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'event',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <EventDeviceClass.BUTTON: 'button'>,
+    'original_icon': None,
+    'original_name': 'Timed Pulse Event (ch0009)',
+    'state': 'unknown',
+    'supported_features': 0,
+    'translation_key': 'staircase_light_sensor',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_event_entities[ABB700000001_ch000a_EventSwitchSensorOnOff]
+  dict({
+    'attributes': dict({
+      'device_class': 'button',
+      'event_type': None,
+      'event_types': list([
+        'unknown',
+        'off',
+        'on',
+      ]),
+      'friendly_name': 'Runtime Device Switch Event (ch000a)',
+    }),
+    'capabilities': dict({
+      'event_types': list([
+        'unknown',
+        'off',
+        'on',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'event',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <EventDeviceClass.BUTTON: 'button'>,
+    'original_icon': None,
+    'original_name': 'Switch Event (ch000a)',
+    'state': 'unknown',
+    'supported_features': 0,
+    'translation_key': 'switch_sensor',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_event_entities[ABB700000001_ch000b_EventVirtualRoomTemperatureControllerEcoOnOff]
+  dict({
+    'attributes': dict({
+      'device_class': 'button',
+      'event_type': None,
+      'event_types': list([
+        'On',
+        'Off',
+      ]),
+      'friendly_name': 'Runtime Device Virtual RTC Event Eco Mode (ch000b)',
+    }),
+    'capabilities': dict({
+      'event_types': list([
+        'On',
+        'Off',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'event',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <EventDeviceClass.BUTTON: 'button'>,
+    'original_icon': None,
+    'original_name': 'Virtual RTC Event Eco Mode (ch000b)',
+    'state': 'unknown',
+    'supported_features': 0,
+    'translation_key': 'virtual_room_temperature_controller_ecoonoff',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_event_entities[ABB700000001_ch000b_EventVirtualRoomTemperatureControllerOnOff]
+  dict({
+    'attributes': dict({
+      'device_class': 'button',
+      'event_type': None,
+      'event_types': list([
+        'On',
+        'Off',
+      ]),
+      'friendly_name': 'Runtime Device Virtual RTC Event (ch000b)',
+    }),
+    'capabilities': dict({
+      'event_types': list([
+        'On',
+        'Off',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'event',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <EventDeviceClass.BUTTON: 'button'>,
+    'original_icon': None,
+    'original_name': 'Virtual RTC Event (ch000b)',
+    'state': 'unknown',
+    'supported_features': 0,
+    'translation_key': 'virtual_room_temperature_controller_onoff',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_event_entities[ABB700000001_ch000b_EventVirtualRoomTemperatureControllerTargetTemperature]
+  dict({
+    'attributes': dict({
+      'event_type': None,
+      'event_types': list([
+        'requested_target_temperature',
+      ]),
+      'friendly_name': 'Runtime Device Virtual RTC Event Target Temperature (ch000b)',
+    }),
+    'capabilities': dict({
+      'event_types': list([
+        'requested_target_temperature',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'event',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Virtual RTC Event Target Temperature (ch000b)',
+    'state': 'unknown',
+    'supported_features': 0,
+    'translation_key': 'virtual_room_temperature_controller_target_temperature',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_event_entities[ABB700000001_ch000c_EventVirtualSwitchActuatorOnOff]
+  dict({
+    'attributes': dict({
+      'device_class': 'button',
+      'event_type': None,
+      'event_types': list([
+        'On',
+        'Off',
+      ]),
+      'friendly_name': 'Runtime Device Virtual Switch Event (ch000c)',
+    }),
+    'capabilities': dict({
+      'event_types': list([
+        'On',
+        'Off',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'event',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <EventDeviceClass.BUTTON: 'button'>,
+    'original_icon': None,
+    'original_name': 'Virtual Switch Event (ch000c)',
+    'state': 'unknown',
+    'supported_features': 0,
+    'translation_key': 'virtual_switch_actuator_onoff',
+    'unit_of_measurement': None,
+  })
+# ---
