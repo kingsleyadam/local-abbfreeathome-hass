@@ -1,0 +1,12 @@
+# Copied to config/configuration.yaml by the "Home Assistant" launch
+# configuration when it does not exist yet. default_config is left out because
+# the Dev Container lacks go2rtc, ffmpeg, and other binaries it depends on.
+history:
+logbook:
+zeroconf:
+
+logger:
+  default: info
+  logs:
+    custom_components.abbfreeathome_ci: debug
+    abbfreeathome: debug

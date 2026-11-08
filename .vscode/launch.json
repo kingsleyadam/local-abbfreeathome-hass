@@ -2,6 +2,19 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Home Assistant",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "homeassistant",
+      "args": ["--config", "${workspaceFolder}/config", "--debug"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}" },
+      "justMyCode": false,
+      "subProcess": false,
+      "console": "integratedTerminal",
+      "preLaunchTask": "Prepare config"
+    },
+    {
       "name": "Test Home Assistant versions",
       "type": "debugpy",
       "request": "launch",
