@@ -1,0 +1,114 @@
+# serializer version: 1
+# name: test_cover_entities[ABB700000001_ch0000_AtticWindowActuator]
+  dict({
+    'attributes': dict({
+      'current_position': 70,
+      'device_class': 'window',
+      'friendly_name': 'Runtime Device AtticWindowActuator ch0000',
+      'is_closed': False,
+      'supported_features': <CoverEntityFeature: 15>,
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'cover',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <CoverDeviceClass.WINDOW: 'window'>,
+    'original_icon': None,
+    'original_name': 'AtticWindowActuator ch0000',
+    'state': 'open',
+    'supported_features': <CoverEntityFeature: 15>,
+    'translation_key': None,
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_cover_entities[ABB700000001_ch0001_AwningActuator]
+  dict({
+    'attributes': dict({
+      'current_position': 30,
+      'device_class': 'awning',
+      'friendly_name': 'Runtime Device AwningActuator ch0001',
+      'is_closed': False,
+      'supported_features': <CoverEntityFeature: 15>,
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'cover',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <CoverDeviceClass.AWNING: 'awning'>,
+    'original_icon': None,
+    'original_name': 'AwningActuator ch0001',
+    'state': 'open',
+    'supported_features': <CoverEntityFeature: 15>,
+    'translation_key': None,
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_cover_entities[ABB700000001_ch0002_BlindActuator]
+  dict({
+    'attributes': dict({
+      'current_position': 70,
+      'device_class': 'shutter',
+      'friendly_name': 'Runtime Device BlindActuator ch0002',
+      'is_closed': False,
+      'supported_features': <CoverEntityFeature: 15>,
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'cover',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <CoverDeviceClass.SHUTTER: 'shutter'>,
+    'original_icon': None,
+    'original_name': 'BlindActuator ch0002',
+    'state': 'open',
+    'supported_features': <CoverEntityFeature: 15>,
+    'translation_key': None,
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_cover_entities[ABB700000001_ch0003_ShutterActuator]
+  dict({
+    'attributes': dict({
+      'current_position': 70,
+      'current_tilt_position': 75,
+      'device_class': 'blind',
+      'friendly_name': 'Runtime Device ShutterActuator ch0003',
+      'is_closed': False,
+      'supported_features': <CoverEntityFeature: 143>,
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'cover',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <CoverDeviceClass.BLIND: 'blind'>,
+    'original_icon': None,
+    'original_name': 'ShutterActuator ch0003',
+    'state': 'open',
+    'supported_features': <CoverEntityFeature: 143>,
+    'translation_key': None,
+    'unit_of_measurement': None,
+  })
+# ---

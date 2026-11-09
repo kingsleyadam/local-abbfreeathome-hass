@@ -1,349 +1,440 @@
 """Test ABB-free@home cover."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from dataclasses import dataclass
+from unittest.mock import MagicMock, call
 
+from abbfreeathome.bin.pairing import Pairing
 from abbfreeathome.channels.cover_actuator import (
     AtticWindowActuator,
     AwningActuator,
     BlindActuator,
+    CoverActuator,
     ShutterActuator,
 )
+from abbfreeathome.device import Device
 import pytest
+from syrupy.assertion import SnapshotAssertion
 
-from custom_components.abbfreeathome_ci.const import DOMAIN
-from custom_components.abbfreeathome_ci.cover import (
-    FreeAtHomeCoverEntity,
-    async_setup_entry,
-)
+from custom_components.abbfreeathome_ci.const import CONF_CREATE_SUBDEVICES, DOMAIN
+from custom_components.abbfreeathome_ci.cover import SELECT_DESCRIPTIONS
 from homeassistant.components.cover import (
+    ATTR_CURRENT_POSITION,
+    ATTR_CURRENT_TILT_POSITION,
     ATTR_POSITION,
     ATTR_TILT_POSITION,
-    CoverDeviceClass,
-    CoverEntityFeature,
+    DOMAIN as COVER_DOMAIN,
+    CoverState,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.const import (
+    ATTR_ENTITY_ID,
+    SERVICE_CLOSE_COVER,
+    SERVICE_OPEN_COVER,
+    SERVICE_SET_COVER_POSITION,
+    SERVICE_SET_COVER_TILT_POSITION,
+    SERVICE_STOP_COVER,
+    STATE_UNKNOWN,
+    Platform,
+)
+from homeassistant.core import HomeAssistant, State
+from homeassistant.helpers import device_registry as dr, entity_registry as er
+
+from .common import (
+    MockConfigEntry,
+    build_channel,
+    build_device,
+    setup_with_channels,
+    snapshot_entities,
+)
+
+SERIAL = "ABB700000001"
+
+# Opening and closing set the move input, stopping the stop input, and
+# positioning the position input; shutters also have an input for their slats.
+MOVE_INPUT = "idp0000"
+STOP_INPUT = "idp0001"
+POSITION_INPUT = "idp0002"
+TILT_INPUT = "idp0003"
+COVER_INPUTS = {
+    Pairing.AL_MOVE_UP_DOWN: "0",
+    Pairing.AL_STOP_STEP_UP_DOWN: "0",
+    Pairing.AL_SET_ABSOLUTE_POSITION_BLINDS_PERCENTAGE: "30",
+}
+SHUTTER_INPUTS = COVER_INPUTS | {
+    Pairing.AL_SET_ABSOLUTE_POSITION_SLATS_PERCENTAGE: "25"
+}
+
+# The SysAP reports whether a cover moves, its position, and the position of
+# a shutter's slats.
+MOVEMENT_OUTPUT = "odp0000"
+POSITION_OUTPUT = "odp0001"
+TILT_OUTPUT = "odp0002"
 
 
-def _build_entity(channel, key="ShutterActuator", create_subdevices=False):
-    """Build a cover entity for the given mock channel."""
-    return FreeAtHomeCoverEntity(
-        channel=channel,
-        entity_description_kwargs={
-            "key": key,
-            "device_class": CoverDeviceClass.BLIND,
-        },
-        sysap_serial_number="TEST123456",
-        create_subdevices=create_subdevices,
-    )
+@dataclass(frozen=True)
+class CoverCase:
+    """A cover description with a real channel.
+
+    The SysAP counts positions from 0 (open) to 100 (closed), the other way
+    round than Home Assistant. Awnings count from 0 (retracted) and report
+    their movement the other way round as well; the library inverts both, so
+    Home Assistant shows an awning like any other cover.
+    """
+
+    channel_class: type[CoverActuator]
+    channel_id: str
+    # The reported position of a closed cover.
+    closed: str = "100"
+    # The reported movement while the cover opens and while it closes.
+    opening: str = "2"
+    closing: str = "3"
+    # The position Home Assistant shows for the reported position 30.
+    position: int = 70
+    # Opening and closing set the move input; awnings set their position.
+    open_command: tuple[str, str] = (MOVE_INPUT, "0")
+    close_command: tuple[str, str] = (MOVE_INPUT, "1")
+    # The position that sets Home Assistant's position 30.
+    position_command: str = "70"
+    # Only shutters have slats.
+    tilt: bool = False
 
 
-async def test_async_setup_entry_no_covers(
-    hass: HomeAssistant, mock_config_entry
-) -> None:
-    """Test setup with no cover entities."""
-    mock_config_entry.add_to_hass(hass)
-
-    mock_free_at_home = MagicMock()
-    mock_free_at_home.get_channels_by_class.return_value = []
-    hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
-
-    async_add_entities = MagicMock()
-    await async_setup_entry(hass, mock_config_entry, async_add_entities)
-
-    assert async_add_entities.call_count == 1
-
-
-async def test_async_setup_entry_with_covers(
-    hass: HomeAssistant, mock_config_entry
-) -> None:
-    """Test setup creates an entity for each cover channel class."""
-    mock_config_entry.add_to_hass(hass)
-
-    channels = {}
-    for cover_class in (
-        AtticWindowActuator,
+# Unique IDs must never change; each ends with the description's key.
+COVER_CASES = {
+    "AtticWindowActuator": CoverCase(AtticWindowActuator, "ch0000"),
+    "AwningActuator": CoverCase(
         AwningActuator,
-        BlindActuator,
-        ShutterActuator,
+        "ch0001",
+        closed="0",
+        opening="3",
+        closing="2",
+        position=30,
+        open_command=(POSITION_INPUT, "100"),
+        close_command=(POSITION_INPUT, "0"),
+        position_command="30",
+    ),
+    "BlindActuator": CoverCase(BlindActuator, "ch0002"),
+    "ShutterActuator": CoverCase(ShutterActuator, "ch0003", tilt=True),
+}
+
+
+@pytest.fixture(autouse=True)
+def cover_platform(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Load only the cover platform."""
+    monkeypatch.setattr(
+        "custom_components.abbfreeathome_ci.PLATFORMS", [Platform.COVER]
+    )
+
+
+def test_cases_cover_all_descriptions() -> None:
+    """Test every cover description has a case with its channel class."""
+    # cover.py calls its cover descriptions SELECT_DESCRIPTIONS.
+    assert list(COVER_CASES) == list(SELECT_DESCRIPTIONS)
+    for key, case in COVER_CASES.items():
+        assert case.channel_class is SELECT_DESCRIPTIONS[key]["channel_class"]
+
+
+def _build_cover(device: Device, key: str, movement: str = "1") -> CoverActuator:
+    """Build the real channel of a cover case at the reported position 30.
+
+    The movement 1 means the cover stands partly open. Shutters also report
+    their slats at 25.
+    """
+    case = COVER_CASES[key]
+    outputs = {
+        Pairing.AL_INFO_MOVE_UP_DOWN: movement,
+        Pairing.AL_CURRENT_ABSOLUTE_POSITION_BLINDS_PERCENTAGE: "30",
+    }
+    if case.tilt:
+        outputs[Pairing.AL_CURRENT_ABSOLUTE_POSITION_SLATS_PERCENTAGE] = "25"
+    return build_channel(
+        case.channel_class,
+        device,
+        case.channel_id,
+        inputs=SHUTTER_INPUTS if case.tilt else COVER_INPUTS,
+        outputs=outputs,
+    )
+
+
+def _entity_id(entity_registry: er.EntityRegistry, key: str) -> str:
+    """Return the entity ID of a cover case by its unique ID."""
+    entity_id = entity_registry.async_get_entity_id(
+        COVER_DOMAIN, DOMAIN, f"{SERIAL}_{COVER_CASES[key].channel_id}_{key}"
+    )
+    assert entity_id is not None
+    return entity_id
+
+
+async def test_cover_entities(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    snapshot: SnapshotAssertion,
+) -> None:
+    """Test the cover entities of all descriptions, partly open."""
+    device = build_device(SERIAL)
+
+    await setup_with_channels(
+        hass,
+        mock_config_entry,
+        mock_free_at_home_settings,
+        [_build_cover(device, key) for key in COVER_CASES],
+    )
+
+    snapshot_entities(hass, snapshot, mock_config_entry.entry_id)
+    for key, case in COVER_CASES.items():
+        state = hass.states.get(_entity_id(entity_registry, key))
+        assert state.state == CoverState.OPEN
+        assert state.attributes[ATTR_CURRENT_POSITION] == case.position
+
+
+@pytest.mark.parametrize("key", COVER_CASES)
+async def test_cover_follows_sysap(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    key: str,
+) -> None:
+    """Test a cover shows the position and movement the SysAP reports."""
+    case = COVER_CASES[key]
+    device = build_device(SERIAL)
+    channel = _build_cover(device, key)
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    entity_id = _entity_id(entity_registry, key)
+
+    async def report(datapoint: str, value: str) -> State:
+        """Report a datapoint value and return the state of the cover."""
+        channel.update_channel(f"{SERIAL}/{case.channel_id}/{datapoint}", value)
+        await hass.async_block_till_done()
+        return hass.states.get(entity_id)
+
+    state = await report(POSITION_OUTPUT, case.closed)
+    assert state.state == CoverState.CLOSED
+    assert state.attributes[ATTR_CURRENT_POSITION] == 0
+    assert (await report(MOVEMENT_OUTPUT, case.opening)).state == CoverState.OPENING
+    assert (await report(MOVEMENT_OUTPUT, case.closing)).state == CoverState.CLOSING
+    device.api.set_datapoint.assert_not_awaited()
+
+
+@pytest.mark.parametrize("key", COVER_CASES)
+async def test_cover_commands(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    key: str,
+) -> None:
+    """Test opening, closing, positioning, and stopping a cover on the SysAP."""
+    case = COVER_CASES[key]
+    device = build_device(SERIAL)
+    # The library stops only a moving cover.
+    channel = _build_cover(device, key, movement=case.opening)
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    entity_id = _entity_id(entity_registry, key)
+
+    for service, data in (
+        (SERVICE_OPEN_COVER, {}),
+        (SERVICE_CLOSE_COVER, {}),
+        (SERVICE_SET_COVER_POSITION, {ATTR_POSITION: 30}),
+        (SERVICE_STOP_COVER, {}),
     ):
-        mock_channel = MagicMock(spec=cover_class)
-        mock_channel.channel_name = cover_class.__name__
-        mock_channel.channel_id = "ch0000"
-        mock_channel.device_serial = "ABB7F57FFFE12345"
-        mock_channel.device.is_multi_device = False
-        channels[cover_class] = mock_channel
+        await hass.services.async_call(
+            COVER_DOMAIN, service, {ATTR_ENTITY_ID: entity_id, **data}, blocking=True
+        )
 
-    mock_free_at_home = MagicMock()
+    def command(datapoint: str, value: str):
+        """Return the call that sets a datapoint of the cover."""
+        return call(
+            device_serial=SERIAL,
+            channel_id=case.channel_id,
+            datapoint=datapoint,
+            value=value,
+        )
 
-    def get_channels_by_class_side_effect(channel_class):
-        """Return the mock channel for the requested cover class."""
-        return [channels[channel_class]]
+    assert device.api.set_datapoint.await_args_list == [
+        command(*case.open_command),
+        command(*case.close_command),
+        command(POSITION_INPUT, case.position_command),
+        command(STOP_INPUT, "1"),
+    ]
 
-    mock_free_at_home.get_channels_by_class.side_effect = (
-        get_channels_by_class_side_effect
+
+async def test_shutter_tilt_follows_sysap(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test a shutter shows the slat position the SysAP reports."""
+    device = build_device(SERIAL)
+    channel = _build_cover(device, "ShutterActuator")
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
     )
-    hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
+    entity_id = _entity_id(entity_registry, "ShutterActuator")
+    assert hass.states.get(entity_id).attributes[ATTR_CURRENT_TILT_POSITION] == 75
 
-    entities_added = []
+    channel.update_channel(f"{SERIAL}/ch0003/{TILT_OUTPUT}", "100")
+    await hass.async_block_till_done()
 
-    def capture_entities(entity_generator):
-        """Capture entities from generator."""
-        entities_added.extend(list(entity_generator))
-
-    async_add_entities = MagicMock(side_effect=capture_entities)
-    await async_setup_entry(hass, mock_config_entry, async_add_entities)
-
-    assert len(entities_added) == 4
-    keys = {e.entity_description.key for e in entities_added}
-    assert keys == {
-        "AtticWindowActuator",
-        "AwningActuator",
-        "BlindActuator",
-        "ShutterActuator",
-    }
+    assert hass.states.get(entity_id).attributes[ATTR_CURRENT_TILT_POSITION] == 0
+    device.api.set_datapoint.assert_not_awaited()
 
 
-async def test_cover_entity_properties(hass: HomeAssistant) -> None:
-    """Test basic cover entity properties without tilt."""
-    mock_channel = MagicMock(spec=BlindActuator)
-    mock_channel.channel_name = "Living Room Blind"
-    mock_channel.channel_id = "ch0001"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.position = 30
-    mock_channel.is_closed = False
-    mock_channel.is_closing = False
-    mock_channel.is_opening = True
-    mock_channel.device.is_multi_device = False
-
-    entity = _build_entity(mock_channel, key="BlindActuator")
-
-    assert entity.entity_description.name == "Living Room Blind"
-    assert entity.entity_description.key == "BlindActuator"
-    assert entity.unique_id == "ABB7F57FFFE12345_ch0001_BlindActuator"
-    assert entity.should_poll is False
-    # position 30 -> HA position abs(30 - 100) = 70
-    assert entity.current_cover_position == 70
-    assert entity.current_cover_tilt_position is None
-    assert entity.is_closed is False
-    assert entity.is_closing is False
-    assert entity.is_opening is True
-    assert entity.supported_features == (
-        CoverEntityFeature.OPEN
-        | CoverEntityFeature.CLOSE
-        | CoverEntityFeature.SET_POSITION
-        | CoverEntityFeature.STOP
+async def test_shutter_set_tilt_position(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test tilting a shutter sets the position of its slats on the SysAP."""
+    device = build_device(SERIAL)
+    await setup_with_channels(
+        hass,
+        mock_config_entry,
+        mock_free_at_home_settings,
+        [_build_cover(device, "ShutterActuator")],
     )
 
-    device_info = entity.device_info
-    assert device_info["identifiers"] == {(DOMAIN, "ABB7F57FFFE12345")}
+    await hass.services.async_call(
+        COVER_DOMAIN,
+        SERVICE_SET_COVER_TILT_POSITION,
+        {
+            ATTR_ENTITY_ID: _entity_id(entity_registry, "ShutterActuator"),
+            ATTR_TILT_POSITION: 20,
+        },
+        blocking=True,
+    )
 
-
-async def test_cover_entity_state_properties(hass: HomeAssistant) -> None:
-    """Test is_closed/is_closing/is_opening delegate to the channel."""
-    mock_channel = MagicMock(spec=BlindActuator)
-    mock_channel.channel_name = "Blind"
-    mock_channel.channel_id = "ch0002"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.position = 100
-
-    mock_channel.is_closed = True
-    mock_channel.is_closing = True
-    mock_channel.is_opening = False
-
-    entity = _build_entity(mock_channel, key="BlindActuator")
-
-    assert entity.is_closed is True
-    assert entity.is_closing is True
-    assert entity.is_opening is False
-
-    # is_closed can be None when the position is unknown
-    mock_channel.is_closed = None
-    assert entity.is_closed is None
-
-
-async def test_cover_entity_position_none(hass: HomeAssistant) -> None:
-    """Test position property returns None when channel position is None."""
-    mock_channel = MagicMock(spec=BlindActuator)
-    mock_channel.channel_name = "Blind"
-    mock_channel.channel_id = "ch0003"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.position = None
-
-    entity = _build_entity(mock_channel, key="BlindActuator")
-
-    assert entity.current_cover_position is None
-
-
-async def test_cover_entity_with_tilt(hass: HomeAssistant) -> None:
-    """Test cover entity with tilt support (ShutterActuator)."""
-    mock_channel = MagicMock(spec=ShutterActuator)
-    mock_channel.channel_name = "Bedroom Shutter"
-    mock_channel.channel_id = "ch0004"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.position = 40
-    mock_channel.tilt_position = 25
-
-    entity = _build_entity(mock_channel, key="ShutterActuator")
-
-    # tilt 25 -> HA tilt abs(25 - 100) = 75
-    assert entity.current_cover_tilt_position == 75
-    assert entity.supported_features == (
-        CoverEntityFeature.OPEN
-        | CoverEntityFeature.CLOSE
-        | CoverEntityFeature.SET_POSITION
-        | CoverEntityFeature.STOP
-        | CoverEntityFeature.SET_TILT_POSITION
+    device.api.set_datapoint.assert_awaited_once_with(
+        device_serial=SERIAL, channel_id="ch0003", datapoint=TILT_INPUT, value="80"
     )
 
 
-async def test_cover_entity_tilt_position_none(hass: HomeAssistant) -> None:
-    """Test tilt position returns None when channel tilt_position is None."""
-    mock_channel = MagicMock(spec=ShutterActuator)
-    mock_channel.channel_name = "Shutter"
-    mock_channel.channel_id = "ch0005"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.position = 40
-    mock_channel.tilt_position = None
-
-    entity = _build_entity(mock_channel, key="ShutterActuator")
-
-    assert entity.current_cover_tilt_position is None
-
-
-async def test_cover_entity_with_subdevices(hass: HomeAssistant) -> None:
-    """Test cover entity device info with subdevices enabled."""
-    mock_channel = MagicMock(spec=BlindActuator)
-    mock_channel.channel_name = "Zone Blind"
-    mock_channel.channel_id = "ch0006"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.device_name = "Multi Blind"
-    mock_channel.room_name = "Zone 1"
-    mock_channel.position = 0
-    mock_channel.device.is_multi_device = True
-    mock_channel.device.device_id = "5678"
-
-    entity = _build_entity(mock_channel, key="BlindActuator", create_subdevices=True)
-
-    entity.platform = MagicMock()
-    with patch(
-        "custom_components.abbfreeathome_ci.cover.async_get_sub_device_info"
-    ) as mock_sub_device_info:
-        device_info = entity.device_info
-
-    mock_sub_device_info.assert_called_once_with(
-        entity.hass, entity.platform.config_entry.entry_id, mock_channel
+async def test_cover_without_reported_positions(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test a cover is unknown without a position and has no tilt without one."""
+    device = build_device(SERIAL)
+    blind = build_channel(
+        BlindActuator,
+        device,
+        "ch0002",
+        inputs=COVER_INPUTS,
+        outputs={Pairing.AL_INFO_MOVE_UP_DOWN: "1"},
     )
-    assert device_info is mock_sub_device_info.return_value
+    shutter = build_channel(
+        ShutterActuator,
+        device,
+        "ch0003",
+        inputs=SHUTTER_INPUTS,
+        outputs={
+            Pairing.AL_INFO_MOVE_UP_DOWN: "1",
+            Pairing.AL_CURRENT_ABSOLUTE_POSITION_BLINDS_PERCENTAGE: "30",
+        },
+    )
 
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [blind, shutter]
+    )
 
-async def test_cover_entity_callbacks_without_tilt(hass: HomeAssistant) -> None:
-    """Test callback registration/removal for a cover without tilt."""
-    mock_channel = MagicMock(spec=BlindActuator)
-    mock_channel.channel_name = "Blind"
-    mock_channel.channel_id = "ch0007"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.position = 50
-
-    entity = _build_entity(mock_channel, key="BlindActuator")
-    entity.async_write_ha_state = MagicMock()
-
-    await entity.async_added_to_hass()
-    # state + position callbacks (no tilt)
-    assert mock_channel.register_callback.call_count == 2
-    registered = {
-        c.kwargs["callback_attribute"]
-        for c in mock_channel.register_callback.call_args_list
-    }
-    assert registered == {"state", "position"}
-
-    await entity.async_will_remove_from_hass()
-    assert mock_channel.remove_callback.call_count == 2
-
-
-async def test_cover_entity_callbacks_with_tilt(hass: HomeAssistant) -> None:
-    """Test callback registration/removal includes tilt for shutters."""
-    mock_channel = MagicMock(spec=ShutterActuator)
-    mock_channel.channel_name = "Shutter"
-    mock_channel.channel_id = "ch0008"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.position = 50
-    mock_channel.tilt_position = 50
-
-    entity = _build_entity(mock_channel, key="ShutterActuator")
-    entity.async_write_ha_state = MagicMock()
-
-    await entity.async_added_to_hass()
-    # state + position + tilt_position callbacks
-    assert mock_channel.register_callback.call_count == 3
-    registered = {
-        c.kwargs["callback_attribute"]
-        for c in mock_channel.register_callback.call_args_list
-    }
-    assert registered == {"state", "position", "tilt_position"}
-
-    await entity.async_will_remove_from_hass()
-    assert mock_channel.remove_callback.call_count == 3
-
-
-async def test_cover_entity_actions(hass: HomeAssistant) -> None:
-    """Test open/close/set_position/stop actions."""
-    mock_channel = MagicMock(spec=BlindActuator)
-    mock_channel.channel_name = "Blind"
-    mock_channel.channel_id = "ch0009"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.position = 50
-    mock_channel.open = AsyncMock()
-    mock_channel.close = AsyncMock()
-    mock_channel.set_position = AsyncMock()
-    mock_channel.stop = AsyncMock()
-
-    entity = _build_entity(mock_channel, key="BlindActuator")
-
-    await entity.async_open_cover()
-    mock_channel.open.assert_called_once()
-
-    await entity.async_close_cover()
-    mock_channel.close.assert_called_once()
-
-    # HA position 30 -> channel position abs(30 - 100) = 70
-    await entity.async_set_cover_position(**{ATTR_POSITION: 30})
-    mock_channel.set_position.assert_called_once_with(70)
-
-    await entity.async_stop_cover()
-    mock_channel.stop.assert_called_once()
-
-
-async def test_cover_entity_set_tilt_position(hass: HomeAssistant) -> None:
-    """Test set tilt position action inverts the value."""
-    mock_channel = MagicMock(spec=ShutterActuator)
-    mock_channel.channel_name = "Shutter"
-    mock_channel.channel_id = "ch0010"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.position = 50
-    mock_channel.tilt_position = 50
-    mock_channel.set_tilt_position = AsyncMock()
-
-    entity = _build_entity(mock_channel, key="ShutterActuator")
-
-    # HA tilt 20 -> channel tilt abs(20 - 100) = 80
-    await entity.async_set_cover_tilt_position(**{ATTR_TILT_POSITION: 20})
-    mock_channel.set_tilt_position.assert_called_once_with(80)
+    blind_state = hass.states.get(_entity_id(entity_registry, "BlindActuator"))
+    assert blind_state.state == STATE_UNKNOWN
+    assert ATTR_CURRENT_POSITION not in blind_state.attributes
+    shutter_state = hass.states.get(_entity_id(entity_registry, "ShutterActuator"))
+    assert shutter_state.state == CoverState.OPEN
+    assert ATTR_CURRENT_TILT_POSITION not in shutter_state.attributes
 
 
 @pytest.mark.parametrize(
-    ("position", "expected"),
-    [(0, 100), (100, 0), (60, 40)],
+    ("key", "attributes"),
+    [
+        ("BlindActuator", {"state", "position"}),
+        ("ShutterActuator", {"state", "position", "tilt_position"}),
+    ],
 )
-async def test_cover_entity_position_conversion(
-    hass: HomeAssistant, position, expected
+async def test_cover_removes_callbacks_on_unload(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    key: str,
+    attributes: set[str],
 ) -> None:
-    """Test position conversion between channel and HA conventions."""
-    mock_channel = MagicMock(spec=BlindActuator)
-    mock_channel.channel_name = "Blind"
-    mock_channel.channel_id = "ch0011"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.position = position
+    """Test an unloaded cover no longer follows its channel."""
+    case = COVER_CASES[key]
+    channel = _build_cover(build_device(SERIAL), key)
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    entity_id = _entity_id(entity_registry, key)
 
-    entity = _build_entity(mock_channel, key="BlindActuator")
+    assert await hass.config_entries.async_unload(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+    state = hass.states.get(entity_id)
 
-    assert entity.current_cover_position == expected
+    channel.update_channel(f"{SERIAL}/{case.channel_id}/{POSITION_OUTPUT}", "100")
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id) == state
+    assert channel._callbacks == {attribute: set() for attribute in attributes}
+
+
+@pytest.mark.parametrize(
+    ("create_subdevices", "multi_device_identifier"),
+    [
+        (False, (DOMAIN, SERIAL)),
+        (True, (DOMAIN, f"{SERIAL}_ch0002")),
+    ],
+)
+async def test_cover_device(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    device_registry: dr.DeviceRegistry,
+    create_subdevices: bool,
+    multi_device_identifier: tuple[str, str],
+) -> None:
+    """Test a cover of a multi-channel device belongs to a subdevice if enabled."""
+    entry = MockConfigEntry(
+        version=mock_config_entry.version,
+        minor_version=mock_config_entry.minor_version,
+        domain=DOMAIN,
+        title=mock_config_entry.title,
+        data={**mock_config_entry.data, CONF_CREATE_SUBDEVICES: create_subdevices},
+        source=mock_config_entry.source,
+        unique_id=mock_config_entry.unique_id,
+    )
+    # A device without a room and with several channels is a multi-device.
+    multi_device = build_device(SERIAL)
+    multi_channel = _build_cover(multi_device, "BlindActuator")
+    _build_cover(multi_device, "ShutterActuator")
+    assert multi_device.is_multi_device
+    single_device = build_device("ABB700000002")
+    single_channel = _build_cover(single_device, "BlindActuator")
+    assert not single_device.is_multi_device
+
+    await setup_with_channels(
+        hass, entry, mock_free_at_home_settings, [multi_channel, single_channel]
+    )
+
+    def device_identifiers(unique_id: str) -> set[tuple[str, str]]:
+        """Return the identifiers of the device of a cover."""
+        entity_id = entity_registry.async_get_entity_id(COVER_DOMAIN, DOMAIN, unique_id)
+        entity_entry = entity_registry.async_get(entity_id)
+        return device_registry.async_get(entity_entry.device_id).identifiers
+
+    assert device_identifiers(f"{SERIAL}_ch0002_BlindActuator") == {
+        multi_device_identifier
+    }
+    assert device_identifiers("ABB700000002_ch0002_BlindActuator") == {
+        (DOMAIN, "ABB700000002")
+    }
