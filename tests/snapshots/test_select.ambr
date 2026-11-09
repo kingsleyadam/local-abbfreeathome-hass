@@ -1,0 +1,211 @@
+# serializer version: 1
+# name: test_select_entities[ABB700000001_ch0000_AtticWindowActuatorForcedPosition]
+  dict({
+    'attributes': dict({
+      'friendly_name': 'Runtime Device AtticWindowActuator ch0000 Forced Position',
+      'options': list([
+        'deactivated',
+        'forced_open',
+        'forced_closed',
+      ]),
+    }),
+    'capabilities': dict({
+      'options': list([
+        'deactivated',
+        'forced_open',
+        'forced_closed',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'select',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'AtticWindowActuator ch0000 Forced Position',
+    'state': 'deactivated',
+    'supported_features': 0,
+    'translation_key': 'cover_actuator',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_select_entities[ABB700000001_ch0001_AwningActuatorForcedPosition]
+  dict({
+    'attributes': dict({
+      'friendly_name': 'Runtime Device AwningActuator ch0001 Forced Position',
+      'options': list([
+        'deactivated',
+        'forced_open',
+        'forced_closed',
+      ]),
+    }),
+    'capabilities': dict({
+      'options': list([
+        'deactivated',
+        'forced_open',
+        'forced_closed',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'select',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'AwningActuator ch0001 Forced Position',
+    'state': 'deactivated',
+    'supported_features': 0,
+    'translation_key': 'cover_actuator',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_select_entities[ABB700000001_ch0002_BlindActuatorForcedPosition]
+  dict({
+    'attributes': dict({
+      'friendly_name': 'Runtime Device BlindActuator ch0002 Forced Position',
+      'options': list([
+        'deactivated',
+        'forced_open',
+        'forced_closed',
+      ]),
+    }),
+    'capabilities': dict({
+      'options': list([
+        'deactivated',
+        'forced_open',
+        'forced_closed',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'select',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'BlindActuator ch0002 Forced Position',
+    'state': 'deactivated',
+    'supported_features': 0,
+    'translation_key': 'cover_actuator',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_select_entities[ABB700000001_ch0003_ShutterActuatorForcedPosition]
+  dict({
+    'attributes': dict({
+      'friendly_name': 'Runtime Device ShutterActuator ch0003 Forced Position',
+      'options': list([
+        'deactivated',
+        'forced_open',
+        'forced_closed',
+      ]),
+    }),
+    'capabilities': dict({
+      'options': list([
+        'deactivated',
+        'forced_open',
+        'forced_closed',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'select',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'ShutterActuator ch0003 Forced Position',
+    'state': 'deactivated',
+    'supported_features': 0,
+    'translation_key': 'cover_actuator',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_select_entities[ABB700000001_ch0004_SwitchActuatorForcedPosition]
+  dict({
+    'attributes': dict({
+      'friendly_name': 'Runtime Device SwitchActuator ch0004 Forced Position',
+      'options': list([
+        'deactivated',
+        'forced_on',
+        'forced_off',
+      ]),
+    }),
+    'capabilities': dict({
+      'options': list([
+        'deactivated',
+        'forced_on',
+        'forced_off',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'select',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'SwitchActuator ch0004 Forced Position',
+    'state': 'deactivated',
+    'supported_features': 0,
+    'translation_key': 'switch_actuator',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_select_entities[ABB700000001_ch0005_DimmingActuatorForcedPosition]
+  dict({
+    'attributes': dict({
+      'friendly_name': 'Runtime Device DimmingActuator ch0005 Forced Position',
+      'options': list([
+        'deactivated',
+        'forced_on',
+        'forced_off',
+      ]),
+    }),
+    'capabilities': dict({
+      'options': list([
+        'deactivated',
+        'forced_on',
+        'forced_off',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'select',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'DimmingActuator ch0005 Forced Position',
+    'state': 'deactivated',
+    'supported_features': 0,
+    'translation_key': 'dimming_actuator',
+    'unit_of_measurement': None,
+  })
+# ---
