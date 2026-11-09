@@ -149,8 +149,10 @@ EVENT_DESCRIPTIONS = {
         "state_attribute": "state",
         "entity_description_kwargs": {
             "device_class": EventDeviceClass.BUTTON,
+            # Drop the shared names in order; a set would order them
+            # differently on every start.
             "event_types": list(
-                set(
+                dict.fromkeys(
                     [state.name for state in SwitchSensorState]
                     + [state.name for state in DimmingSensorState]
                 )
