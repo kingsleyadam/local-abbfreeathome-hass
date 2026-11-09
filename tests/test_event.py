@@ -1,9 +1,12 @@
-"""Test ABB-free@home event platform (doorbell standard ring event)."""
+"""Test ABB-free@home event."""
 
+from dataclasses import dataclass, field
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, Mock, call, patch
+from unittest.mock import MagicMock
 
 from abbfreeathome.bin.pairing import Pairing
+from abbfreeathome.channels.base import Base
+from abbfreeathome.channels.blind_sensor import BlindSensor
 from abbfreeathome.channels.cover_actuator import (
     AtticWindowActuator,
     AwningActuator,
@@ -11,621 +14,573 @@ from abbfreeathome.channels.cover_actuator import (
     ShutterActuator,
 )
 from abbfreeathome.channels.des_door_ringing_sensor import DesDoorRingingSensor
+from abbfreeathome.channels.force_on_off_sensor import ForceOnOffSensor
 from abbfreeathome.channels.switch_sensor import (
     DimmingSensor,
     StaircaseLightSensor,
-    SwitchSensorState,
+    SwitchSensor,
+)
+from abbfreeathome.channels.virtual.virtual_dimming_actuator import (
+    VirtualDimmingActuator,
 )
 from abbfreeathome.channels.virtual.virtual_room_temperature_controller import (
     VirtualRoomTemperatureController,
 )
+from abbfreeathome.channels.virtual.virtual_switch_actuator import VirtualSwitchActuator
 from abbfreeathome.device import Device
+from freezegun.api import FrozenDateTimeFactory
 import pytest
+from syrupy.assertion import SnapshotAssertion
 
-from custom_components.abbfreeathome_ci.const import DOMAIN
-from custom_components.abbfreeathome_ci.event import (
-    EVENT_DESCRIPTIONS,
-    FreeAtHomeEventEntity,
-    async_setup_entry,
+from custom_components.abbfreeathome_ci.const import CONF_CREATE_SUBDEVICES, DOMAIN
+from custom_components.abbfreeathome_ci.event import EVENT_DESCRIPTIONS
+from homeassistant.components.event import ATTR_EVENT_TYPE, DOMAIN as EVENT_DOMAIN
+from homeassistant.const import STATE_UNKNOWN, Platform
+from homeassistant.core import (
+    Event,
+    EventStateChangedData,
+    HomeAssistant,
+    State,
+    callback,
 )
-from homeassistant.components.event import (
-    ATTR_EVENT_TYPES,
-    DOMAIN as EVENT_DOMAIN,
-    EventDeviceClass,
+from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers.event import async_track_state_change_event
+
+from .common import (
+    MockConfigEntry,
+    build_channel,
+    build_device,
+    setup_with_channels,
+    snapshot_entities,
 )
-from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
 
-from .common import MockConfigEntry, build_channel, build_device, setup_with_channels
-
-DOORBELL_KEY = "EventDesDoorRingingSensorActivated"
-TARGET_TEMPERATURE_KEY = "EventVirtualRoomTemperatureControllerTargetTemperature"
-STAIRCASE_KEY = "EventStaircaseLightSensorOnOff"
-COVER_CLASSES = (AtticWindowActuator, AwningActuator, BlindActuator, ShutterActuator)
+SERIAL = "ABB700000001"
+COVER_INPUTS = {Pairing.AL_SET_ABSOLUTE_POSITION_BLINDS_PERCENTAGE: ""}
+COVER_OUTPUTS = {Pairing.AL_CURRENT_ABSOLUTE_POSITION_BLINDS_PERCENTAGE: "100"}
 
 
-def _build_doorbell_channel() -> Mock:
-    """Create a mock DesDoorRingingSensor channel."""
-    channel = Mock(
-        spec=[
-            "channel_name",
-            "channel_id",
-            "device_serial",
-            "device_name",
-            "room_name",
-            "device",
-            "register_callback",
-            "remove_callback",
-        ]
-    )
-    channel.channel_name = "Doorbell"
-    channel.channel_id = "ch0000"
-    channel.device_serial = "ABB7F57FFFE12345"
-    channel.device_name = "Door Ringing Device"
-    channel.room_name = "Entrance"
-    channel.device = Mock()
-    channel.device.is_multi_device = False
-    return channel
+@dataclass(frozen=True)
+class EventCase:
+    """An event description with a real channel and a SysAP report firing it.
+
+    When the SysAP reports value on datapoint, the entity fires event_type
+    with extra_data.
+    """
+
+    channel_class: type[Base]
+    channel_id: str
+    datapoint: str
+    value: str
+    event_type: str
+    extra_data: Any = None
+    inputs: dict[Pairing, str] = field(default_factory=dict)
+    outputs: dict[Pairing, str] = field(default_factory=dict)
 
 
-def _build_entity(
-    channel: Mock,
-    *,
-    key: str,
-    state_attribute: str,
-    event_type_callback,
-    extra_data: str | None = None,
-    create_subdevices: bool = False,
-    event_types: list[str] | None = None,
-) -> FreeAtHomeEventEntity:
-    """Build an event entity with explicit configuration."""
-    return FreeAtHomeEventEntity(
-        channel,
-        state_attribute=state_attribute,
-        entity_description_kwargs={
-            "key": key,
-            "event_types": event_types or ["ring", "activated"],
+# Cases sharing a channel define its datapoints in their first case. Virtual
+# channels and covers report requests on inputs, sensors on outputs.
+EVENT_CASES = {
+    "EventVirtualDimmingActuatorOnOff": EventCase(
+        VirtualDimmingActuator,
+        "ch0000",
+        datapoint="idp0000",
+        value="1",
+        event_type="on",
+        inputs={
+            Pairing.AL_SWITCH_ON_OFF: "0",
+            Pairing.AL_RELATIVE_SET_VALUE_CONTROL: "0",
+            Pairing.AL_ABSOLUTE_SET_VALUE_CONTROL: "0",
         },
-        sysap_serial_number="TEST123456",
-        create_subdevices=create_subdevices,
-        event_type_callback=event_type_callback,
-        extra_data=extra_data,
-    )
-
-
-def _build_doorbell_entity(channel: Mock) -> FreeAtHomeEventEntity:
-    """Build a doorbell event entity from the platform description."""
-    description = EVENT_DESCRIPTIONS[DOORBELL_KEY]
-    return FreeAtHomeEventEntity(
-        channel,
-        state_attribute=description.get("state_attribute"),
-        entity_description_kwargs={"key": DOORBELL_KEY}
-        | description.get("entity_description_kwargs"),
-        sysap_serial_number="TEST123456",
-        create_subdevices=False,
-        event_type_callback=description.get("event_type_callback"),
-        extra_data=description.get("extra_data"),
-    )
-
-
-def test_doorbell_uses_standard_ring_event() -> None:
-    """The doorbell entity must expose the standard doorbell class and ring type."""
-    description = EVENT_DESCRIPTIONS[DOORBELL_KEY]
-    kwargs = description["entity_description_kwargs"]
-
-    assert kwargs["device_class"] == EventDeviceClass.DOORBELL
-    assert "ring" in kwargs["event_types"]
-    # The legacy "activated" type is retained for backwards compatibility.
-    assert "activated" in kwargs["event_types"]
-    # The callback fires both the standard "ring" and legacy "activated" types.
-    assert description["event_type_callback"]() == ["ring", "activated"]
-
-
-async def test_async_setup_entry_adds_doorbell(
-    hass: HomeAssistant, mock_config_entry
-) -> None:
-    """Test the doorbell entity is created with the ring event configuration."""
-    mock_config_entry.add_to_hass(hass)
-
-    channel = _build_doorbell_channel()
-
-    mock_free_at_home = MagicMock()
-    mock_free_at_home.get_channels_by_class.side_effect = lambda channel_class: (
-        [channel] if channel_class is DesDoorRingingSensor else []
-    )
-    hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
-
-    entities_added = []
-
-    def capture_entities(entity_generator):
-        """Capture entities from generator."""
-        entities_added.extend(list(entity_generator))
-
-    async_add_entities = MagicMock(side_effect=capture_entities)
-    await async_setup_entry(hass, mock_config_entry, async_add_entities)
-
-    mock_free_at_home.get_channels_by_class.assert_any_call(
-        channel_class=DesDoorRingingSensor
-    )
-
-    doorbell = next(
-        e for e in entities_added if e.entity_description.key == DOORBELL_KEY
-    )
-    assert isinstance(doorbell, FreeAtHomeEventEntity)
-    assert doorbell.entity_description.device_class == EventDeviceClass.DOORBELL
-    assert doorbell.event_types == ["ring", "activated"]
-    assert doorbell.unique_id == f"ABB7F57FFFE12345_ch0000_{DOORBELL_KEY}"
-
-
-def _build_staircase_channel() -> Mock:
-    """Create a mock StaircaseLightSensor channel."""
-    channel = Mock(
-        spec=[
-            "channel_name",
-            "channel_id",
-            "device_serial",
-            "device_name",
-            "room_name",
-            "device",
-            "register_callback",
-            "remove_callback",
-            "state",
-        ]
-    )
-    channel.channel_name = "Gate"
-    channel.channel_id = "ch0004"
-    channel.device_serial = "ABB7F57FFFE99999"
-    channel.device_name = "Gate Device"
-    channel.room_name = "Driveway"
-    channel.device = Mock()
-    channel.device.is_multi_device = False
-    return channel
-
-
-def test_staircase_light_sensor_description() -> None:
-    """The staircase-light-sensor event exposes the switch-sensor states."""
-    description = EVENT_DESCRIPTIONS[STAIRCASE_KEY]
-    kwargs = description["entity_description_kwargs"]
-
-    assert description["channel_class"] is StaircaseLightSensor
-    assert kwargs["device_class"] == EventDeviceClass.BUTTON
-    assert kwargs["translation_key"] == "staircase_light_sensor"
-    assert set(kwargs["event_types"]) == {state.name for state in SwitchSensorState}
-    assert description["event_type_callback"]("on") == "on"
-
-
-async def test_dimming_sensor_event_types_order(
-    hass: HomeAssistant,
-    mock_config_entry: MockConfigEntry,
-    mock_free_at_home_settings: MagicMock,
-    entity_registry: er.EntityRegistry,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Test the dimming sensor lists its event types in a fixed order."""
-    monkeypatch.setattr(
-        "custom_components.abbfreeathome_ci.PLATFORMS", [Platform.EVENT]
-    )
-    channel = build_channel(
+        outputs={
+            Pairing.AL_INFO_ON_OFF: "0",
+            Pairing.AL_INFO_ACTUAL_DIMMING_VALUE: "0",
+        },
+    ),
+    "EventVirtualDimmingActuatorDimming": EventCase(
+        VirtualDimmingActuator,
+        "ch0000",
+        datapoint="idp0001",
+        value="9",
+        event_type="longpress_up",
+    ),
+    "EventVirtualDimmingActuatorBrightness": EventCase(
+        VirtualDimmingActuator,
+        "ch0000",
+        datapoint="idp0002",
+        value="40",
+        event_type="requested_brightness",
+        extra_data=40.0,
+    ),
+    # The library uses 0 = open, Home Assistant 0 = closed. The library
+    # inverts awnings, so their positions match on both sides.
+    "EventAtticWindowActuatorRequestedPosition": EventCase(
+        AtticWindowActuator,
+        "ch0001",
+        datapoint="idp0000",
+        value="100",
+        event_type="requested_position",
+        extra_data=0,
+        inputs=COVER_INPUTS,
+        outputs=COVER_OUTPUTS,
+    ),
+    "EventAwningActuatorRequestedPosition": EventCase(
+        AwningActuator,
+        "ch0002",
+        datapoint="idp0000",
+        value="30",
+        event_type="requested_position",
+        extra_data=30,
+        inputs=COVER_INPUTS,
+        outputs=COVER_OUTPUTS,
+    ),
+    "EventBlindActuatorRequestedPosition": EventCase(
+        BlindActuator,
+        "ch0003",
+        datapoint="idp0000",
+        value="30",
+        event_type="requested_position",
+        extra_data=70,
+        inputs=COVER_INPUTS,
+        outputs=COVER_OUTPUTS,
+    ),
+    "EventShutterActuatorRequestedPosition": EventCase(
+        ShutterActuator,
+        "ch0004",
+        datapoint="idp0000",
+        value="0",
+        event_type="requested_position",
+        extra_data=100,
+        inputs=COVER_INPUTS,
+        outputs=COVER_OUTPUTS,
+    ),
+    "EventBlindSensorState": EventCase(
+        BlindSensor,
+        "ch0005",
+        datapoint="odp0000",
+        value="1",
+        event_type="move_down",
+        outputs={Pairing.AL_MOVE_UP_DOWN: "0", Pairing.AL_STOP_STEP_UP_DOWN: "0"},
+    ),
+    # A ring fires the standard "ring", then the legacy "activated".
+    "EventDesDoorRingingSensorActivated": EventCase(
+        DesDoorRingingSensor,
+        "ch0006",
+        datapoint="odp0000",
+        value="1",
+        event_type="activated",
+        outputs={Pairing.AL_TIMED_START_STOP: "0"},
+    ),
+    "EventDimmingSensorState": EventCase(
         DimmingSensor,
-        build_device(),
+        "ch0007",
+        datapoint="odp0001",
+        value="9",
+        event_type="longpress_up",
         outputs={
             Pairing.AL_SWITCH_ON_OFF: "0",
             Pairing.AL_RELATIVE_SET_VALUE_CONTROL: "0",
         },
+    ),
+    "EventForceOnOffSensorOnOff": EventCase(
+        ForceOnOffSensor,
+        "ch0008",
+        datapoint="odp0000",
+        value="3",
+        event_type="on",
+        outputs={Pairing.AL_FORCED: "1"},
+    ),
+    "EventStaircaseLightSensorOnOff": EventCase(
+        StaircaseLightSensor,
+        "ch0009",
+        datapoint="odp0000",
+        value="1",
+        event_type="on",
+        outputs={Pairing.AL_TIMED_START_STOP: "0"},
+    ),
+    "EventSwitchSensorOnOff": EventCase(
+        SwitchSensor,
+        "ch000a",
+        datapoint="odp0000",
+        value="1",
+        event_type="on",
+        outputs={Pairing.AL_SWITCH_ON_OFF: "0"},
+    ),
+    "EventVirtualRoomTemperatureControllerOnOff": EventCase(
+        VirtualRoomTemperatureController,
+        "ch000b",
+        datapoint="idp0000",
+        value="1",
+        event_type="On",
+        inputs={
+            Pairing.AL_CONTROLLER_ON_OFF_REQUEST: "0",
+            Pairing.AL_ECO_ON_OFF: "0",
+            Pairing.AL_INFO_ABSOLUTE_SET_POINT_REQUEST: "",
+        },
+        outputs={
+            Pairing.AL_SET_POINT_TEMPERATURE: "21",
+            Pairing.AL_CONTROLLER_ON_OFF: "1",
+            Pairing.AL_STATE_INDICATION: "65",
+            Pairing.AL_MEASURED_TEMPERATURE: "20",
+        },
+    ),
+    "EventVirtualRoomTemperatureControllerEcoOnOff": EventCase(
+        VirtualRoomTemperatureController,
+        "ch000b",
+        datapoint="idp0001",
+        value="1",
+        event_type="On",
+    ),
+    "EventVirtualRoomTemperatureControllerTargetTemperature": EventCase(
+        VirtualRoomTemperatureController,
+        "ch000b",
+        datapoint="idp0002",
+        value="22.5",
+        event_type="requested_target_temperature",
+        extra_data=22.5,
+    ),
+    "EventVirtualSwitchActuatorOnOff": EventCase(
+        VirtualSwitchActuator,
+        "ch000c",
+        datapoint="idp0000",
+        value="1",
+        event_type="On",
+        inputs={Pairing.AL_SWITCH_ON_OFF: "0"},
+        outputs={Pairing.AL_INFO_ON_OFF: "0"},
+    ),
+}
+
+# Requests that can repeat with the same value, such as two presses on a
+# virtual dimmer's button, or two identical cover position requests.
+REPEATABLE_KEYS = [
+    "EventVirtualDimmingActuatorOnOff",
+    "EventVirtualDimmingActuatorDimming",
+    "EventVirtualDimmingActuatorBrightness",
+    "EventAtticWindowActuatorRequestedPosition",
+    "EventAwningActuatorRequestedPosition",
+    "EventBlindActuatorRequestedPosition",
+    "EventShutterActuatorRequestedPosition",
+]
+
+
+@pytest.fixture(autouse=True)
+def event_platform(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Load only the event platform."""
+    monkeypatch.setattr(
+        "custom_components.abbfreeathome_ci.PLATFORMS", [Platform.EVENT]
     )
+
+
+def test_cases_cover_all_descriptions() -> None:
+    """Test every event description has a case with its channel class."""
+    assert list(EVENT_CASES) == list(EVENT_DESCRIPTIONS)
+    for key, case in EVENT_CASES.items():
+        assert case.channel_class is EVENT_DESCRIPTIONS[key]["channel_class"]
+
+
+def _build_channels(device: Device) -> dict[str, Base]:
+    """Build one real channel per event case; cases may share a channel."""
+    channels: dict[str, Base] = {}
+    for case in EVENT_CASES.values():
+        if case.channel_id not in channels:
+            channels[case.channel_id] = build_channel(
+                case.channel_class,
+                device,
+                case.channel_id,
+                inputs=case.inputs,
+                outputs=case.outputs,
+            )
+    return channels
+
+
+async def _setup_channel(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    key: str,
+) -> Base:
+    """Set up the real channel of an event case and return it."""
+    channel = _build_channels(build_device(SERIAL))[EVENT_CASES[key].channel_id]
     await setup_with_channels(
         hass, mock_config_entry, mock_free_at_home_settings, [channel]
     )
+    return channel
 
+
+def _entity_id(entity_registry: er.EntityRegistry, key: str) -> str:
+    """Return the entity ID of an event case by its unique ID."""
     entity_id = entity_registry.async_get_entity_id(
-        EVENT_DOMAIN, DOMAIN, "ABB700000001_ch0000_EventDimmingSensorState"
+        EVENT_DOMAIN, DOMAIN, f"{SERIAL}_{EVENT_CASES[key].channel_id}_{key}"
     )
-    # The switch sensor states, then the dimming states not among them.
-    assert hass.states.get(entity_id).attributes[ATTR_EVENT_TYPES] == [
-        "unknown",
-        "off",
-        "on",
-        "longpress_up",
-        "longpress_up_release",
-        "longpress_down",
-        "longpress_down_release",
+    assert entity_id is not None
+    return entity_id
+
+
+def _report(channel: Base, key: str, value: str | None = None) -> None:
+    """Report the datapoint of an event case from the SysAP."""
+    case = EVENT_CASES[key]
+    channel.update_channel(
+        f"{SERIAL}/{case.channel_id}/{case.datapoint}",
+        case.value if value is None else value,
+    )
+
+
+def _track_states(hass: HomeAssistant, entity_id: str) -> list[State | None]:
+    """Collect each state the entity writes from now on."""
+    states: list[State | None] = []
+
+    @callback
+    def _state_changed(event: Event[EventStateChangedData]) -> None:
+        states.append(event.data["new_state"])
+
+    async_track_state_change_event(hass, entity_id, _state_changed)
+    return states
+
+
+def _fired(states: list[State | None]) -> list[tuple[str, Any]]:
+    """Return the event type and extra data of each fired event."""
+    return [
+        (state.attributes[ATTR_EVENT_TYPE], state.attributes["extra_data"])
+        for state in states
     ]
 
 
-async def test_async_setup_entry_adds_staircase_light_sensor(
-    hass: HomeAssistant, mock_config_entry
+async def test_event_entities(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    snapshot: SnapshotAssertion,
 ) -> None:
-    """Test the staircase-light-sensor entity is created for its channel."""
-    mock_config_entry.add_to_hass(hass)
+    """Test the event entities of all descriptions."""
+    channels = _build_channels(build_device(SERIAL))
 
-    channel = _build_staircase_channel()
-
-    mock_free_at_home = MagicMock()
-    mock_free_at_home.get_channels_by_class.side_effect = lambda channel_class: (
-        [channel] if channel_class is StaircaseLightSensor else []
-    )
-    hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
-
-    entities_added = []
-
-    def capture_entities(entity_generator):
-        """Capture entities from generator."""
-        entities_added.extend(list(entity_generator))
-
-    async_add_entities = MagicMock(side_effect=capture_entities)
-    await async_setup_entry(hass, mock_config_entry, async_add_entities)
-
-    mock_free_at_home.get_channels_by_class.assert_any_call(
-        channel_class=StaircaseLightSensor
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, list(channels.values())
     )
 
-    staircase = next(
-        e for e in entities_added if e.entity_description.key == STAIRCASE_KEY
-    )
-    assert isinstance(staircase, FreeAtHomeEventEntity)
-    assert staircase.entity_description.device_class == EventDeviceClass.BUTTON
-    assert staircase.unique_id == f"ABB7F57FFFE99999_ch0004_{STAIRCASE_KEY}"
+    snapshot_entities(hass, snapshot, mock_config_entry.entry_id)
 
 
-async def test_async_setup_entry_no_channels(
-    hass: HomeAssistant, mock_config_entry
+@pytest.mark.parametrize("key", EVENT_CASES)
+async def test_event_fires_on_report(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    key: str,
 ) -> None:
-    """Test setup adds one call per description when no channels exist."""
-    mock_config_entry.add_to_hass(hass)
+    """Test an event entity fires when the SysAP reports its datapoint."""
+    case = EVENT_CASES[key]
+    channel = await _setup_channel(
+        hass, mock_config_entry, mock_free_at_home_settings, key
+    )
+    entity_id = _entity_id(entity_registry, key)
 
-    mock_free_at_home = MagicMock()
-    mock_free_at_home.get_channels_by_class.return_value = []
-    hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
+    _report(channel, key)
+    await hass.async_block_till_done()
 
-    async_add_entities = MagicMock()
-    await async_setup_entry(hass, mock_config_entry, async_add_entities)
-
-    assert async_add_entities.call_count == 1
+    state = hass.states.get(entity_id)
+    assert state.attributes[ATTR_EVENT_TYPE] == case.event_type
+    assert state.attributes["extra_data"] == case.extra_data
 
 
-async def test_async_setup_entry_builds_entity_with_extra_data(
-    hass: HomeAssistant, mock_config_entry
+async def test_event_doorbell_rings(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
 ) -> None:
-    """Test setup constructs an entity for a description carrying extra_data."""
-    mock_config_entry.add_to_hass(hass)
-
-    channel = Mock(
-        spec=[
-            "channel_name",
-            "channel_id",
-            "device_serial",
-            "device_name",
-            "room_name",
-            "device",
-        ]
+    """Test a doorbell fires the standard "ring", then the legacy "activated"."""
+    key = "EventDesDoorRingingSensorActivated"
+    channel = await _setup_channel(
+        hass, mock_config_entry, mock_free_at_home_settings, key
     )
-    channel.channel_name = "Thermostat"
-    channel.channel_id = "ch0001"
-    channel.device_serial = "ABB7F57FFFE54321"
-    channel.device_name = "Thermostat Device"
-    channel.room_name = "Living Room"
-    channel.device = Mock()
-    channel.device.is_multi_device = False
+    states = _track_states(hass, _entity_id(entity_registry, key))
 
-    mock_free_at_home = MagicMock()
-    mock_free_at_home.get_channels_by_class.side_effect = lambda channel_class: (
-        [channel] if channel_class is VirtualRoomTemperatureController else []
-    )
-    hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
+    _report(channel, key)
+    await hass.async_block_till_done()
 
-    entities_added = []
-
-    def capture_entities(entity_generator):
-        """Capture entities from generator."""
-        entities_added.extend(list(entity_generator))
-
-    async_add_entities = MagicMock(side_effect=capture_entities)
-    await async_setup_entry(hass, mock_config_entry, async_add_entities)
-
-    target_temperature = next(
-        e for e in entities_added if e.entity_description.key == TARGET_TEMPERATURE_KEY
-    )
-    assert target_temperature._extra_data == "requested_target_temperature"
+    assert _fired(states) == [("ring", None), ("activated", None)]
 
 
-def test_doorbell_fires_ring_and_activated_events() -> None:
-    """A doorbell press fires both the standard ring and legacy activated types."""
-    channel = _build_doorbell_channel()
-    entity = _build_doorbell_entity(channel)
-
-    with (
-        patch.object(entity, "_trigger_event") as mock_trigger,
-        patch.object(entity, "async_write_ha_state") as mock_write,
-    ):
-        entity._async_handle_event()
-
-    assert mock_trigger.call_args_list == [
-        call("ring", {"extra_data": None}),
-        call("activated", {"extra_data": None}),
-    ]
-    assert mock_write.call_count == 2
-
-
-def test_handle_event_with_state_attribute() -> None:
-    """A callback reading a state attribute fires a single event type."""
-    channel = Mock(spec=["channel_name", "channel_id", "state"])
-    channel.channel_name = "Switch"
-    channel.channel_id = "ch0002"
-    channel.state = "On"
-
-    entity = _build_entity(
-        channel,
-        key="switch",
-        state_attribute="state",
-        event_type_callback=lambda state: state,
-        event_types=["On", "Off"],
-    )
-
-    with (
-        patch.object(entity, "_trigger_event") as mock_trigger,
-        patch.object(entity, "async_write_ha_state") as mock_write,
-    ):
-        entity._async_handle_event()
-
-    mock_trigger.assert_called_once_with("On", {"extra_data": None})
-    mock_write.assert_called_once()
-
-
-def test_handle_event_with_extra_data() -> None:
-    """A callback with extra_data forwards the channel attribute value."""
-    channel = Mock(spec=["channel_name", "channel_id", "requested_target_temperature"])
-    channel.channel_name = "Thermostat"
-    channel.channel_id = "ch0003"
-    channel.requested_target_temperature = 21.5
-
-    entity = _build_entity(
-        channel,
-        key=TARGET_TEMPERATURE_KEY,
-        state_attribute="requested_target_temperature",
-        event_type_callback=lambda value: "requested_target_temperature",
-        extra_data="requested_target_temperature",
-        event_types=["requested_target_temperature"],
-    )
-
-    with (
-        patch.object(entity, "_trigger_event") as mock_trigger,
-        patch.object(entity, "async_write_ha_state"),
-    ):
-        entity._async_handle_event()
-
-    mock_trigger.assert_called_once_with(
-        "requested_target_temperature", {"extra_data": 21.5}
-    )
-
-
-async def test_callbacks_registered_with_state_attribute() -> None:
-    """Callbacks register/remove using a non-empty state attribute."""
-    channel = Mock(
-        spec=[
-            "channel_name",
-            "channel_id",
-            "device",
-            "register_callback",
-            "remove_callback",
-        ]
-    )
-    channel.device = Mock()
-    channel.channel_name = "Switch"
-    channel.channel_id = "ch0004"
-
-    entity = _build_entity(
-        channel,
-        key="switch",
-        state_attribute="requested_state",
-        event_type_callback=lambda state: "On",
-    )
-
-    await entity.async_added_to_hass()
-    channel.register_callback.assert_called_once_with(
-        callback_attribute="requested_state", callback=entity._async_handle_event
-    )
-
-    await entity.async_will_remove_from_hass()
-    channel.remove_callback.assert_called_once_with(
-        callback_attribute="requested_state", callback=entity._async_handle_event
-    )
-
-
-async def test_callbacks_registered_without_state_attribute() -> None:
-    """Callbacks fall back to the "state" attribute when none is provided."""
-    channel = _build_doorbell_channel()
-    entity = _build_doorbell_entity(channel)
-
-    await entity.async_added_to_hass()
-    channel.register_callback.assert_called_once_with(
-        callback_attribute="state", callback=entity._async_handle_event
-    )
-
-    await entity.async_will_remove_from_hass()
-    channel.remove_callback.assert_called_once_with(
-        callback_attribute="state", callback=entity._async_handle_event
-    )
-
-
-def test_device_info_default() -> None:
-    """A non-multi device returns identifiers keyed on the device serial."""
-    channel = _build_doorbell_channel()
-    entity = _build_doorbell_entity(channel)
-
-    assert entity.device_info["identifiers"] == {(DOMAIN, "ABB7F57FFFE12345")}
-
-
-def test_device_info_subdevice() -> None:
-    """A multi device with subdevices enabled returns a per-channel device."""
-    channel = _build_doorbell_channel()
-    channel.device.is_multi_device = True
-    channel.device.device_id = "1234"
-
-    entity = _build_entity(
-        channel,
-        key=DOORBELL_KEY,
-        state_attribute="",
-        event_type_callback=lambda: ["ring", "activated"],
-        create_subdevices=True,
-    )
-
-    entity.platform = MagicMock()
-    with patch(
-        "custom_components.abbfreeathome_ci.event.async_get_sub_device_info"
-    ) as mock_sub_device_info:
-        device_info = entity.device_info
-
-    mock_sub_device_info.assert_called_once_with(
-        entity.hass, entity.platform.config_entry.entry_id, channel
-    )
-    assert device_info is mock_sub_device_info.return_value
-
-
-def _build_cover_channel(channel_class: type, position: str = "") -> Any:
-    """Create a real library cover channel with a requested position input."""
-    device = Device(
-        device_serial="ABB7F57FFFE77777",
-        device_id="B001",
-        display_name="Skylight Cover",
-        api=Mock(set_datapoint=AsyncMock(), get_datapoint=AsyncMock()),
-    )
-    return channel_class(
-        device=device,
-        channel_id="ch0000",
-        channel_name="Skylight Cover",
-        inputs={
-            "idp0000": {
-                "pairingID": Pairing.AL_SET_ABSOLUTE_POSITION_BLINDS_PERCENTAGE.value,
-                "value": position,
-            },
-        },
-        outputs={
-            "odp0001": {
-                "pairingID": Pairing.AL_CURRENT_ABSOLUTE_POSITION_BLINDS_PERCENTAGE.value,
-                "value": "100",
-            },
-        },
-        parameters={},
-    )
-
-
-def _build_cover_entity(channel: Any) -> FreeAtHomeEventEntity:
-    """Build a requested-position event entity from the platform description."""
-    key = f"Event{type(channel).__name__}RequestedPosition"
-    description = EVENT_DESCRIPTIONS[key]
-    return FreeAtHomeEventEntity(
-        channel,
-        state_attribute=description["state_attribute"],
-        entity_description_kwargs={"key": key}
-        | description["entity_description_kwargs"],
-        sysap_serial_number="TEST123456",
-        create_subdevices=False,
-        event_type_callback=description["event_type_callback"],
-        extra_data=description["extra_data"],
-        extra_data_callback=description["extra_data_callback"],
-    )
-
-
-async def test_async_setup_entry_adds_cover_requested_position(
-    hass: HomeAssistant, mock_config_entry
+@pytest.mark.parametrize("key", REPEATABLE_KEYS)
+async def test_event_repeated_request_fires_again(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    freezer: FrozenDateTimeFactory,
+    key: str,
 ) -> None:
-    """Every cover class gets a requested-position event entity."""
-    mock_config_entry.add_to_hass(hass)
-    channels = {cls: _build_cover_channel(cls) for cls in COVER_CLASSES}
-
-    mock_free_at_home = MagicMock()
-    mock_free_at_home.get_channels_by_class.side_effect = lambda channel_class: (
-        [channels[channel_class]] if channel_class in channels else []
+    """Test a repeated request fires again, even within the same millisecond."""
+    case = EVENT_CASES[key]
+    channel = await _setup_channel(
+        hass, mock_config_entry, mock_free_at_home_settings, key
     )
-    hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
+    states = _track_states(hass, _entity_id(entity_registry, key))
+    # Both reports arrive in the same millisecond.
+    freezer.move_to("2026-11-08T12:00:00+00:00")
 
-    entities_added = []
-    await async_setup_entry(hass, mock_config_entry, entities_added.extend)
+    _report(channel, key)
+    _report(channel, key)
+    await hass.async_block_till_done()
 
-    covers = [
-        e for e in entities_added if e.entity_description.key.endswith("Position")
-    ]
-    assert {e.unique_id for e in covers} == {
-        f"ABB7F57FFFE77777_ch0000_Event{cls.__name__}RequestedPosition"
-        for cls in COVER_CLASSES
-    }
-    assert all(e.event_types == ["requested_position"] for e in covers)
-    assert all(
-        e.entity_description.translation_key == "cover_actuator_requested_position"
-        for e in covers
-    )
+    assert _fired(states) == [(case.event_type, case.extra_data)] * 2
 
 
 @pytest.mark.parametrize(
-    ("channel_class", "value", "expected"),
+    ("key", "value"),
     [
-        (BlindActuator, "30", 70),
-        (ShutterActuator, "0", 100),
-        (AtticWindowActuator, "100", 0),
-        # The library inverts awnings; the event matches the cover entity.
-        (AwningActuator, "30", 30),
+        ("EventVirtualDimmingActuatorOnOff", ""),
+        ("EventVirtualDimmingActuatorDimming", "16"),
+        ("EventBlindActuatorRequestedPosition", "invalid"),
     ],
 )
-async def test_cover_requested_position_events(
-    channel_class: type, value: str, expected: int
+async def test_event_ignores_unknown_request(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    key: str,
+    value: str,
 ) -> None:
-    """Requests, including repeats, fire with a Home Assistant position."""
-    channel = _build_cover_channel(channel_class)
-    entity = _build_cover_entity(channel)
-    entity.async_write_ha_state = Mock()
-    await entity.async_added_to_hass()
+    """Test a request the library cannot decode fires no event."""
+    channel = await _setup_channel(
+        hass, mock_config_entry, mock_free_at_home_settings, key
+    )
 
-    with patch.object(entity, "_trigger_event") as trigger:
-        channel.update_channel("idp0000", value)
-        channel.update_channel("idp0000", value)
-        channel.update_channel("idp0000", "invalid")
+    _report(channel, key, value)
+    await hass.async_block_till_done()
 
-    assert trigger.call_args_list == [
-        call("requested_position", {"extra_data": expected}),
-        call("requested_position", {"extra_data": expected}),
-    ]
-    assert entity.async_write_ha_state.call_count == 2
-
-    await entity.async_will_remove_from_hass()
-    assert not channel._callbacks["target_position"]
+    assert hass.states.get(_entity_id(entity_registry, key)).state == STATE_UNKNOWN
 
 
-async def test_cover_requested_position_ignores_feedback() -> None:
-    """Position feedback does not fire a requested-position event."""
-    channel = _build_cover_channel(BlindActuator, position="40")
-    entity = _build_cover_entity(channel)
-    entity.async_write_ha_state = Mock()
-    await entity.async_added_to_hass()
+async def test_event_ignores_cover_position_feedback(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test the position a cover reports fires no requested position event."""
+    key = "EventBlindActuatorRequestedPosition"
+    channel = await _setup_channel(
+        hass, mock_config_entry, mock_free_at_home_settings, key
+    )
 
-    with patch.object(entity, "_trigger_event") as trigger:
-        channel.update_channel("odp0001", "50")
+    channel.update_channel(f"{SERIAL}/ch0003/odp0000", "50")
+    await hass.async_block_till_done()
 
-    trigger.assert_not_called()
-    assert channel.target_position == 40
+    assert hass.states.get(_entity_id(entity_registry, key)).state == STATE_UNKNOWN
+
+
+@pytest.mark.parametrize(("value", "position"), [("100", 100), ("0", 0)])
+async def test_event_awning_open_close_echo(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    value: str,
+    position: int,
+) -> None:
+    """Test the echo of opening or closing an awning fires its position.
+
+    Opening and closing an awning set its requested position to 100 or 0,
+    which the SysAP echoes back.
+    """
+    key = "EventAwningActuatorRequestedPosition"
+    channel = await _setup_channel(
+        hass, mock_config_entry, mock_free_at_home_settings, key
+    )
+
+    _report(channel, key, value)
+    await hass.async_block_till_done()
+
+    state = hass.states.get(_entity_id(entity_registry, key))
+    assert state.attributes["extra_data"] == position
+
+
+async def test_event_removes_callbacks_on_unload(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test unloaded event entities no longer follow their channels."""
+    channels = _build_channels(build_device(SERIAL))
+    # The doorbell follows its state; three controller events share a channel.
+    doorbell, controller = channels["ch0006"], channels["ch000b"]
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [doorbell, controller]
+    )
+    key = "EventDesDoorRingingSensorActivated"
+    entity_id = _entity_id(entity_registry, key)
+
+    assert await hass.config_entries.async_unload(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+    state = hass.states.get(entity_id)
+
+    _report(doorbell, key)
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id) == state
+    assert doorbell._callbacks == {"state": set()}
+    assert controller._callbacks == {
+        "requested_state": set(),
+        "requested_eco_mode": set(),
+        "requested_target_temperature": set(),
+    }
 
 
 @pytest.mark.parametrize(
-    ("command", "raw", "expected"), [("open", "100", 100), ("close", "0", 0)]
+    ("create_subdevices", "multi_device_identifier"),
+    [
+        (False, (DOMAIN, SERIAL)),
+        (True, (DOMAIN, f"{SERIAL}_ch000a")),
+    ],
 )
-async def test_awning_open_close_fire_requested_position(
-    command: str, raw: str, expected: int
+async def test_event_device(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    device_registry: dr.DeviceRegistry,
+    create_subdevices: bool,
+    multi_device_identifier: tuple[str, str],
 ) -> None:
-    """Awning open/close send an absolute position, so their echo fires an event."""
-    channel = _build_cover_channel(AwningActuator)
-    entity = _build_cover_entity(channel)
-    entity.async_write_ha_state = Mock()
-    await entity.async_added_to_hass()
+    """Test events of multi-channel devices belong to subdevices if enabled."""
+    entry = MockConfigEntry(
+        version=mock_config_entry.version,
+        minor_version=mock_config_entry.minor_version,
+        domain=DOMAIN,
+        title=mock_config_entry.title,
+        data={**mock_config_entry.data, CONF_CREATE_SUBDEVICES: create_subdevices},
+        source=mock_config_entry.source,
+        unique_id=mock_config_entry.unique_id,
+    )
+    # A device without a room and with several channels is a multi-device.
+    multi_device = build_device(SERIAL)
+    channels = _build_channels(multi_device)
+    assert multi_device.is_multi_device
+    single_device = build_device("ABB700000002")
+    single_channel = build_channel(
+        SwitchSensor, single_device, outputs={Pairing.AL_SWITCH_ON_OFF: "0"}
+    )
+    assert not single_device.is_multi_device
 
-    with patch.object(entity, "_trigger_event") as trigger:
-        await getattr(channel, command)()
-        channel.device.api.set_datapoint.assert_awaited_once_with(
-            device_serial="ABB7F57FFFE77777",
-            channel_id="ch0000",
-            datapoint="idp0000",
-            value=raw,
-        )
-        trigger.assert_not_called()
-        channel.update_channel("idp0000", raw)
+    await setup_with_channels(
+        hass,
+        entry,
+        mock_free_at_home_settings,
+        [channels["ch000a"], single_channel],
+    )
 
-    trigger.assert_called_once_with("requested_position", {"extra_data": expected})
+    def device_identifiers(unique_id: str) -> set[tuple[str, str]]:
+        """Return the identifiers of the device of an event entity."""
+        entity_id = entity_registry.async_get_entity_id(EVENT_DOMAIN, DOMAIN, unique_id)
+        entity_entry = entity_registry.async_get(entity_id)
+        return device_registry.async_get(entity_entry.device_id).identifiers
+
+    assert device_identifiers(f"{SERIAL}_ch000a_EventSwitchSensorOnOff") == {
+        multi_device_identifier
+    }
+    assert device_identifiers("ABB700000002_ch0000_EventSwitchSensorOnOff") == {
+        (DOMAIN, "ABB700000002")
+    }
