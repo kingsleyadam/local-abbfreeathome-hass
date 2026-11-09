@@ -46,7 +46,7 @@ Helpers in `tests/common.py`:
   entry through `hass.config_entries.async_setup()` with only the SysAP
   connection mocked (`FreeAtHomeSettings`, `FreeAtHome`, `FreeAtHomeApi`, and
   `async_get_clientsession`), and returns the mock `FreeAtHome` that serves the
-  channels.
+  channels. `devices=` adds devices without visible channels.
 - `build_device()`: a real library `Device` whose `api` is a
   `MagicMock(spec=FreeAtHomeApi)`, so `api.set_datapoint` and
   `api.get_datapoint` are `AsyncMock`s.

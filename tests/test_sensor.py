@@ -1,555 +1,718 @@
-"""Tests for parameter diagnostic sensors."""
+"""Test ABB-free@home sensor."""
 
+import asyncio
+from dataclasses import dataclass, field
 from runpy import run_path
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, patch
 
+from abbfreeathome import DevicesChangedEvent
+from abbfreeathome.bin.pairing import Pairing
+from abbfreeathome.bin.parameter import Parameter
+from abbfreeathome.channels.air_quality_sensor import AirQualitySensor
 from abbfreeathome.channels.base import Base
+from abbfreeathome.channels.brightness_sensor import BrightnessSensor
 from abbfreeathome.channels.heating_cooling_sensor import HeatingCoolingSensor
+from abbfreeathome.channels.movement_detector import (
+    BlockableMovementDetector,
+    MovementDetector,
+)
 from abbfreeathome.channels.temperature_sensor import TemperatureSensor
+from abbfreeathome.channels.wind_sensor import WindSensor
+from abbfreeathome.channels.window_door_sensor import WindowDoorSensor
 from abbfreeathome.device import Device
 import pytest
+from syrupy.assertion import SnapshotAssertion
 
 from custom_components.abbfreeathome_ci import sensor as sensor_platform
-from custom_components.abbfreeathome_ci.const import DOMAIN
-from custom_components.abbfreeathome_ci.sensor import (
-    FreeAtHomeParametersSensor,
-    FreeAtHomeSensorEntity,
-    async_setup_entry,
-)
+from custom_components.abbfreeathome_ci.const import CONF_CREATE_SUBDEVICES, DOMAIN
+from custom_components.abbfreeathome_ci.entity import FreeAtHomeEntity
+from custom_components.abbfreeathome_ci.sensor import SENSOR_DESCRIPTIONS
 from homeassistant import const
-from homeassistant.components.sensor import SensorDeviceClass
-from homeassistant.helpers.entity import EntityCategory
+from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
+from homeassistant.const import STATE_UNKNOWN, Platform
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 
-from .common import async_setup_entity_platform
+from .common import (
+    MockConfigEntry,
+    build_channel,
+    build_device,
+    devices_changed,
+    setup_with_channels,
+    snapshot_entities,
+)
+
+SERIAL = "ABB700000001"
+PARAMETERS_UNIQUE_ID = f"{SERIAL}_parameters"
+SWITCH_OFF_TIME = Parameter.PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION
 
 
-@pytest.fixture
-def parameter_device():
-    """Create a device and real parameter callback sources."""
-    device = Device(
-        device_serial="ABB123456",
-        device_id="test",
-        display_name="Living room actuator",
-        api=Mock(),
-        parameters={"par0001": "0"},
+@dataclass(frozen=True)
+class SensorCase:
+    """A sensor description with a real channel.
+
+    When the SysAP reports value on datapoint, Home Assistant shows state.
+    """
+
+    channel_class: type[Base]
+    channel_id: str
+    datapoint: str
+    value: str
+    state: str
+    outputs: dict[Pairing, str] = field(default_factory=dict)
+
+
+# Cases sharing a channel define its datapoints in their first case.
+SENSOR_CASES = {
+    "AirQualitySensorCO2": SensorCase(
+        AirQualitySensor,
+        "ch0000",
+        datapoint="odp0000",
+        value="1200",
+        state="1200.0",
+        outputs={
+            Pairing.AL_INFO_CO_2: "800",
+            Pairing.AL_CO2_ALERT: "0",
+            Pairing.AL_INFO_VOC_INDEX: "100",
+            Pairing.AL_VOC_ALERT: "0",
+            Pairing.AL_HUMIDITY: "45",
+        },
+    ),
+    "AirQualitySensorVOC": SensorCase(
+        AirQualitySensor, "ch0000", datapoint="odp0002", value="150", state="150"
+    ),
+    "AirQualitySensorHumidity": SensorCase(
+        AirQualitySensor, "ch0000", datapoint="odp0004", value="50", state="50"
+    ),
+    "BrightnessSensor": SensorCase(
+        BrightnessSensor,
+        "ch0001",
+        datapoint="odp0000",
+        value="250",
+        state="250.0",
+        outputs={Pairing.AL_BRIGHTNESS_LEVEL: "100", Pairing.AL_BRIGHTNESS_ALARM: "0"},
+    ),
+    "HeatingCoolingSensor": SensorCase(
+        HeatingCoolingSensor,
+        "ch0002",
+        datapoint="odp0000",
+        value="1",
+        state="cooling",
+        outputs={Pairing.AL_HEATING_COOLING: "0"},
+    ),
+    "MovementDetectorBrightness": SensorCase(
+        MovementDetector,
+        "ch0003",
+        datapoint="odp0001",
+        value="50",
+        state="50.0",
+        outputs={Pairing.AL_TIMED_MOVEMENT: "0", Pairing.AL_BRIGHTNESS_LEVEL: "100"},
+    ),
+    "BlockableMovementDetectorBrightness": SensorCase(
+        BlockableMovementDetector,
+        "ch0004",
+        datapoint="odp0001",
+        value="50",
+        state="50.0",
+        outputs={
+            Pairing.AL_TIMED_MOVEMENT: "0",
+            Pairing.AL_BRIGHTNESS_LEVEL: "100",
+            Pairing.AL_INFO_LOCKED_SENSOR: "0",
+        },
+    ),
+    "WindowDoorSensorPosition": SensorCase(
+        WindowDoorSensor,
+        "ch0005",
+        datapoint="odp0001",
+        value="33",
+        state="tilted",
+        outputs={Pairing.AL_WINDOW_DOOR: "1", Pairing.AL_WINDOW_DOOR_POSITION: "100"},
+    ),
+    "TemperatureSensor": SensorCase(
+        TemperatureSensor,
+        "ch0006",
+        datapoint="odp0000",
+        value="-2.5",
+        state="-2.5",
+        outputs={Pairing.AL_OUTDOOR_TEMPERATURE: "5", Pairing.AL_FROST_ALARM: "0"},
+    ),
+    # Home Assistant's metric unit system shows wind speeds in km/h.
+    "WindSensorSpeed": SensorCase(
+        WindSensor,
+        "ch0007",
+        datapoint="odp0000",
+        value="15",
+        state="54.0",
+        outputs={
+            Pairing.AL_WIND_SPEED: "5",
+            Pairing.AL_WIND_ALARM: "0",
+            Pairing.AL_WIND_FORCE: "3",
+        },
+    ),
+    "WindSensorForce": SensorCase(
+        WindSensor, "ch0007", datapoint="odp0002", value="7", state="7"
+    ),
+}
+
+
+@pytest.fixture(autouse=True)
+def sensor_platform_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Load only the sensor platform."""
+    monkeypatch.setattr(
+        "custom_components.abbfreeathome_ci.PLATFORMS", [Platform.SENSOR]
     )
-    for channel_id, channel_name, parameters in (
-        ("ch0000", "Living room ceiling light", {"par0015": "130"}),
-        (
-            "ch0001",
-            "Living room wall light",
-            {"par0015": "60", "parffff": "unknown value"},
+
+
+def test_cases_cover_all_descriptions() -> None:
+    """Test every sensor description has a case with its channel class."""
+    assert list(SENSOR_CASES) == list(SENSOR_DESCRIPTIONS)
+    for key, case in SENSOR_CASES.items():
+        assert case.channel_class is SENSOR_DESCRIPTIONS[key]["channel_class"]
+
+
+def _build_channels(device: Device) -> dict[str, Base]:
+    """Build one real channel per sensor case; cases may share a channel."""
+    channels: dict[str, Base] = {}
+    for case in SENSOR_CASES.values():
+        if case.channel_id not in channels:
+            channels[case.channel_id] = build_channel(
+                case.channel_class, device, case.channel_id, outputs=case.outputs
+            )
+    return channels
+
+
+def _parameter_device() -> tuple[Device, list[Base]]:
+    """Build a device with parameters on itself and two of its three channels.
+
+    One channel parameter is unknown to the library.
+    """
+    device = build_device(SERIAL, parameters={"par0001": "0"})
+    channels = [
+        build_channel(
+            Base,
+            device,
+            "ch0000",
+            channel_name="Ceiling light",
+            parameters={SWITCH_OFF_TIME: "130"},
         ),
-        ("ch0002", "Spare channel", {}),
-    ):
-        device.channels[channel_id] = Base(
-            device=device,
-            channel_id=channel_id,
-            channel_name=channel_name,
-            inputs={},
-            outputs={},
-            parameters=parameters,
+        build_channel(
+            Base,
+            device,
+            "ch0001",
+            channel_name="Wall light",
+            parameters={SWITCH_OFF_TIME: "60"},
+        ),
+        build_channel(Base, device, "ch0002", channel_name="Spare channel"),
+    ]
+    channels[1].update_parameter("parffff", "unknown value")
+    return device, channels
+
+
+def _with_subdevices(
+    entry: MockConfigEntry, create_subdevices: bool = True
+) -> MockConfigEntry:
+    """Return a copy of the config entry with create_subdevices set."""
+    return MockConfigEntry(
+        version=entry.version,
+        minor_version=entry.minor_version,
+        domain=DOMAIN,
+        title=entry.title,
+        data={**entry.data, CONF_CREATE_SUBDEVICES: create_subdevices},
+        source=entry.source,
+        unique_id=entry.unique_id,
+    )
+
+
+def _entity_id(entity_registry: er.EntityRegistry, unique_id: str) -> str:
+    """Return the entity ID of a sensor by its unique ID."""
+    entity_id = entity_registry.async_get_entity_id(SENSOR_DOMAIN, DOMAIN, unique_id)
+    assert entity_id is not None
+    return entity_id
+
+
+def _unique_ids(
+    entity_registry: er.EntityRegistry, entry: MockConfigEntry
+) -> list[str]:
+    """Return the sorted unique IDs of a config entry's entities."""
+    return sorted(
+        entity_entry.unique_id
+        for entity_entry in er.async_entries_for_config_entry(
+            entity_registry, entry.entry_id
         )
-    return device
-
-
-def test_parameter_sensor_properties(parameter_device):
-    """Expose named parameters, unknown IDs and raw values on the parent."""
-    entity = FreeAtHomeParametersSensor(
-        parameter_device, list(parameter_device.channels.values())
-    )
-
-    assert entity.unique_id == "ABB123456_parameters"
-    assert entity.device_info == {"identifiers": {(DOMAIN, "ABB123456")}}
-    assert entity.entity_category is EntityCategory.DIAGNOSTIC
-    assert entity.entity_registry_enabled_default is True
-    assert entity.should_poll is False
-    assert entity.has_entity_name is True
-    assert entity.translation_key == "parameters"
-    assert entity.native_value == 4
-    assert entity.native_unit_of_measurement is None
-    assert entity.state_class is None
-    assert entity.extra_state_attributes == {
-        "device_parameters": {"PID_LED_DAY_BRIGHTNESS": "0"},
-        "channel_parameters": {
-            "ch0000": {
-                "name": "Living room ceiling light",
-                "parameters": {"PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "130"},
-            },
-            "ch0001": {
-                "name": "Living room wall light",
-                "parameters": {
-                    "PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "60",
-                    "parffff": "unknown value",
-                },
-            },
-        },
-    }
-
-
-@pytest.mark.parametrize("scope", ["device", "channel"])
-def test_unknown_parameter_name_falls_back_to_id(parameter_device, scope):
-    """Preserve unknown parameters at both device and channel scope."""
-    source = (
-        parameter_device if scope == "device" else parameter_device.channels["ch0000"]
-    )
-    source.update_parameter("parfffe", "raw value")
-    entity = FreeAtHomeParametersSensor(
-        parameter_device, list(parameter_device.channels.values())
-    )
-    attributes = entity.extra_state_attributes
-    parameters = (
-        attributes["device_parameters"]
-        if scope == "device"
-        else attributes["channel_parameters"]["ch0000"]["parameters"]
-    )
-
-    assert source.get_parameter_name("parfffe") is None
-    assert parameters["parfffe"] == "raw value"
-    assert entity.native_value == 5
-
-
-def test_parameter_attributes_are_snapshots(parameter_device):
-    """Updates must not mutate previously published state attributes."""
-    entity = FreeAtHomeParametersSensor(
-        parameter_device, list(parameter_device.channels.values())
-    )
-    attributes = entity.extra_state_attributes
-    parameter_device.update_parameter("par0001", "1")
-    parameter_device.channels["ch0000"].update_parameter("par0015", "140")
-
-    assert attributes["device_parameters"]["PID_LED_DAY_BRIGHTNESS"] == "0"
-    assert (
-        attributes["channel_parameters"]["ch0000"]["parameters"][
-            "PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION"
-        ]
-        == "130"
-    )
-    assert (
-        entity.extra_state_attributes["device_parameters"]["PID_LED_DAY_BRIGHTNESS"]
-        == "1"
-    )
-    assert (
-        entity.extra_state_attributes["channel_parameters"]["ch0000"]["parameters"][
-            "PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION"
-        ]
-        == "140"
     )
 
 
-def test_channel_names_do_not_affect_keys(parameter_device):
-    """Keep channels distinct and template keys stable across display-name changes."""
-    entity = FreeAtHomeParametersSensor(
-        parameter_device, list(parameter_device.channels.values())
-    )
-    original = entity.extra_state_attributes["channel_parameters"]
-    for channel in parameter_device.channels.values():
-        channel._channel_name = "Shared display name"
-    renamed = entity.extra_state_attributes["channel_parameters"]
-
-    assert renamed.keys() == original.keys()
-    assert renamed["ch0000"] == {
-        "name": "Shared display name",
-        "parameters": {"PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "130"},
-    }
-    assert renamed["ch0001"] == {
-        "name": "Shared display name",
-        "parameters": {
-            "PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "60",
-            "parffff": "unknown value",
-        },
-    }
-    assert original["ch0000"]["name"] == "Living room ceiling light"
-    assert entity.native_value == 4
+def _device_identifiers(hass: HomeAssistant, unique_id: str) -> set[tuple[str, str]]:
+    """Return the identifiers of the device of a sensor."""
+    entity_registry = er.async_get(hass)
+    entity_entry = entity_registry.async_get(_entity_id(entity_registry, unique_id))
+    return dr.async_get(hass).async_get(entity_entry.device_id).identifiers
 
 
-async def test_parameter_callbacks(parameter_device):
-    """Subscribe to all included sources and remove every subscription."""
-    entity = FreeAtHomeParametersSensor(
-        parameter_device, list(parameter_device.channels.values())
-    )
-    with patch.object(entity, "async_write_ha_state") as write_state:
-        await entity.async_added_to_hass()
-        parameter_device.update_parameter("par0001", "1")
-        parameter_device.channels["ch0000"].update_parameter("par0015", "140")
-        parameter_device.channels["ch0001"].update_parameter("parffff", "new value")
-        # Subscribe even to initially empty channels.
-        parameter_device.channels["ch0002"].update_parameter("par1234", "0")
-        assert write_state.call_count == 4
-        assert entity.native_value == 5
+async def test_sensor_entities(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    snapshot: SnapshotAssertion,
+) -> None:
+    """Test the sensor entities of all descriptions."""
+    channels = _build_channels(build_device(SERIAL))
 
-        parameter_device.channels["ch0000"].update_parameter("par0015", "140")
-        assert write_state.call_count == 4
-
-        await entity.async_will_remove_from_hass()
-        parameter_device.update_parameter("par0001", "2")
-        for channel in parameter_device.channels.values():
-            channel.update_parameter("par0015", "150")
-        assert write_state.call_count == 4
-
-
-async def test_parameter_state_updates_in_hass(
-    hass, mock_config_entry, parameter_device
-):
-    """Publish attribute-only changes and stop updating after removal."""
-    entity = FreeAtHomeParametersSensor(
-        parameter_device, list(parameter_device.channels.values())
-    )
-    entity.entity_id = "sensor.living_room_actuator_parameters"
-    mock_config_entry.add_to_hass(hass)
-    platform = await async_setup_entity_platform(
-        hass, mock_config_entry, "sensor", [entity]
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, list(channels.values())
     )
 
-    old_state = hass.states.get(entity.entity_id)
-    assert old_state.state == "4"
-    assert old_state.attributes["channel_parameters"]["ch0000"] == {
-        "name": "Living room ceiling light",
-        "parameters": {"PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "130"},
-    }
+    snapshot_entities(hass, snapshot, mock_config_entry.entry_id)
 
-    parameter_device.channels["ch0000"].update_parameter("par0015", "140")
-    state = hass.states.get(entity.entity_id)
-    assert state.state == "4"
-    assert state.attributes["channel_parameters"]["ch0000"] == {
-        "name": "Living room ceiling light",
-        "parameters": {"PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "140"},
-    }
-    assert old_state.attributes["channel_parameters"]["ch0000"] == {
-        "name": "Living room ceiling light",
-        "parameters": {"PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "130"},
-    }
 
-    parameter_device.update_parameter("par0001", "1")
-    assert hass.states.get(entity.entity_id).attributes["device_parameters"] == {
-        "PID_LED_DAY_BRIGHTNESS": "1"
-    }
+@pytest.mark.parametrize("key", SENSOR_CASES)
+async def test_sensor_follows_sysap(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    key: str,
+) -> None:
+    """Test a sensor shows the value the SysAP reports."""
+    case = SENSOR_CASES[key]
+    channel = _build_channels(build_device(SERIAL))[case.channel_id]
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    entity_id = _entity_id(entity_registry, f"{SERIAL}_{case.channel_id}_{key}")
 
-    parameter_device.channels["ch0002"].update_parameter("par1234", "0")
-    assert hass.states.get(entity.entity_id).state == "5"
+    channel.update_channel(f"{SERIAL}/{case.channel_id}/{case.datapoint}", case.value)
+    await hass.async_block_till_done()
 
-    await platform.async_remove_entity(entity.entity_id)
-    removed_state = hass.states.get(entity.entity_id)
-    parameter_device.update_parameter("par0001", "2")
-    assert hass.states.get(entity.entity_id) is removed_state
+    assert hass.states.get(entity_id).state == case.state
+
+
+async def test_sensor_unknown_value(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test a sensor is unknown when the SysAP reports a value it cannot read."""
+    channel = _build_channels(build_device(SERIAL))["ch0006"]
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    entity_id = _entity_id(entity_registry, f"{SERIAL}_ch0006_TemperatureSensor")
+
+    channel.update_channel(f"{SERIAL}/ch0006/odp0000", "")
+    await hass.async_block_till_done()
+
+    assert hass.states.get(entity_id).state == STATE_UNKNOWN
+
+
+async def test_sensor_skips_none_values(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test no sensor is created for a channel attribute without a value."""
+    device = build_device(SERIAL)
+    # Without the VOC and humidity outputs, only the CO2 value is known.
+    air_quality = build_channel(
+        AirQualitySensor, device, outputs={Pairing.AL_INFO_CO_2: "800"}
+    )
+    # Without the force output, only the wind speed is known.
+    wind = build_channel(
+        WindSensor, device, "ch0001", outputs={Pairing.AL_WIND_SPEED: "5"}
+    )
+
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [air_quality, wind]
+    )
+
+    assert _unique_ids(entity_registry, mock_config_entry) == [
+        f"{SERIAL}_ch0000_AirQualitySensorCO2",
+        f"{SERIAL}_ch0001_WindSensorSpeed",
+    ]
+
+
+async def test_sensor_removes_callbacks_on_unload(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test unloaded sensors no longer follow their channel."""
+    channel = _build_channels(build_device(SERIAL))["ch0000"]
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    entity_id = _entity_id(entity_registry, f"{SERIAL}_ch0000_AirQualitySensorCO2")
+
+    assert await hass.config_entries.async_unload(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+    state = hass.states.get(entity_id)
+
+    channel.update_channel(f"{SERIAL}/ch0000/odp0000", "1200")
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id) == state
+    assert channel._callbacks == {"co2": set(), "voc_index": set(), "humidity": set()}
 
 
 @pytest.mark.parametrize(
-    ("create_subdevices", "multi_device"), [(False, True), (True, False)]
+    ("create_subdevices", "multi_device_identifier"),
+    [
+        (False, (DOMAIN, SERIAL)),
+        (True, (DOMAIN, f"{SERIAL}_ch0006")),
+    ],
 )
-async def test_setup_parameter_sensors(
-    hass, mock_config_entry, parameter_device, create_subdevices, multi_device
-):
-    """Aggregate unless both sub-device creation and multi-device detection apply."""
-    if not multi_device:
-        parameter_device._floor = "01"
-    mock_config_entry.add_to_hass(hass)
-    hass.config_entries.async_update_entry(
-        mock_config_entry,
-        data={**mock_config_entry.data, "create_subdevices": create_subdevices},
+async def test_sensor_device(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    create_subdevices: bool,
+    multi_device_identifier: tuple[str, str],
+) -> None:
+    """Test sensors of multi-channel devices belong to subdevices if enabled."""
+    entry = _with_subdevices(mock_config_entry, create_subdevices)
+    # A device without a room and with several channels is a multi-device.
+    multi_device = build_device(SERIAL)
+    channels = _build_channels(multi_device)
+    assert multi_device.is_multi_device
+    single_device = build_device("ABB700000002")
+    single_channel = build_channel(
+        TemperatureSensor,
+        single_device,
+        outputs={Pairing.AL_OUTDOOR_TEMPERATURE: "5"},
     )
-    api = Mock()
-    api.get_channels_by_class.return_value = []
-    api.get_devices.return_value = {parameter_device.device_serial: parameter_device}
-    api.get_channels_by_device.return_value = [parameter_device.channels["ch0000"]]
-    hass.data[DOMAIN] = {mock_config_entry.entry_id: api}
-    entities = []
+    assert not single_device.is_multi_device
 
-    await async_setup_entry(hass, mock_config_entry, entities.extend)
+    await setup_with_channels(
+        hass,
+        entry,
+        mock_free_at_home_settings,
+        [channels["ch0006"], single_channel],
+    )
 
-    assert len(entities) == 1
-    entity = entities[0]
-    assert entity.device_info == {"identifiers": {(DOMAIN, "ABB123456")}}
-    assert entity.native_value == 2
-    assert entity.extra_state_attributes["channel_parameters"] == {
-        "ch0000": {
-            "name": "Living room ceiling light",
-            "parameters": {"PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "130"},
-        }
+    assert _device_identifiers(hass, f"{SERIAL}_ch0006_TemperatureSensor") == {
+        multi_device_identifier
     }
-    with patch.object(entity, "async_write_ha_state") as write_state:
-        await entity.async_added_to_hass()
-        parameter_device.channels["ch0001"].update_parameter("par0015", "70")
-        write_state.assert_not_called()
-        await entity.async_will_remove_from_hass()
+    assert _device_identifiers(hass, "ABB700000002_ch0000_TemperatureSensor") == {
+        (DOMAIN, "ABB700000002")
+    }
+
+
+async def test_parameter_sensor_entities(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    snapshot: SnapshotAssertion,
+) -> None:
+    """Test a device's parameter sensor next to its measurement sensor."""
+    device, channels = _parameter_device()
+    temperature = build_channel(
+        TemperatureSensor,
+        device,
+        "ch0003",
+        outputs={Pairing.AL_OUTDOOR_TEMPERATURE: "21", Pairing.AL_FROST_ALARM: "0"},
+    )
+
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [*channels, temperature]
+    )
+
+    snapshot_entities(hass, snapshot, mock_config_entry.entry_id)
+
+
+async def test_parameter_sensor_follows_parameters(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test the parameter sensor shows each parameter change.
+
+    Each change is checked on its own, so that a later write cannot hide a
+    missing subscription. Earlier states keep their attributes, and
+    parameters unknown to the library keep their ID.
+    """
+    device, channels = _parameter_device()
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, channels
+    )
+    entity_id = _entity_id(entity_registry, PARAMETERS_UNIQUE_ID)
+    old_state = hass.states.get(entity_id)
+
+    async def report(source: Device | Base, parameter: str | Parameter, value: str):
+        """Change a parameter and return the state the sensor publishes."""
+        source.update_parameter(parameter, value)
+        await hass.async_block_till_done()
+        return hass.states.get(entity_id)
+
+    state = await report(device, "par0001", "1")
+    assert state.attributes["device_parameters"] == {"PID_LED_DAY_BRIGHTNESS": "1"}
+
+    state = await report(device, "parfffe", "raw value")
+    assert state.state == "5"
+    assert state.attributes["device_parameters"] == {
+        "PID_LED_DAY_BRIGHTNESS": "1",
+        "parfffe": "raw value",
+    }
+
+    state = await report(channels[0], SWITCH_OFF_TIME, "140")
+    assert state.attributes["channel_parameters"]["ch0000"]["parameters"] == {
+        "PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "140"
+    }
+
+    state = await report(channels[1], "parffff", "new value")
+    assert state.attributes["channel_parameters"]["ch0001"]["parameters"] == {
+        "PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "60",
+        "parffff": "new value",
+    }
+
+    # The sensor also follows a channel that had no parameters.
+    state = await report(channels[2], SWITCH_OFF_TIME, "30")
+    assert state.state == "6"
+    assert state.attributes["channel_parameters"]["ch0002"] == {
+        "name": "Spare channel",
+        "parameters": {"PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "30"},
+    }
+
+    assert old_state.state == "4"
+    assert old_state.attributes["device_parameters"] == {"PID_LED_DAY_BRIGHTNESS": "0"}
+    assert old_state.attributes["channel_parameters"]["ch0000"]["parameters"] == {
+        "PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "130"
+    }
+
+
+async def test_parameter_sensor_removes_callbacks_on_unload(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test an unloaded parameter sensor no longer follows parameter changes."""
+    device, channels = _parameter_device()
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, channels
+    )
+    entity_id = _entity_id(entity_registry, PARAMETERS_UNIQUE_ID)
+
+    assert await hass.config_entries.async_unload(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+    state = hass.states.get(entity_id)
+
+    device.update_parameter("par0001", "1")
+    channels[0].update_parameter(SWITCH_OFF_TIME, "140")
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id) == state
+    for source in (device, *channels):
+        assert not source._get_parameter_callbacks()
 
 
 @pytest.mark.parametrize("has_device_parameters", [False, True])
-async def test_setup_split_parameter_sensors(
-    hass, mock_config_entry, parameter_device, has_device_parameters
-):
-    """Give the parent device parameters and each included child its own parameters."""
+async def test_parameter_sensors_of_subdevices(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    has_device_parameters: bool,
+) -> None:
+    """Test each channel sub-device with parameters gets its own sensor.
+
+    The parent device keeps a sensor for its own parameters, if it has any.
+    """
+    entry = _with_subdevices(mock_config_entry)
+    device, channels = _parameter_device()
     if not has_device_parameters:
-        parameter_device.parameters.clear()
-    mock_config_entry.add_to_hass(hass)
-    hass.config_entries.async_update_entry(
-        mock_config_entry,
-        data={**mock_config_entry.data, "create_subdevices": True},
-    )
-    api = Mock()
-    api.get_devices.return_value = {parameter_device.device_serial: parameter_device}
-    api.get_channels_by_class.return_value = []
-    # The second populated channel is excluded by the integration's filters.
-    api.get_channels_by_device.return_value = [
-        parameter_device.channels["ch0000"],
-        parameter_device.channels["ch0002"],
+        device.parameters.clear()
+
+    await setup_with_channels(hass, entry, mock_free_at_home_settings, channels)
+
+    assert _unique_ids(entity_registry, entry) == [
+        f"{SERIAL}_ch0000_parameters",
+        f"{SERIAL}_ch0001_parameters",
+        *([PARAMETERS_UNIQUE_ID] if has_device_parameters else []),
     ]
-    hass.data[DOMAIN] = {mock_config_entry.entry_id: api}
-    entities = []
+    child_id = _entity_id(entity_registry, f"{SERIAL}_ch0000_parameters")
+    assert _device_identifiers(hass, f"{SERIAL}_ch0000_parameters") == {
+        (DOMAIN, f"{SERIAL}_ch0000")
+    }
+    assert hass.states.get(child_id).state == "1"
 
-    await async_setup_entry(hass, mock_config_entry, entities.extend)
+    device.update_parameter("par0001", "1")
+    channels[0].update_parameter(SWITCH_OFF_TIME, "140")
+    await hass.async_block_till_done()
 
-    assert len(entities) == 1 + has_device_parameters
-    child = entities[-1]
-    assert child.unique_id == "ABB123456_ch0000_parameters"
-    assert child.native_value == 1
-    assert child.extra_state_attributes == {
-        "channel_parameters": {
-            "ch0000": {
-                "name": "Living room ceiling light",
-                "parameters": {"PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "130"},
-            }
+    child = hass.states.get(child_id)
+    assert "device_parameters" not in child.attributes
+    assert child.attributes["channel_parameters"] == {
+        "ch0000": {
+            "name": "Ceiling light",
+            "parameters": {"PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "140"},
         }
     }
-    child.hass = hass
-    child.platform = Mock(config_entry=mock_config_entry)
-    with patch(
-        "custom_components.abbfreeathome_ci.sensor.async_get_sub_device_info"
-    ) as sub_device_info:
-        info = child.device_info
-    assert info is sub_device_info.return_value
-    sub_device_info.assert_called_once_with(
-        hass, mock_config_entry.entry_id, parameter_device.channels["ch0000"]
-    )
-
-    with patch.object(child, "async_write_ha_state") as child_write:
-        await child.async_added_to_hass()
-        parameter_device.update_parameter("par0001", "1")
-        parameter_device.channels["ch0001"].update_parameter("par0015", "70")
-        child_write.assert_not_called()
-        parameter_device.channels["ch0000"].update_parameter("par0015", "140")
-        child_write.assert_called_once()
-        await child.async_will_remove_from_hass()
-        parameter_device.channels["ch0000"].update_parameter("par0015", "150")
-        child_write.assert_called_once()
-
     if has_device_parameters:
-        parent = entities[0]
-        assert parent.unique_id == "ABB123456_parameters"
-        assert parent.device_info == {"identifiers": {(DOMAIN, "ABB123456")}}
-        assert parent.native_value == 1
-        assert parent.extra_state_attributes == {
-            "device_parameters": {"PID_LED_DAY_BRIGHTNESS": "1"}
-        }
-        with patch.object(parent, "async_write_ha_state") as parent_write:
-            await parent.async_added_to_hass()
-            parameter_device.channels["ch0000"].update_parameter("par0015", "160")
-            parent_write.assert_not_called()
-            parameter_device.update_parameter("par0001", "2")
-            parent_write.assert_called_once()
-            await parent.async_will_remove_from_hass()
-            parameter_device.update_parameter("par0001", "3")
-            parent_write.assert_called_once()
-
-
-@pytest.mark.parametrize("scope", ["device", "channel", "neither"])
-def test_empty_parameter_groups_are_omitted(parameter_device, scope):
-    """Only publish nonempty parameter groups."""
-    if scope != "device":
-        parameter_device.parameters.clear()
-    if scope != "channel":
-        for channel in parameter_device.channels.values():
-            channel.parameters.clear()
-    entity = FreeAtHomeParametersSensor(
-        parameter_device, list(parameter_device.channels.values())
-    )
-
-    assert ("device_parameters" in entity.extra_state_attributes) == (scope == "device")
-    assert ("channel_parameters" in entity.extra_state_attributes) == (
-        scope == "channel"
-    )
-
-
-@pytest.mark.parametrize("create_subdevices", [False, True])
-async def test_combined_actuator_parameter_counts(
-    hass, mock_config_entry, create_subdevices
-):
-    """Match the reported device's six contact and eight actuator channels."""
-    device = Device(
-        device_serial="TEST_COMBINED",
-        device_id="B008",
-        display_name="Combined actuator",
-        api=Mock(),
-        parameters={"par0026": "1"},
-    )
-    for index in range(16):
-        parameters = (
-            {"par0010": "2"} if index < 6 else {"par0028": "60", "par0027": "1"}
-        )
-        channel_id = f"ch{index:04x}"
-        device.channels[channel_id] = Base(
-            device=device,
-            channel_id=channel_id,
-            channel_name=f"Channel {index}",
-            inputs={},
-            outputs={},
-            parameters=parameters,
-        )
-    # Two unused channels are filtered out upstream, not by their display name.
-    included_channels = [
-        channel
-        for index, channel in enumerate(device.channels.values())
-        if index not in (6, 7)
-    ]
-    mock_config_entry.add_to_hass(hass)
-    hass.config_entries.async_update_entry(
-        mock_config_entry,
-        data={**mock_config_entry.data, "create_subdevices": create_subdevices},
-    )
-    api = Mock()
-    api.get_devices.return_value = {device.device_serial: device}
-    api.get_channels_by_class.return_value = []
-    api.get_channels_by_device.return_value = included_channels
-    hass.data[DOMAIN] = {mock_config_entry.entry_id: api}
-    entities = []
-
-    await async_setup_entry(hass, mock_config_entry, entities.extend)
-
-    assert sum(entity.native_value for entity in entities) == 23
-    if create_subdevices:
-        assert len(entities) == 15
-        assert [entity.native_value for entity in entities] == [
-            1,
-            *([1] * 6),
-            *([2] * 8),
-        ]
-        assert entities[0].extra_state_attributes == {
-            "device_parameters": {"PID_CHANNEL_SELECTOR_8_GANG": "1"}
-        }
-        for entity, channel in zip(entities[1:], included_channels, strict=True):
-            assert entity.unique_id == f"TEST_COMBINED_{channel.channel_id}_parameters"
-            assert set(entity.extra_state_attributes) == {"channel_parameters"}
-            assert list(entity.extra_state_attributes["channel_parameters"]) == [
-                channel.channel_id
-            ]
-    else:
-        assert len(entities) == 1
-        assert len(entities[0].extra_state_attributes["channel_parameters"]) == 14
+        assert _device_identifiers(hass, PARAMETERS_UNIQUE_ID) == {(DOMAIN, SERIAL)}
+        parent = hass.states.get(_entity_id(entity_registry, PARAMETERS_UNIQUE_ID))
+        assert parent.state == "1"
+        assert parent.attributes["device_parameters"] == {"PID_LED_DAY_BRIGHTNESS": "1"}
+        assert "channel_parameters" not in parent.attributes
 
 
 @pytest.mark.parametrize(
-    ("include_channels", "device_parameters", "channel_parameters", "expected_count"),
+    ("visible", "device_parameters", "channel_parameters", "unique_ids"),
     [
-        (False, {"par0001": "0"}, {"par0015": "130"}, 0),
-        (True, {}, {}, 0),
-        (True, {"par0001": "0"}, {}, 1),
-        (True, {}, {"par0015": "130"}, 1),
+        (False, {"par0001": "0"}, {SWITCH_OFF_TIME: "130"}, []),
+        (True, {}, {}, []),
+        (True, {"par0001": "0"}, {}, [PARAMETERS_UNIQUE_ID]),
+        (True, {}, {SWITCH_OFF_TIME: "130"}, [PARAMETERS_UNIQUE_ID]),
     ],
+    ids=["no_visible_channels", "no_parameters", "device", "channel"],
 )
-async def test_setup_parameter_sensor_eligibility(
-    hass,
-    mock_config_entry,
-    include_channels,
-    device_parameters,
-    channel_parameters,
-    expected_count,
-):
-    """Skip excluded and empty devices, but support either parameter scope."""
-    device = Device(
-        device_serial="ABB123456",
-        device_id="test",
-        display_name="Actuator",
-        api=Mock(),
-        parameters=device_parameters,
+async def test_parameter_sensor_needs_parameters(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    visible: bool,
+    device_parameters: dict[str, str],
+    channel_parameters: dict[Parameter, str],
+    unique_ids: list[str],
+) -> None:
+    """Test only a device with visible channels and parameters gets a sensor."""
+    device = build_device(SERIAL, parameters=device_parameters)
+    channel = build_channel(Base, device, parameters=channel_parameters)
+
+    await setup_with_channels(
+        hass,
+        mock_config_entry,
+        mock_free_at_home_settings,
+        [channel] if visible else [],
+        devices=[device],
     )
-    channel = Base(
-        device=device,
-        channel_id="ch0000",
-        channel_name="Light",
-        inputs={},
-        outputs={},
-        parameters=channel_parameters,
+
+    assert _unique_ids(entity_registry, mock_config_entry) == unique_ids
+
+
+@pytest.mark.parametrize("create_subdevices", [False, True])
+async def test_parameter_sensors_of_combined_actuator(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    create_subdevices: bool,
+) -> None:
+    """Test the parameter counts of a reported combined actuator.
+
+    It has six contact and eight actuator channels with parameters, and two
+    more channels that are not visible.
+    """
+    entry = _with_subdevices(mock_config_entry, create_subdevices)
+    device = build_device(SERIAL, parameters={"par0026": "1"})
+    channels = [
+        build_channel(
+            Base,
+            device,
+            f"ch{index:04x}",
+            parameters={Parameter.PID_BI_CONTACT_TYPE: "2"}
+            if index < 6
+            else {
+                Parameter.PID_DELAY_TIME: "60",
+                Parameter.PID_SWITCH_ACTUATOR_BEHAVIOR_ON_MALFUNCTION: "1",
+            },
+        )
+        for index in range(16)
+    ]
+    visible = [channel for index, channel in enumerate(channels) if index not in (6, 7)]
+
+    await setup_with_channels(hass, entry, mock_free_at_home_settings, visible)
+
+    states = {
+        entity_entry.unique_id: hass.states.get(entity_entry.entity_id).state
+        for entity_entry in er.async_entries_for_config_entry(
+            entity_registry, entry.entry_id
+        )
+    }
+    if create_subdevices:
+        assert states == {
+            PARAMETERS_UNIQUE_ID: "1",
+            **{f"{SERIAL}_{c.channel_id}_parameters": "1" for c in visible[:6]},
+            **{f"{SERIAL}_{c.channel_id}_parameters": "2" for c in visible[6:]},
+        }
+    else:
+        assert states == {PARAMETERS_UNIQUE_ID: "23"}
+
+
+async def test_parameter_sensor_follows_runtime_channels(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test a device added at runtime gets a parameter sensor that grows with it."""
+    _, (first, second, _) = _parameter_device()
+    mock_fah = await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, []
     )
-    api = Mock()
-    api.get_devices.return_value = {device.device_serial: device}
-    api.get_channels_by_class.return_value = []
-    api.get_channels_by_device.return_value = [channel] if include_channels else []
-    hass.data[DOMAIN] = {mock_config_entry.entry_id: api}
-    entities = []
 
-    await async_setup_entry(hass, mock_config_entry, entities.extend)
+    mock_fah.channels.append(first)
+    # A repeated notification for the same channel changes nothing.
+    for _ in range(2):
+        devices_changed(mock_fah, DevicesChangedEvent(added_channels=(first,)))
+        await hass.async_block_till_done()
+    entity_id = _entity_id(entity_registry, PARAMETERS_UNIQUE_ID)
+    assert list(hass.states.get(entity_id).attributes["channel_parameters"]) == [
+        "ch0000"
+    ]
 
-    assert len(entities) == expected_count
+    mock_fah.channels.append(second)
+    devices_changed(mock_fah, DevicesChangedEvent(added_channels=(second,)))
+    await hass.async_block_till_done()
+    second.update_parameter(SWITCH_OFF_TIME, "70")
+    await hass.async_block_till_done()
+
+    channel_parameters = hass.states.get(entity_id).attributes["channel_parameters"]
+    assert list(channel_parameters) == ["ch0000", "ch0001"]
+    assert channel_parameters["ch0001"]["parameters"] == {
+        "PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "70",
+        "parffff": "unknown value",
+    }
 
 
-async def test_setup_no_devices(hass, mock_config_entry):
-    """Handle an installation without any devices."""
-    api = Mock()
-    api.get_devices.return_value = {}
-    api.get_channels_by_class.return_value = []
-    hass.data[DOMAIN] = {mock_config_entry.entry_id: api}
-    entities = []
-
-    await async_setup_entry(hass, mock_config_entry, entities.extend)
-
-    assert entities == []
-
-
-async def test_setup_preserves_measurement_sensors(
-    hass, mock_config_entry, parameter_device
-):
-    """Parameter aggregates must not replace the existing measurement entities."""
-    channel = Mock(spec=TemperatureSensor)
-    channel.channel_name = "Living room temperature"
-    channel.channel_id = "ch0003"
-    channel.state = 21
-    api = Mock()
-    api.get_devices.return_value = {parameter_device.device_serial: parameter_device}
-    api.get_channels_by_device.return_value = list(parameter_device.channels.values())
-    api.get_channels_by_class.side_effect = lambda channel_class: (
-        [channel] if channel_class is TemperatureSensor else []
+async def test_parameter_sensor_extended_while_being_added(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test a channel placed while the parameter sensor is being added."""
+    _, (first, second, _) = _parameter_device()
+    mock_fah = await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, []
     )
-    hass.data[DOMAIN] = {mock_config_entry.entry_id: api}
-    entities = []
+    release = asyncio.Event()
+    added_to_hass = FreeAtHomeEntity.async_added_to_hass
 
-    await async_setup_entry(hass, mock_config_entry, entities.extend)
+    async def _delayed_added_to_hass(entity: FreeAtHomeEntity) -> None:
+        await release.wait()
+        await added_to_hass(entity)
 
-    assert len(entities) == 2
-    assert isinstance(entities[0], FreeAtHomeSensorEntity)
-    assert entities[0].native_value == 21
-    assert isinstance(entities[1], FreeAtHomeParametersSensor)
+    with patch.object(FreeAtHomeEntity, "async_added_to_hass", _delayed_added_to_hass):
+        for channel in (first, second):
+            mock_fah.channels.append(channel)
+            devices_changed(mock_fah, DevicesChangedEvent(added_channels=(channel,)))
+        release.set()
+        await hass.async_block_till_done()
 
+    # Once added, the sensor follows the channel placed in the meantime.
+    second.update_parameter(SWITCH_OFF_TIME, "70")
+    await hass.async_block_till_done()
 
-async def test_setup_heating_cooling_sensor(hass, mock_config_entry):
-    """Expose the heating/cooling changeover as an enum sensor."""
-    channel = HeatingCoolingSensor(
-        device=Mock(spec=Device),
-        channel_id="ch0000",
-        channel_name="Umschalten Heizen / Kühlen",
-        inputs={},
-        outputs={"odp0007": {"pairingID": 309, "value": "0"}},
-        parameters={},
-    )
-    api = Mock()
-    api.get_devices.return_value = {}
-    api.get_channels_by_class.side_effect = lambda channel_class: (
-        [channel] if channel_class is HeatingCoolingSensor else []
-    )
-    hass.data[DOMAIN] = {mock_config_entry.entry_id: api}
-    entities = []
-
-    await async_setup_entry(hass, mock_config_entry, entities.extend)
-
-    assert len(entities) == 1
-    entity = entities[0]
-    assert entity.device_class == SensorDeviceClass.ENUM
-    assert entity.options == ["unknown", "heating", "cooling"]
-    assert entity.translation_key == "heating_cooling_sensor"
-    assert entity.native_value == "heating"
-
-    channel.update_channel("AL_HEATING_COOLING/odp0007", "1")
-    assert entity.native_value == "cooling"
+    entity_id = _entity_id(entity_registry, PARAMETERS_UNIQUE_ID)
+    channel_parameters = hass.states.get(entity_id).attributes["channel_parameters"]
+    assert channel_parameters["ch0001"]["parameters"] == {
+        "PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "70",
+        "parffff": "unknown value",
+    }
 
 
 # compat: homeassistant<2026.7 - UnitOfRatio replaced CONCENTRATION_PARTS_PER_MILLION
@@ -580,62 +743,4 @@ def test_parts_per_million_compatibility(monkeypatch, modern_units):
             "entity_description_kwargs"
         ]["native_unit_of_measurement"]
         == expected_unit
-    )
-
-
-@pytest.mark.parametrize(
-    ("create_subdevices", "multi_device"), [(False, True), (True, False), (True, True)]
-)
-async def test_measurement_sensor_properties_and_callbacks(
-    hass, mock_config_entry, parameter_device, create_subdevices, multi_device
-):
-    """Preserve measurement state, device placement and callback lifecycle."""
-    if not multi_device:
-        parameter_device._floor = "01"
-    channel = Mock(
-        spec=TemperatureSensor,
-        device=parameter_device,
-        device_serial=parameter_device.device_serial,
-        device_name=parameter_device.display_name,
-        channel_id="ch0003",
-        channel_name="Living room temperature",
-        room_name="Living room",
-        state=21,
-    )
-    entity = FreeAtHomeSensorEntity(
-        channel,
-        value_attribute="state",
-        entity_description_kwargs={"key": "TemperatureSensor"},
-        sysap_serial_number="SYSAP123",
-        create_subdevices=create_subdevices,
-    )
-    assert entity.unique_id == "ABB123456_ch0003_TemperatureSensor"
-    assert entity.native_value == 21
-    channel.state = None
-    assert entity.native_value is None
-    assert entity.should_poll is False
-    assert entity.name == "Living room temperature"
-
-    entity.hass = hass
-    entity.platform = Mock(config_entry=mock_config_entry)
-    with patch(
-        "custom_components.abbfreeathome_ci.sensor.async_get_sub_device_info"
-    ) as sub_device_info:
-        info = entity.device_info
-    if create_subdevices and multi_device:
-        assert info is sub_device_info.return_value
-        sub_device_info.assert_called_once_with(
-            hass, mock_config_entry.entry_id, channel
-        )
-    else:
-        assert info == {"identifiers": {(DOMAIN, "ABB123456")}}
-        sub_device_info.assert_not_called()
-
-    await entity.async_added_to_hass()
-    channel.register_callback.assert_called_once_with(
-        callback_attribute="state", callback=entity.async_write_ha_state
-    )
-    await entity.async_will_remove_from_hass()
-    channel.remove_callback.assert_called_once_with(
-        callback_attribute="state", callback=entity.async_write_ha_state
     )

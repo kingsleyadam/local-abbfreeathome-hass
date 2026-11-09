@@ -1,0 +1,407 @@
+# serializer version: 1
+# name: test_parameter_sensor_entities[ABB700000001_ch0003_TemperatureSensor]
+  dict({
+    'attributes': dict({
+      'device_class': 'temperature',
+      'friendly_name': 'Runtime Device Temperature',
+      'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+      'unit_of_measurement': '°C',
+    }),
+    'capabilities': dict({
+      'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SensorDeviceClass.TEMPERATURE: 'temperature'>,
+    'original_icon': None,
+    'original_name': 'Temperature',
+    'state': '21.0',
+    'supported_features': 0,
+    'translation_key': 'temperature_sensor',
+    'unit_of_measurement': '°C',
+  })
+# ---
+# name: test_parameter_sensor_entities[ABB700000001_parameters]
+  dict({
+    'attributes': dict({
+      'channel_parameters': dict({
+        'ch0000': dict({
+          'name': 'Ceiling light',
+          'parameters': dict({
+            'PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION': '130',
+          }),
+        }),
+        'ch0001': dict({
+          'name': 'Wall light',
+          'parameters': dict({
+            'PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION': '60',
+            'parffff': 'unknown value',
+          }),
+        }),
+      }),
+      'device_parameters': dict({
+        'PID_LED_DAY_BRIGHTNESS': '0',
+      }),
+      'friendly_name': 'Runtime Device Parameters',
+      'icon': 'mdi:tune',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'sensor',
+    'entity_category': <EntityCategory.DIAGNOSTIC: 'diagnostic'>,
+    'has_entity_name': True,
+    'original_device_class': None,
+    'original_icon': 'mdi:tune',
+    'original_name': 'Parameters',
+    'state': '4',
+    'supported_features': 0,
+    'translation_key': 'parameters',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_sensor_entities[ABB700000001_ch0000_AirQualitySensorCO2]
+  dict({
+    'attributes': dict({
+      'device_class': 'carbon_dioxide',
+      'friendly_name': 'Runtime Device CO2',
+      'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+      'unit_of_measurement': 'ppm',
+    }),
+    'capabilities': dict({
+      'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SensorDeviceClass.CO2: 'carbon_dioxide'>,
+    'original_icon': None,
+    'original_name': 'CO2',
+    'state': '800.0',
+    'supported_features': 0,
+    'translation_key': 'air_quality_sensor_co2',
+    'unit_of_measurement': 'ppm',
+  })
+# ---
+# name: test_sensor_entities[ABB700000001_ch0000_AirQualitySensorHumidity]
+  dict({
+    'attributes': dict({
+      'device_class': 'humidity',
+      'friendly_name': 'Runtime Device Humidity',
+      'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+      'unit_of_measurement': '%',
+    }),
+    'capabilities': dict({
+      'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SensorDeviceClass.HUMIDITY: 'humidity'>,
+    'original_icon': None,
+    'original_name': 'Humidity',
+    'state': '45',
+    'supported_features': 0,
+    'translation_key': 'air_quality_sensor_humidity',
+    'unit_of_measurement': '%',
+  })
+# ---
+# name: test_sensor_entities[ABB700000001_ch0000_AirQualitySensorVOC]
+  dict({
+    'attributes': dict({
+      'device_class': 'volatile_organic_compounds_parts',
+      'friendly_name': 'Runtime Device VOC Index',
+      'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+    }),
+    'capabilities': dict({
+      'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SensorDeviceClass.VOLATILE_ORGANIC_COMPOUNDS_PARTS: 'volatile_organic_compounds_parts'>,
+    'original_icon': None,
+    'original_name': 'VOC Index',
+    'state': '100',
+    'supported_features': 0,
+    'translation_key': 'air_quality_sensor_voc',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_sensor_entities[ABB700000001_ch0001_BrightnessSensor]
+  dict({
+    'attributes': dict({
+      'device_class': 'illuminance',
+      'friendly_name': 'Runtime Device Illuminance',
+      'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+      'unit_of_measurement': 'lx',
+    }),
+    'capabilities': dict({
+      'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SensorDeviceClass.ILLUMINANCE: 'illuminance'>,
+    'original_icon': None,
+    'original_name': 'Illuminance',
+    'state': '100.0',
+    'supported_features': 0,
+    'translation_key': 'brightness_sensor',
+    'unit_of_measurement': 'lx',
+  })
+# ---
+# name: test_sensor_entities[ABB700000001_ch0002_HeatingCoolingSensor]
+  dict({
+    'attributes': dict({
+      'device_class': 'enum',
+      'friendly_name': 'Runtime Device Heating/Cooling Mode',
+      'options': list([
+        'unknown',
+        'heating',
+        'cooling',
+      ]),
+    }),
+    'capabilities': dict({
+      'options': list([
+        'unknown',
+        'heating',
+        'cooling',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SensorDeviceClass.ENUM: 'enum'>,
+    'original_icon': None,
+    'original_name': 'Heating/Cooling Mode',
+    'state': 'heating',
+    'supported_features': 0,
+    'translation_key': 'heating_cooling_sensor',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_sensor_entities[ABB700000001_ch0003_MovementDetectorBrightness]
+  dict({
+    'attributes': dict({
+      'device_class': 'illuminance',
+      'friendly_name': 'Runtime Device Illuminance',
+      'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+      'unit_of_measurement': 'lx',
+    }),
+    'capabilities': dict({
+      'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SensorDeviceClass.ILLUMINANCE: 'illuminance'>,
+    'original_icon': None,
+    'original_name': 'Illuminance',
+    'state': '100.0',
+    'supported_features': 0,
+    'translation_key': 'movement_detector_brightness',
+    'unit_of_measurement': 'lx',
+  })
+# ---
+# name: test_sensor_entities[ABB700000001_ch0004_BlockableMovementDetectorBrightness]
+  dict({
+    'attributes': dict({
+      'device_class': 'illuminance',
+      'friendly_name': 'Runtime Device Illuminance',
+      'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+      'unit_of_measurement': 'lx',
+    }),
+    'capabilities': dict({
+      'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SensorDeviceClass.ILLUMINANCE: 'illuminance'>,
+    'original_icon': None,
+    'original_name': 'Illuminance',
+    'state': '100.0',
+    'supported_features': 0,
+    'translation_key': 'movement_detector_brightness',
+    'unit_of_measurement': 'lx',
+  })
+# ---
+# name: test_sensor_entities[ABB700000001_ch0005_WindowDoorSensorPosition]
+  dict({
+    'attributes': dict({
+      'device_class': 'enum',
+      'friendly_name': 'Runtime Device Window Position',
+      'options': list([
+        'unknown',
+        'closed',
+        'tilted',
+        'open',
+      ]),
+    }),
+    'capabilities': dict({
+      'options': list([
+        'unknown',
+        'closed',
+        'tilted',
+        'open',
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SensorDeviceClass.ENUM: 'enum'>,
+    'original_icon': None,
+    'original_name': 'Window Position',
+    'state': 'open',
+    'supported_features': 0,
+    'translation_key': 'window_position',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_sensor_entities[ABB700000001_ch0006_TemperatureSensor]
+  dict({
+    'attributes': dict({
+      'device_class': 'temperature',
+      'friendly_name': 'Runtime Device Temperature',
+      'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+      'unit_of_measurement': '°C',
+    }),
+    'capabilities': dict({
+      'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SensorDeviceClass.TEMPERATURE: 'temperature'>,
+    'original_icon': None,
+    'original_name': 'Temperature',
+    'state': '5.0',
+    'supported_features': 0,
+    'translation_key': 'temperature_sensor',
+    'unit_of_measurement': '°C',
+  })
+# ---
+# name: test_sensor_entities[ABB700000001_ch0007_WindSensorForce]
+  dict({
+    'attributes': dict({
+      'device_class': 'wind_speed',
+      'friendly_name': 'Runtime Device Wind Force',
+      'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+      'unit_of_measurement': 'Beaufort',
+    }),
+    'capabilities': dict({
+      'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SensorDeviceClass.WIND_SPEED: 'wind_speed'>,
+    'original_icon': None,
+    'original_name': 'Wind Force',
+    'state': '3',
+    'supported_features': 0,
+    'translation_key': 'wind_sensor_force',
+    'unit_of_measurement': 'Beaufort',
+  })
+# ---
+# name: test_sensor_entities[ABB700000001_ch0007_WindSensorSpeed]
+  dict({
+    'attributes': dict({
+      'device_class': 'wind_speed',
+      'friendly_name': 'Runtime Device Wind speed',
+      'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+      'unit_of_measurement': 'km/h',
+    }),
+    'capabilities': dict({
+      'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <SensorDeviceClass.WIND_SPEED: 'wind_speed'>,
+    'original_icon': None,
+    'original_name': 'Wind speed',
+    'state': '18.0',
+    'supported_features': 0,
+    'translation_key': 'wind_sensor_speed',
+    'unit_of_measurement': 'km/h',
+  })
+# ---
