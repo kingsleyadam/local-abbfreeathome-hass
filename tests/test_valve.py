@@ -1,556 +1,396 @@
 """Test ABB-free@home valve."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from collections.abc import Generator
+from dataclasses import dataclass
+from unittest.mock import MagicMock, patch
 
+from abbfreeathome.bin.pairing import Pairing
+from abbfreeathome.channels.base import Base
 from abbfreeathome.channels.valve_actuator import (
     CoolingActuator,
     HeatingActuator,
     HeatingCoolingActuator,
 )
+from abbfreeathome.device import Device
+import pytest
+from syrupy.assertion import SnapshotAssertion
 
-from custom_components.abbfreeathome_ci.const import DOMAIN
-from custom_components.abbfreeathome_ci.valve import (
-    FreeAtHomeValveEntity,
-    async_setup_entry,
+from custom_components.abbfreeathome_ci.const import CONF_CREATE_SUBDEVICES, DOMAIN
+from custom_components.abbfreeathome_ci.valve import VALVE_DESCRIPTIONS
+from homeassistant.components.homeassistant import (
+    DOMAIN as HOMEASSISTANT_DOMAIN,
+    SERVICE_UPDATE_ENTITY,
 )
-from homeassistant.components.valve import ValveDeviceClass, ValveEntityFeature
+from homeassistant.components.valve import (
+    ATTR_CURRENT_POSITION,
+    ATTR_POSITION,
+    DOMAIN as VALVE_DOMAIN,
+    ValveState,
+)
+from homeassistant.const import (
+    ATTR_ENTITY_ID,
+    SERVICE_SET_VALVE_POSITION,
+    STATE_UNKNOWN,
+    Platform,
+)
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.setup import async_setup_component
+
+from .common import (
+    MockConfigEntry,
+    build_channel,
+    build_device,
+    setup_with_channels,
+    snapshot_entities,
+)
+
+SERIAL = "ABB700000001"
+# The SysAP reports heating valves at 30 and cooling valves at 60 of 100.
+HEATING_INPUTS = {Pairing.AL_ACTUATING_VALUE_HEATING: "0"}
+HEATING_OUTPUTS = {Pairing.AL_INFO_VALUE_HEATING: "30"}
+COOLING_INPUTS = {Pairing.AL_ACTUATING_VALUE_COOLING: "0"}
+COOLING_OUTPUTS = {Pairing.AL_INFO_VALUE_COOLING: "60"}
 
 
-async def test_async_setup_entry_no_valves(
-    hass: HomeAssistant, mock_config_entry
-) -> None:
-    """Test setup with no valve entities."""
-    mock_config_entry.add_to_hass(hass)
+@dataclass(frozen=True)
+class ValveCase:
+    """A valve description with a real channel.
 
-    mock_free_at_home = MagicMock()
-    mock_free_at_home.get_channels_by_class.return_value = []
-    hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
+    Setting the position sets position_input; the SysAP reports the position
+    on position_output, at first as position.
+    """
 
-    async_add_entities = MagicMock()
-    await async_setup_entry(hass, mock_config_entry, async_add_entities)
-
-    assert async_add_entities.call_count == 1
-
-
-async def test_async_setup_entry_with_heating_actuator(
-    hass: HomeAssistant, mock_config_entry
-) -> None:
-    """Test setup with a heating actuator."""
-    mock_config_entry.add_to_hass(hass)
-
-    # Create a mock heating actuator channel
-    mock_channel = MagicMock()
-    mock_channel.channel_name = "Floor Heating"
-    mock_channel.channel_id = "ch0000"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.device_name = "Heating Device"
-    mock_channel.room_name = "Living Room"
-    mock_channel.position = 75
-    mock_channel.device.is_multi_device = False
-
-    mock_free_at_home = MagicMock()
-
-    def get_channels_by_class_side_effect(channel_class):
-        """Return channels only for HeatingActuator."""
-        if channel_class == HeatingActuator:
-            return [mock_channel]
-        return []
-
-    mock_free_at_home.get_channels_by_class.side_effect = (
-        get_channels_by_class_side_effect
-    )
-    hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
-
-    entities_added = []
-
-    def capture_entities(entity_generator):
-        """Capture entities from generator."""
-        entities = list(entity_generator)
-        entities_added.extend(entities)
-
-    async_add_entities = MagicMock(side_effect=capture_entities)
-    await async_setup_entry(hass, mock_config_entry, async_add_entities)
-
-    # Should have added 1 entity
-    assert len(entities_added) == 1
-    entity = entities_added[0]
-
-    assert isinstance(entity, FreeAtHomeValveEntity)
-    assert entity.entity_description.name == "Floor Heating"
-    # Backward compatible unique_id format
-    assert entity.unique_id == "ABB7F57FFFE12345_ch0000_valve"
-    assert entity.current_valve_position == 75
+    channel_class: type[Base]
+    channel_id: str
+    unique_id_suffix: str
+    position_input: str
+    position_output: str
+    position: int
+    inputs: dict[Pairing, str]
+    outputs: dict[Pairing, str]
 
 
-async def test_async_setup_entry_with_cooling_actuator(
-    hass: HomeAssistant, mock_config_entry
-) -> None:
-    """Test setup with a cooling actuator."""
-    mock_config_entry.add_to_hass(hass)
+# Unique IDs must never change. The heating actuator's valve keeps the legacy
+# suffix "valve".
+VALVE_CASES = {
+    "HeatingActuatorValve": ValveCase(
+        HeatingActuator,
+        "ch0000",
+        "valve",
+        position_input="idp0000",
+        position_output="odp0000",
+        position=30,
+        inputs=HEATING_INPUTS,
+        outputs=HEATING_OUTPUTS,
+    ),
+    "CoolingActuatorValve": ValveCase(
+        CoolingActuator,
+        "ch0001",
+        "CoolingActuatorValve",
+        position_input="idp0000",
+        position_output="odp0000",
+        position=60,
+        inputs=COOLING_INPUTS,
+        outputs=COOLING_OUTPUTS,
+    ),
+    # The heating and cooling valves share one heating/cooling actuator.
+    "HeatingCoolingActuatorHeatingValve": ValveCase(
+        HeatingCoolingActuator,
+        "ch0002",
+        "HeatingCoolingActuatorHeatingValve",
+        position_input="idp0000",
+        position_output="odp0000",
+        position=30,
+        inputs=HEATING_INPUTS | COOLING_INPUTS,
+        outputs=HEATING_OUTPUTS | COOLING_OUTPUTS,
+    ),
+    "HeatingCoolingActuatorCoolingValve": ValveCase(
+        HeatingCoolingActuator,
+        "ch0002",
+        "HeatingCoolingActuatorCoolingValve",
+        position_input="idp0001",
+        position_output="odp0001",
+        position=60,
+        inputs=HEATING_INPUTS | COOLING_INPUTS,
+        outputs=HEATING_OUTPUTS | COOLING_OUTPUTS,
+    ),
+}
 
-    mock_channel = MagicMock()
-    mock_channel.channel_name = "Floor Cooling"
-    mock_channel.channel_id = "ch0001"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.device_name = "Cooling Device"
-    mock_channel.room_name = "Bedroom"
-    mock_channel.position = 50
-    mock_channel.device.is_multi_device = False
 
-    mock_free_at_home = MagicMock()
-
-    def get_channels_by_class_side_effect(channel_class):
-        """Return channels only for CoolingActuator."""
-        if channel_class == CoolingActuator:
-            return [mock_channel]
-        return []
-
-    mock_free_at_home.get_channels_by_class.side_effect = (
-        get_channels_by_class_side_effect
-    )
-    hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
-
-    entities_added = []
-
-    def capture_entities(entity_generator):
-        """Capture entities from generator."""
-        entities = list(entity_generator)
-        entities_added.extend(entities)
-
-    async_add_entities = MagicMock(side_effect=capture_entities)
-    await async_setup_entry(hass, mock_config_entry, async_add_entities)
-
-    assert len(entities_added) == 1
-    entity = entities_added[0]
-
-    assert isinstance(entity, FreeAtHomeValveEntity)
-    assert entity.entity_description.name == "Floor Cooling"
-    assert entity.unique_id == "ABB7F57FFFE12345_ch0001_CoolingActuatorValve"
-    assert entity.current_valve_position == 50
-
-
-async def test_async_setup_entry_with_heating_cooling_actuator(
-    hass: HomeAssistant, mock_config_entry
-) -> None:
-    """Test setup with a heating/cooling actuator creates two entities."""
-    mock_config_entry.add_to_hass(hass)
-
-    mock_channel = MagicMock()
-    mock_channel.channel_name = "Climate Control"
-    mock_channel.channel_id = "ch0002"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.device_name = "Climate Device"
-    mock_channel.room_name = "Office"
-    mock_channel.heating_position = 80
-    mock_channel.cooling_position = 20
-    mock_channel.device.is_multi_device = False
-
-    mock_free_at_home = MagicMock()
-
-    def get_channels_by_class_side_effect(channel_class):
-        """Return channels only for HeatingCoolingActuator."""
-        if channel_class == HeatingCoolingActuator:
-            return [mock_channel]
-        return []
-
-    mock_free_at_home.get_channels_by_class.side_effect = (
-        get_channels_by_class_side_effect
-    )
-    hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
-
-    entities_added = []
-
-    def capture_entities(entity_generator):
-        """Capture entities from generator."""
-        entities = list(entity_generator)
-        entities_added.extend(entities)
-
-    async_add_entities = MagicMock(side_effect=capture_entities)
-    await async_setup_entry(hass, mock_config_entry, async_add_entities)
-
-    # Should have added 2 entities (heating and cooling)
-    assert len(entities_added) == 2
-
-    # Verify both entities are present with correct keys
-    entity_keys = [e.entity_description.key for e in entities_added]
-    assert "HeatingCoolingActuatorHeatingValve" in entity_keys
-    assert "HeatingCoolingActuatorCoolingValve" in entity_keys
-
-    # Find heating and cooling entities
-    heating_entity = next(
-        e
-        for e in entities_added
-        if e.entity_description.key == "HeatingCoolingActuatorHeatingValve"
-    )
-    cooling_entity = next(
-        e
-        for e in entities_added
-        if e.entity_description.key == "HeatingCoolingActuatorCoolingValve"
+@pytest.fixture(autouse=True)
+def valve_platform(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Load only the valve platform."""
+    monkeypatch.setattr(
+        "custom_components.abbfreeathome_ci.PLATFORMS", [Platform.VALVE]
     )
 
-    # Check heating entity
-    assert heating_entity.entity_description.name == "Climate Control"
-    assert (
-        heating_entity.unique_id
-        == "ABB7F57FFFE12345_ch0002_HeatingCoolingActuatorHeatingValve"
-    )
-    assert heating_entity.current_valve_position == 80
 
-    # Check cooling entity
-    assert cooling_entity.entity_description.name == "Climate Control"
-    assert (
-        cooling_entity.unique_id
-        == "ABB7F57FFFE12345_ch0002_HeatingCoolingActuatorCoolingValve"
-    )
-    assert cooling_entity.current_valve_position == 20
-
-
-async def test_heating_valve_entity_properties(hass: HomeAssistant) -> None:
-    """Test heating valve entity properties."""
-    mock_channel = MagicMock(spec=HeatingActuator)
-    mock_channel.channel_name = "Test Heating"
-    mock_channel.channel_id = "ch0003"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.device_name = "Heating Device"
-    mock_channel.room_name = "Kitchen"
-    mock_channel.position = 65
-    mock_channel.device.is_multi_device = False
-
-    entity = FreeAtHomeValveEntity(
-        channel=mock_channel,
-        position_attribute="position",
-        set_position_method="set_position",
-        callback_attributes=["position"],
-        entity_description_kwargs={
-            "key": "HeatingActuatorValve",
-            "device_class": ValveDeviceClass.WATER,
-            "translation_key": "heating_actuator",
-        },
-        sysap_serial_number="TEST123456",
-        create_subdevices=False,
-    )
-
-    assert entity.entity_description.name == "Test Heating"
-    assert entity.entity_description.key == "HeatingActuatorValve"
-    assert entity.entity_description.device_class == ValveDeviceClass.WATER
-    assert entity.unique_id == "ABB7F57FFFE12345_ch0003_valve"  # Backward compatible
-    assert entity.current_valve_position == 65
-    assert entity.should_poll is False
-    assert entity.supported_features == ValveEntityFeature.SET_POSITION
-
-    # Test device info
-    device_info = entity.device_info
-    assert device_info["identifiers"] == {(DOMAIN, "ABB7F57FFFE12345")}
-
-
-async def test_cooling_valve_entity_properties(hass: HomeAssistant) -> None:
-    """Test cooling valve entity properties."""
-    mock_channel = MagicMock(spec=CoolingActuator)
-    mock_channel.channel_name = "Test Cooling"
-    mock_channel.channel_id = "ch0004"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.device_name = "Cooling Device"
-    mock_channel.room_name = "Basement"
-    mock_channel.position = 30
-    mock_channel.device.is_multi_device = False
-
-    entity = FreeAtHomeValveEntity(
-        channel=mock_channel,
-        position_attribute="position",
-        set_position_method="set_position",
-        callback_attributes=["position"],
-        entity_description_kwargs={
-            "key": "CoolingActuatorValve",
-            "device_class": ValveDeviceClass.WATER,
-            "translation_key": "cooling_actuator",
-        },
-        sysap_serial_number="TEST123456",
-        create_subdevices=False,
-    )
-
-    assert entity.entity_description.name == "Test Cooling"
-    assert entity.unique_id == "ABB7F57FFFE12345_ch0004_CoolingActuatorValve"
-    assert entity.current_valve_position == 30
-
-
-async def test_valve_entity_with_subdevices(hass: HomeAssistant) -> None:
-    """Test valve entity with subdevices enabled."""
-    mock_channel = MagicMock(spec=HeatingActuator)
-    mock_channel.channel_name = "Zone 1 Heating"
-    mock_channel.channel_id = "ch0005"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.device_name = "Multi Zone Heating"
-    mock_channel.room_name = "Zone 1"
-    mock_channel.position = 90
-    mock_channel.device.is_multi_device = True
-    mock_channel.device.device_id = "5678"
-
-    entity = FreeAtHomeValveEntity(
-        channel=mock_channel,
-        position_attribute="position",
-        set_position_method="set_position",
-        callback_attributes=["position"],
-        entity_description_kwargs={
-            "key": "HeatingActuatorValve",
-            "device_class": ValveDeviceClass.WATER,
-            "translation_key": "heating_actuator",
-        },
-        sysap_serial_number="TEST123456",
-        create_subdevices=True,
-    )
-
-    # Test device info for subdevice
-    entity.platform = MagicMock()
+# compat: homeassistant<2026.11 - pytest-homeassistant provides entity_registry_enabled_by_default
+@pytest.fixture
+def entity_registry_enabled_by_default() -> Generator[None]:
+    """Enable all entities in the registry, as the fixture of pytest-homeassistant."""
     with patch(
-        "custom_components.abbfreeathome_ci.valve.async_get_sub_device_info"
-    ) as mock_sub_device_info:
-        device_info = entity.device_info
+        "homeassistant.helpers.entity.Entity.entity_registry_enabled_default",
+        return_value=True,
+    ):
+        yield
 
-    mock_sub_device_info.assert_called_once_with(
-        entity.hass, entity.platform.config_entry.entry_id, mock_channel
+
+def test_cases_cover_all_descriptions() -> None:
+    """Test every valve description has a case with its channel class."""
+    assert list(VALVE_CASES) == list(VALVE_DESCRIPTIONS)
+    for key, case in VALVE_CASES.items():
+        assert case.channel_class is VALVE_DESCRIPTIONS[key]["channel_class"]
+
+
+def _build_channels(device: Device) -> dict[str, Base]:
+    """Build one real channel per valve case; cases may share a channel."""
+    channels: dict[str, Base] = {}
+    for case in VALVE_CASES.values():
+        if case.channel_id not in channels:
+            channels[case.channel_id] = build_channel(
+                case.channel_class,
+                device,
+                case.channel_id,
+                inputs=case.inputs,
+                outputs=case.outputs,
+            )
+    return channels
+
+
+def _entity_id(entity_registry: er.EntityRegistry, key: str) -> str:
+    """Return the entity ID of a valve case by its unique ID."""
+    case = VALVE_CASES[key]
+    entity_id = entity_registry.async_get_entity_id(
+        VALVE_DOMAIN, DOMAIN, f"{SERIAL}_{case.channel_id}_{case.unique_id_suffix}"
     )
-    assert device_info is mock_sub_device_info.return_value
+    assert entity_id is not None
+    return entity_id
 
 
-async def test_valve_entity_callbacks(hass: HomeAssistant) -> None:
-    """Test valve entity callback registration."""
-    mock_channel = MagicMock(spec=HeatingActuator)
-    mock_channel.channel_name = "Test Valve"
-    mock_channel.channel_id = "ch0006"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.position = 50
+async def test_valves_disabled_by_default(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test valves are disabled by default."""
+    channels = _build_channels(build_device(SERIAL))
 
-    entity = FreeAtHomeValveEntity(
-        channel=mock_channel,
-        position_attribute="position",
-        set_position_method="set_position",
-        callback_attributes=["position"],
-        entity_description_kwargs={
-            "key": "HeatingActuatorValve",
-            "device_class": ValveDeviceClass.WATER,
-            "translation_key": "heating_actuator",
-        },
-        sysap_serial_number="TEST123456",
-        create_subdevices=False,
-    )
-
-    # Mock the async_write_ha_state method
-    entity.async_write_ha_state = MagicMock()
-
-    # Test callback registration on add
-    await entity.async_added_to_hass()
-    mock_channel.register_callback.assert_called_once_with(
-        callback_attribute="position",
-        callback=entity.async_write_ha_state,
-    )
-
-    # Test callback removal
-    await entity.async_will_remove_from_hass()
-    mock_channel.remove_callback.assert_called_once_with(
-        callback_attribute="position",
-        callback=entity.async_write_ha_state,
-    )
-
-
-async def test_heating_cooling_valve_callbacks(hass: HomeAssistant) -> None:
-    """Test heating/cooling valve entity registers multiple callbacks."""
-    mock_channel = MagicMock(spec=HeatingCoolingActuator)
-    mock_channel.channel_name = "Test Climate"
-    mock_channel.channel_id = "ch0007"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.heating_position = 70
-    mock_channel.cooling_position = 30
-
-    entity = FreeAtHomeValveEntity(
-        channel=mock_channel,
-        position_attribute="heating_position",
-        set_position_method="set_heating_position",
-        callback_attributes=["heating_position"],
-        entity_description_kwargs={
-            "key": "HeatingCoolingActuatorHeatingValve",
-            "device_class": ValveDeviceClass.WATER,
-            "translation_key": "heating_actuator",
-        },
-        sysap_serial_number="TEST123456",
-        create_subdevices=False,
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, list(channels.values())
     )
 
-    entity.async_write_ha_state = MagicMock()
-
-    # Test callback registration - should register for both attributes
-    await entity.async_added_to_hass()
-    assert mock_channel.register_callback.call_count == 1
-
-    # Test callback removal
-    await entity.async_will_remove_from_hass()
-    assert mock_channel.remove_callback.call_count == 1
+    for key in VALVE_CASES:
+        entity_id = _entity_id(entity_registry, key)
+        entity_entry = entity_registry.async_get(entity_id)
+        assert entity_entry.disabled_by is er.RegistryEntryDisabler.INTEGRATION
+        assert hass.states.get(entity_id) is None
 
 
-async def test_valve_entity_set_position(hass: HomeAssistant) -> None:
-    """Test valve entity set position action."""
-    mock_channel = MagicMock(spec=HeatingActuator)
-    mock_channel.channel_name = "Test Valve"
-    mock_channel.channel_id = "ch0008"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.position = 50
-    mock_channel.set_position = AsyncMock()
+@pytest.mark.usefixtures("entity_registry_enabled_by_default")
+async def test_valve_entities(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    snapshot: SnapshotAssertion,
+) -> None:
+    """Test the valve entities of all descriptions once enabled."""
+    channels = _build_channels(build_device(SERIAL))
 
-    entity = FreeAtHomeValveEntity(
-        channel=mock_channel,
-        position_attribute="position",
-        set_position_method="set_position",
-        callback_attributes=["position"],
-        entity_description_kwargs={
-            "key": "HeatingActuatorValve",
-            "device_class": ValveDeviceClass.WATER,
-            "translation_key": "heating_actuator",
-        },
-        sysap_serial_number="TEST123456",
-        create_subdevices=False,
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, list(channels.values())
     )
 
-    # Test setting position
-    await entity.async_set_valve_position(75)
-    mock_channel.set_position.assert_called_once_with(75)
+    snapshot_entities(hass, snapshot, mock_config_entry.entry_id)
+    for key, case in VALVE_CASES.items():
+        state = hass.states.get(_entity_id(entity_registry, key))
+        assert state.state == ValveState.OPEN
+        assert state.attributes[ATTR_CURRENT_POSITION] == case.position
 
 
-async def test_heating_cooling_valve_set_position(hass: HomeAssistant) -> None:
-    """Test heating/cooling valve calls correct set method."""
-    mock_channel = MagicMock(spec=HeatingCoolingActuator)
-    mock_channel.channel_name = "Test Climate"
-    mock_channel.channel_id = "ch0009"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.heating_position = 80
-    mock_channel.cooling_position = 20
-    mock_channel.set_heating_position = AsyncMock()
-    mock_channel.set_cooling_position = AsyncMock()
+@pytest.mark.usefixtures("entity_registry_enabled_by_default")
+@pytest.mark.parametrize("key", VALVE_CASES)
+async def test_valve_follows_sysap(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    key: str,
+) -> None:
+    """Test a valve shows the position the SysAP reports.
 
-    # Test heating entity
-    heating_entity = FreeAtHomeValveEntity(
-        channel=mock_channel,
-        position_attribute="heating_position",
-        set_position_method="set_heating_position",
-        callback_attributes=["heating_position"],
-        entity_description_kwargs={
-            "key": "HeatingCoolingActuatorHeatingValve",
-            "device_class": ValveDeviceClass.WATER,
-            "translation_key": "heating_actuator",
-        },
-        sysap_serial_number="TEST123456",
-        create_subdevices=False,
+    A value that is no number leaves the position unknown.
+    """
+    case = VALVE_CASES[key]
+    device = build_device(SERIAL)
+    channel = _build_channels(device)[case.channel_id]
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    entity_id = _entity_id(entity_registry, key)
+
+    for value, expected, position in (
+        ("0", ValveState.CLOSED, 0),
+        ("100", ValveState.OPEN, 100),
+        ("", STATE_UNKNOWN, None),
+    ):
+        channel.update_channel(
+            f"{SERIAL}/{case.channel_id}/{case.position_output}", value
+        )
+        await hass.async_block_till_done()
+        state = hass.states.get(entity_id)
+        assert state.state == expected
+        assert state.attributes[ATTR_CURRENT_POSITION] == position
+    device.api.set_datapoint.assert_not_awaited()
+
+
+@pytest.mark.usefixtures("entity_registry_enabled_by_default")
+@pytest.mark.parametrize("key", VALVE_CASES)
+async def test_valve_set_position(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    key: str,
+) -> None:
+    """Test setting a valve's position sets its input on the SysAP."""
+    case = VALVE_CASES[key]
+    device = build_device(SERIAL)
+    await setup_with_channels(
+        hass,
+        mock_config_entry,
+        mock_free_at_home_settings,
+        [_build_channels(device)[case.channel_id]],
     )
 
-    await heating_entity.async_set_valve_position(85)
-    mock_channel.set_heating_position.assert_called_once_with(85)
-
-    # Test cooling entity
-    cooling_entity = FreeAtHomeValveEntity(
-        channel=mock_channel,
-        position_attribute="cooling_position",
-        set_position_method="set_cooling_position",
-        callback_attributes=["cooling_position"],
-        entity_description_kwargs={
-            "key": "HeatingCoolingActuatorCoolingValve",
-            "device_class": ValveDeviceClass.WATER,
-            "translation_key": "cooling_actuator",
-        },
-        sysap_serial_number="TEST123456",
-        create_subdevices=False,
+    await hass.services.async_call(
+        VALVE_DOMAIN,
+        SERVICE_SET_VALVE_POSITION,
+        {ATTR_ENTITY_ID: _entity_id(entity_registry, key), ATTR_POSITION: 40},
+        blocking=True,
     )
 
-    await cooling_entity.async_set_valve_position(25)
-    mock_channel.set_cooling_position.assert_called_once_with(25)
-
-
-async def test_valve_entity_position_changes(hass: HomeAssistant) -> None:
-    """Test valve entity reflects channel position changes."""
-    mock_channel = MagicMock(spec=HeatingActuator)
-    mock_channel.channel_name = "Dynamic Valve"
-    mock_channel.channel_id = "ch0010"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.position = 40
-
-    entity = FreeAtHomeValveEntity(
-        channel=mock_channel,
-        position_attribute="position",
-        set_position_method="set_position",
-        callback_attributes=["position"],
-        entity_description_kwargs={
-            "key": "HeatingActuatorValve",
-            "device_class": ValveDeviceClass.WATER,
-            "translation_key": "heating_actuator",
-        },
-        sysap_serial_number="TEST123456",
-        create_subdevices=False,
+    device.api.set_datapoint.assert_awaited_once_with(
+        device_serial=SERIAL,
+        channel_id=case.channel_id,
+        datapoint=case.position_input,
+        value="40",
     )
 
-    # Initial position
-    assert entity.current_valve_position == 40
 
-    # Change channel position
-    mock_channel.position = 60
-    assert entity.current_valve_position == 60
+@pytest.mark.usefixtures("entity_registry_enabled_by_default")
+async def test_valve_update_entity(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test updating a valve refreshes its position from the SysAP."""
+    assert await async_setup_component(hass, HOMEASSISTANT_DOMAIN, {})
+    device = build_device(SERIAL)
+    await setup_with_channels(
+        hass,
+        mock_config_entry,
+        mock_free_at_home_settings,
+        [_build_channels(device)["ch0000"]],
+    )
+    entity_id = _entity_id(entity_registry, "HeatingActuatorValve")
+    device.api.get_datapoint.return_value = ["70"]
 
-    # Change back
-    mock_channel.position = 25
-    assert entity.current_valve_position == 25
-
-
-async def test_valve_entity_update(hass: HomeAssistant) -> None:
-    """Test valve entity update method."""
-    mock_channel = MagicMock(spec=HeatingActuator)
-    mock_channel.channel_name = "Test Valve"
-    mock_channel.channel_id = "ch0011"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.position = 50
-    mock_channel.refresh_state = AsyncMock()
-
-    entity = FreeAtHomeValveEntity(
-        channel=mock_channel,
-        position_attribute="position",
-        set_position_method="set_position",
-        callback_attributes=["position"],
-        entity_description_kwargs={
-            "key": "HeatingActuatorValve",
-            "device_class": ValveDeviceClass.WATER,
-            "translation_key": "heating_actuator",
-        },
-        sysap_serial_number="TEST123456",
-        create_subdevices=False,
+    await hass.services.async_call(
+        HOMEASSISTANT_DOMAIN,
+        SERVICE_UPDATE_ENTITY,
+        {ATTR_ENTITY_ID: entity_id},
+        blocking=True,
     )
 
-    # Test update
-    await entity.async_update()
-    mock_channel.refresh_state.assert_called_once()
-
-
-async def test_valve_entity_description_attributes(hass: HomeAssistant) -> None:
-    """Test valve entity description attributes."""
-    mock_channel = MagicMock(spec=HeatingActuator)
-    mock_channel.channel_name = "Test Valve"
-    mock_channel.channel_id = "ch0012"
-    mock_channel.device_serial = "ABB7F57FFFE12345"
-    mock_channel.position = 50
-
-    entity = FreeAtHomeValveEntity(
-        channel=mock_channel,
-        position_attribute="position",
-        set_position_method="set_position",
-        callback_attributes=["position"],
-        entity_description_kwargs={
-            "key": "HeatingActuatorValve",
-            "device_class": ValveDeviceClass.WATER,
-            "translation_key": "heating_actuator",
-        },
-        sysap_serial_number="TEST123456",
-        create_subdevices=False,
+    assert hass.states.get(entity_id).attributes[ATTR_CURRENT_POSITION] == 70
+    device.api.get_datapoint.assert_awaited_once_with(
+        device_serial=SERIAL, channel_id="ch0000", datapoint="odp0000"
     )
 
-    assert entity.entity_description.key == "HeatingActuatorValve"
-    assert entity.entity_description.device_class == ValveDeviceClass.WATER
-    assert entity.entity_description.translation_key == "heating_actuator"
-    assert entity.entity_description.has_entity_name is True
-    assert entity.entity_description.name == "Test Valve"
-    assert entity.entity_description.entity_registry_enabled_default is False
-    assert entity.entity_description.reports_position is True
+
+@pytest.mark.usefixtures("entity_registry_enabled_by_default")
+async def test_valve_removes_callbacks_on_unload(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test unloaded valves no longer follow their channels."""
+    channels = _build_channels(build_device(SERIAL))
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, list(channels.values())
+    )
+    entity_ids = [_entity_id(entity_registry, key) for key in VALVE_CASES]
+
+    assert await hass.config_entries.async_unload(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+    states = [hass.states.get(entity_id) for entity_id in entity_ids]
+
+    for case in VALVE_CASES.values():
+        channels[case.channel_id].update_channel(
+            f"{SERIAL}/{case.channel_id}/{case.position_output}", "0"
+        )
+    await hass.async_block_till_done()
+    assert [hass.states.get(entity_id) for entity_id in entity_ids] == states
+    assert channels["ch0000"]._callbacks == {"position": set()}
+    assert channels["ch0001"]._callbacks == {"position": set()}
+    assert channels["ch0002"]._callbacks == {
+        "heating_position": set(),
+        "cooling_position": set(),
+    }
+
+
+@pytest.mark.parametrize(
+    ("create_subdevices", "multi_device_identifier"),
+    [
+        (False, (DOMAIN, SERIAL)),
+        (True, (DOMAIN, f"{SERIAL}_ch0000")),
+    ],
+)
+async def test_valve_device(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    device_registry: dr.DeviceRegistry,
+    create_subdevices: bool,
+    multi_device_identifier: tuple[str, str],
+) -> None:
+    """Test a valve of a multi-channel device belongs to a subdevice if enabled."""
+    entry = MockConfigEntry(
+        version=mock_config_entry.version,
+        minor_version=mock_config_entry.minor_version,
+        domain=DOMAIN,
+        title=mock_config_entry.title,
+        data={**mock_config_entry.data, CONF_CREATE_SUBDEVICES: create_subdevices},
+        source=mock_config_entry.source,
+        unique_id=mock_config_entry.unique_id,
+    )
+    # A device without a room and with several channels is a multi-device.
+    multi_device = build_device(SERIAL)
+    channels = _build_channels(multi_device)
+    assert multi_device.is_multi_device
+    single_device = build_device("ABB700000002")
+    single_channel = build_channel(
+        HeatingActuator, single_device, inputs=HEATING_INPUTS, outputs=HEATING_OUTPUTS
+    )
+    assert not single_device.is_multi_device
+
+    await setup_with_channels(
+        hass, entry, mock_free_at_home_settings, [channels["ch0000"], single_channel]
+    )
+
+    def device_identifiers(unique_id: str) -> set[tuple[str, str]]:
+        """Return the identifiers of the device of a valve."""
+        entity_id = entity_registry.async_get_entity_id(VALVE_DOMAIN, DOMAIN, unique_id)
+        entity_entry = entity_registry.async_get(entity_id)
+        return device_registry.async_get(entity_entry.device_id).identifiers
+
+    # Valves are disabled by default, but still belong to their device.
+    assert device_identifiers(f"{SERIAL}_ch0000_valve") == {multi_device_identifier}
+    assert device_identifiers("ABB700000002_ch0000_valve") == {(DOMAIN, "ABB700000002")}
