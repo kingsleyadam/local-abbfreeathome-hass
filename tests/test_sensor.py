@@ -430,8 +430,9 @@ async def test_parameter_sensor_follows_parameters(
 ) -> None:
     """Test the parameter sensor shows each parameter change.
 
-    Earlier states keep their attributes, and parameters unknown to the
-    library keep their ID.
+    Each change is checked on its own, so that a later write cannot hide a
+    missing subscription. Earlier states keep their attributes, and
+    parameters unknown to the library keep their ID.
     """
     device, channels = _parameter_device()
     await setup_with_channels(
@@ -440,36 +441,41 @@ async def test_parameter_sensor_follows_parameters(
     entity_id = _entity_id(entity_registry, PARAMETERS_UNIQUE_ID)
     old_state = hass.states.get(entity_id)
 
-    device.update_parameter("par0001", "1")
-    device.update_parameter("parfffe", "raw value")
-    channels[0].update_parameter(SWITCH_OFF_TIME, "140")
-    # The sensor also follows a channel that had no parameters.
-    channels[2].update_parameter(SWITCH_OFF_TIME, "30")
-    await hass.async_block_till_done()
+    async def report(source: Device | Base, parameter: str | Parameter, value: str):
+        """Change a parameter and return the state the sensor publishes."""
+        source.update_parameter(parameter, value)
+        await hass.async_block_till_done()
+        return hass.states.get(entity_id)
 
-    state = hass.states.get(entity_id)
-    assert state.state == "6"
+    state = await report(device, "par0001", "1")
+    assert state.attributes["device_parameters"] == {"PID_LED_DAY_BRIGHTNESS": "1"}
+
+    state = await report(device, "parfffe", "raw value")
+    assert state.state == "5"
     assert state.attributes["device_parameters"] == {
         "PID_LED_DAY_BRIGHTNESS": "1",
         "parfffe": "raw value",
     }
-    assert state.attributes["channel_parameters"] == {
-        "ch0000": {
-            "name": "Ceiling light",
-            "parameters": {"PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "140"},
-        },
-        "ch0001": {
-            "name": "Wall light",
-            "parameters": {
-                "PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "60",
-                "parffff": "unknown value",
-            },
-        },
-        "ch0002": {
-            "name": "Spare channel",
-            "parameters": {"PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "30"},
-        },
+
+    state = await report(channels[0], SWITCH_OFF_TIME, "140")
+    assert state.attributes["channel_parameters"]["ch0000"]["parameters"] == {
+        "PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "140"
     }
+
+    state = await report(channels[1], "parffff", "new value")
+    assert state.attributes["channel_parameters"]["ch0001"]["parameters"] == {
+        "PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "60",
+        "parffff": "new value",
+    }
+
+    # The sensor also follows a channel that had no parameters.
+    state = await report(channels[2], SWITCH_OFF_TIME, "30")
+    assert state.state == "6"
+    assert state.attributes["channel_parameters"]["ch0002"] == {
+        "name": "Spare channel",
+        "parameters": {"PID_AUTONOMOUS_SWITCH_OFF_TIME_DURATION": "30"},
+    }
+
     assert old_state.state == "4"
     assert old_state.attributes["device_parameters"] == {"PID_LED_DAY_BRIGHTNESS": "0"}
     assert old_state.attributes["channel_parameters"]["ch0000"]["parameters"] == {
