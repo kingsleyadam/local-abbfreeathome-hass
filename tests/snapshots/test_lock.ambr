@@ -1,0 +1,26 @@
+# serializer version: 1
+# name: test_lock_entity[ABB700000001_ch0000_valve]
+  dict({
+    'attributes': dict({
+      'friendly_name': 'Runtime Device DesDoorOpenerActuator ch0000',
+      'supported_features': <LockEntityFeature: 0>,
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'lock',
+    'entity_category': None,
+    'has_entity_name': False,
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'DesDoorOpenerActuator ch0000',
+    'state': 'locked',
+    'supported_features': 0,
+    'translation_key': None,
+    'unit_of_measurement': None,
+  })
+# ---

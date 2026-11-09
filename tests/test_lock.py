@@ -1,183 +1,273 @@
 """Test ABB-free@home lock."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call
 
+from abbfreeathome.bin.pairing import Pairing
 from abbfreeathome.channels.des_door_opener_actuator import DesDoorOpenerActuator
+from abbfreeathome.device import Device
 import pytest
+from syrupy.assertion import SnapshotAssertion
 
-from custom_components.abbfreeathome_ci.const import DOMAIN
-from custom_components.abbfreeathome_ci.lock import (
-    FreeAtHomeLockEntity,
-    async_setup_entry,
+from custom_components.abbfreeathome_ci.const import CONF_CREATE_SUBDEVICES, DOMAIN
+from homeassistant.components.homeassistant import (
+    DOMAIN as HOMEASSISTANT_DOMAIN,
+    SERVICE_UPDATE_ENTITY,
+)
+from homeassistant.components.lock import DOMAIN as LOCK_DOMAIN, LockState
+from homeassistant.const import (
+    ATTR_ENTITY_ID,
+    SERVICE_LOCK,
+    SERVICE_UNLOCK,
+    STATE_UNKNOWN,
+    Platform,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.setup import async_setup_component
+
+from .common import (
+    MockConfigEntry,
+    build_channel,
+    build_device,
+    setup_with_channels,
+    snapshot_entities,
+)
+
+SERIAL = "ABB700000001"
 
 
-def _build_channel(channel_id="ch0000", state=False):
-    """Build a mock door opener channel."""
-    channel = MagicMock(spec=DesDoorOpenerActuator)
-    channel.channel_name = "Front Door"
-    channel.channel_id = channel_id
-    channel.device_serial = "ABB7F57FFFE12345"
-    channel.device_name = "Door Opener"
-    channel.room_name = "Entrance"
-    channel.state = state
-    channel.device.is_multi_device = False
-    return channel
+@pytest.fixture(autouse=True)
+def lock_platform(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Load only the lock platform."""
+    monkeypatch.setattr("custom_components.abbfreeathome_ci.PLATFORMS", [Platform.LOCK])
 
 
-def _build_entity(channel, create_subdevices=False):
-    """Build a lock entity for the given mock channel."""
-    return FreeAtHomeLockEntity(
-        channel,
-        sysap_serial_number="TEST123456",
-        create_subdevices=create_subdevices,
+def _build_door_opener(
+    device: Device, channel_id: str = "ch0000", state: str | None = "0"
+) -> DesDoorOpenerActuator:
+    """Build a real door opener channel, locked by default.
+
+    Unlocking and locking set the AL_TIMED_START_STOP input (idp0000) to 1
+    and 0. The SysAP reports the state on the AL_INFO_ON_OFF output
+    (odp0000), 1 while the door is unlocked; without it, the state is
+    unknown.
+    """
+    return build_channel(
+        DesDoorOpenerActuator,
+        device,
+        channel_id,
+        inputs={Pairing.AL_TIMED_START_STOP: "0"},
+        outputs={} if state is None else {Pairing.AL_INFO_ON_OFF: state},
     )
 
 
-async def _async_setup_entities(hass, config_entry, channels):
-    """Run the lock platform setup and return the added entities."""
-    config_entry.add_to_hass(hass)
-
-    mock_free_at_home = MagicMock()
-    mock_free_at_home.get_channels_by_class.return_value = channels
-    hass.data[DOMAIN] = {config_entry.entry_id: mock_free_at_home}
-
-    entities_added = []
-
-    def capture_entities(entity_generator):
-        """Capture entities from generator."""
-        entities_added.extend(list(entity_generator))
-
-    async_add_entities = MagicMock(side_effect=capture_entities)
-    await async_setup_entry(hass, config_entry, async_add_entities)
-
-    mock_free_at_home.get_channels_by_class.assert_called_once_with(
-        channel_class=DesDoorOpenerActuator
+def _entity_id(entity_registry: er.EntityRegistry, channel_id: str = "ch0000") -> str:
+    """Return the entity ID of the lock of a door opener by its unique ID."""
+    # Unique IDs must never change; locks keep the legacy suffix "valve".
+    entity_id = entity_registry.async_get_entity_id(
+        LOCK_DOMAIN, DOMAIN, f"{SERIAL}_{channel_id}_valve"
     )
-    assert async_add_entities.call_count == 1
-    return entities_added
+    assert entity_id is not None
+    return entity_id
 
 
-async def test_async_setup_entry_no_locks(
-    hass: HomeAssistant, mock_config_entry
+async def test_lock_entity(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    snapshot: SnapshotAssertion,
 ) -> None:
-    """Test setup with no door opener channels."""
-    entities = await _async_setup_entities(hass, mock_config_entry, [])
-
-    assert entities == []
-
-
-async def test_async_setup_entry_with_door_openers(
-    hass: HomeAssistant, mock_config_entry
-) -> None:
-    """Test setup creates a lock for each door opener channel."""
-    entities = await _async_setup_entities(
+    """Test the lock entity of a door opener."""
+    await setup_with_channels(
         hass,
         mock_config_entry,
-        [_build_channel("ch0000"), _build_channel("ch0001")],
+        mock_free_at_home_settings,
+        [_build_door_opener(build_device(SERIAL))],
     )
 
-    assert all(isinstance(entity, FreeAtHomeLockEntity) for entity in entities)
-    assert [entity.unique_id for entity in entities] == [
-        "ABB7F57FFFE12345_ch0000_valve",
-        "ABB7F57FFFE12345_ch0001_valve",
+    snapshot_entities(hass, snapshot, mock_config_entry.entry_id)
+
+
+@pytest.mark.parametrize(
+    ("state", "expected"),
+    [("0", LockState.LOCKED), ("1", LockState.UNLOCKED), (None, STATE_UNKNOWN)],
+    ids=["locked", "unlocked", "unknown"],
+)
+async def test_lock_state(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    state: str | None,
+    expected: str,
+) -> None:
+    """Test the door is locked while the door opener is off, unknown without state."""
+    await setup_with_channels(
+        hass,
+        mock_config_entry,
+        mock_free_at_home_settings,
+        [_build_door_opener(build_device(SERIAL), state=state)],
+    )
+
+    assert hass.states.get(_entity_id(entity_registry)).state == expected
+
+
+async def test_lock_follows_sysap(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test a lock shows the state the SysAP reports without a command."""
+    device = build_device(SERIAL)
+    channel = _build_door_opener(device)
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    entity_id = _entity_id(entity_registry)
+
+    channel.update_channel(f"{SERIAL}/ch0000/odp0000", "1")
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id).state == LockState.UNLOCKED
+
+    channel.update_channel(f"{SERIAL}/ch0000/odp0000", "0")
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id).state == LockState.LOCKED
+    device.api.set_datapoint.assert_not_awaited()
+
+
+async def test_lock_unlock_lock(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test unlocking and locking set the door opener's input on the SysAP."""
+    device = build_device(SERIAL)
+    await setup_with_channels(
+        hass,
+        mock_config_entry,
+        mock_free_at_home_settings,
+        [_build_door_opener(device)],
+    )
+    entity_id = _entity_id(entity_registry)
+
+    await hass.services.async_call(
+        LOCK_DOMAIN, SERVICE_UNLOCK, {ATTR_ENTITY_ID: entity_id}, blocking=True
+    )
+    await hass.services.async_call(
+        LOCK_DOMAIN, SERVICE_LOCK, {ATTR_ENTITY_ID: entity_id}, blocking=True
+    )
+
+    datapoint = {
+        "device_serial": SERIAL,
+        "channel_id": "ch0000",
+        "datapoint": "idp0000",
+    }
+    assert device.api.set_datapoint.await_args_list == [
+        call(**datapoint, value="1"),
+        call(**datapoint, value="0"),
     ]
 
 
-async def test_lock_entity_properties() -> None:
-    """Test lock entity properties."""
-    entity = _build_entity(_build_channel())
+async def test_lock_update_entity(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test updating a lock refreshes its state from the SysAP."""
+    assert await async_setup_component(hass, HOMEASSISTANT_DOMAIN, {})
+    device = build_device(SERIAL)
+    await setup_with_channels(
+        hass,
+        mock_config_entry,
+        mock_free_at_home_settings,
+        [_build_door_opener(device)],
+    )
+    entity_id = _entity_id(entity_registry)
+    device.api.get_datapoint.return_value = ["1"]
 
-    assert entity.entity_description.key == "DesDoorOpenerActuatorLock"
-    assert entity.entity_description.name == "Front Door"
-    # The "valve" suffix is legacy and must not change, so existing lock
-    # entities keep their unique ID.
-    assert entity.unique_id == "ABB7F57FFFE12345_ch0000_valve"
-    assert entity.should_poll is False
+    await hass.services.async_call(
+        HOMEASSISTANT_DOMAIN,
+        SERVICE_UPDATE_ENTITY,
+        {ATTR_ENTITY_ID: entity_id},
+        blocking=True,
+    )
+
+    assert hass.states.get(entity_id).state == LockState.UNLOCKED
+    device.api.get_datapoint.assert_awaited_once_with(
+        device_serial=SERIAL, channel_id="ch0000", datapoint="odp0000"
+    )
+
+
+async def test_lock_removes_callback_on_unload(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test an unloaded lock no longer follows its door opener."""
+    channel = _build_door_opener(build_device(SERIAL))
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    entity_id = _entity_id(entity_registry)
+
+    assert await hass.config_entries.async_unload(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+    state = hass.states.get(entity_id)
+
+    channel.update_channel(f"{SERIAL}/ch0000/odp0000", "1")
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id) == state
+    assert channel._callbacks == {"state": set()}
 
 
 @pytest.mark.parametrize(
-    ("state", "is_locked"),
-    [(False, True), (True, False), (None, None)],
+    ("create_subdevices", "multi_device_identifier"),
+    [
+        (False, (DOMAIN, SERIAL)),
+        (True, (DOMAIN, f"{SERIAL}_ch0000")),
+    ],
 )
-async def test_lock_is_locked(state, is_locked) -> None:
-    """Test the door is locked while the door opener is off, unknown without state."""
-    entity = _build_entity(_build_channel(state=state))
-
-    assert entity.is_locked is is_locked
-
-
-async def test_lock_lock_unlock() -> None:
-    """Test locking and unlocking call the channel."""
-    channel = _build_channel()
-    entity = _build_entity(channel)
-
-    await entity.async_lock()
-    channel.lock.assert_awaited_once_with()
-    channel.unlock.assert_not_awaited()
-
-    await entity.async_unlock()
-    channel.unlock.assert_awaited_once_with()
-
-
-async def test_lock_async_update() -> None:
-    """Test updating the lock refreshes the channel state."""
-    channel = _build_channel()
-    entity = _build_entity(channel)
-
-    await entity.async_update()
-
-    channel.refresh_state.assert_awaited_once_with()
-
-
-async def test_lock_entity_callbacks() -> None:
-    """Test callbacks are registered and removed for the state attribute."""
-    channel = _build_channel()
-    entity = _build_entity(channel)
-    entity.async_write_ha_state = MagicMock()
-
-    await entity.async_added_to_hass()
-    channel.register_callback.assert_called_once_with(
-        callback_attribute="state", callback=entity.async_write_ha_state
+async def test_lock_device(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    device_registry: dr.DeviceRegistry,
+    create_subdevices: bool,
+    multi_device_identifier: tuple[str, str],
+) -> None:
+    """Test a lock of a multi-channel device belongs to a subdevice if enabled."""
+    entry = MockConfigEntry(
+        version=mock_config_entry.version,
+        minor_version=mock_config_entry.minor_version,
+        domain=DOMAIN,
+        title=mock_config_entry.title,
+        data={**mock_config_entry.data, CONF_CREATE_SUBDEVICES: create_subdevices},
+        source=mock_config_entry.source,
+        unique_id=mock_config_entry.unique_id,
     )
-    channel.device.register_unresponsive_callback.assert_called_once_with(
-        entity.async_write_ha_state
+    # A device without a room and with several channels is a multi-device.
+    multi_device = build_device(SERIAL)
+    multi_channel = _build_door_opener(multi_device)
+    _build_door_opener(multi_device, "ch0001")
+    assert multi_device.is_multi_device
+    single_device = build_device("ABB700000002")
+    single_channel = _build_door_opener(single_device)
+    assert not single_device.is_multi_device
+
+    await setup_with_channels(
+        hass, entry, mock_free_at_home_settings, [multi_channel, single_channel]
     )
 
-    await entity.async_will_remove_from_hass()
-    channel.remove_callback.assert_called_once_with(
-        callback_attribute="state", callback=entity.async_write_ha_state
-    )
+    def device_identifiers(unique_id: str) -> set[tuple[str, str]]:
+        """Return the identifiers of the device of a lock."""
+        entity_id = entity_registry.async_get_entity_id(LOCK_DOMAIN, DOMAIN, unique_id)
+        entity_entry = entity_registry.async_get(entity_id)
+        return device_registry.async_get(entity_entry.device_id).identifiers
 
-
-@pytest.mark.parametrize(
-    ("create_subdevices", "is_multi_device"),
-    [(False, False), (False, True), (True, False)],
-)
-async def test_lock_device_info(create_subdevices, is_multi_device) -> None:
-    """Test the lock belongs to the main device unless it is a subdevice."""
-    channel = _build_channel()
-    channel.device.is_multi_device = is_multi_device
-    entity = _build_entity(channel, create_subdevices)
-
-    assert entity.device_info == {"identifiers": {(DOMAIN, "ABB7F57FFFE12345")}}
-
-
-async def test_lock_device_info_with_subdevices() -> None:
-    """Test the lock belongs to a subdevice of a multi-channel device."""
-    channel = _build_channel("ch0002")
-    channel.device.is_multi_device = True
-    channel.device.device_id = "B008"
-    entity = _build_entity(channel, create_subdevices=True)
-    entity.platform = MagicMock()
-
-    with patch(
-        "custom_components.abbfreeathome_ci.lock.async_get_sub_device_info"
-    ) as mock_sub_device_info:
-        device_info = entity.device_info
-
-    mock_sub_device_info.assert_called_once_with(
-        entity.hass, entity.platform.config_entry.entry_id, channel
-    )
-    assert device_info is mock_sub_device_info.return_value
+    assert device_identifiers(f"{SERIAL}_ch0000_valve") == {multi_device_identifier}
+    assert device_identifiers("ABB700000002_ch0000_valve") == {(DOMAIN, "ABB700000002")}
