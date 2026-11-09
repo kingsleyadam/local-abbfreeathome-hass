@@ -11,7 +11,11 @@ from abbfreeathome.channels.cover_actuator import (
     ShutterActuator,
 )
 from abbfreeathome.channels.des_door_ringing_sensor import DesDoorRingingSensor
-from abbfreeathome.channels.switch_sensor import StaircaseLightSensor, SwitchSensorState
+from abbfreeathome.channels.switch_sensor import (
+    DimmingSensor,
+    StaircaseLightSensor,
+    SwitchSensorState,
+)
 from abbfreeathome.channels.virtual.virtual_room_temperature_controller import (
     VirtualRoomTemperatureController,
 )
@@ -24,8 +28,16 @@ from custom_components.abbfreeathome_ci.event import (
     FreeAtHomeEventEntity,
     async_setup_entry,
 )
-from homeassistant.components.event import EventDeviceClass
+from homeassistant.components.event import (
+    ATTR_EVENT_TYPES,
+    DOMAIN as EVENT_DOMAIN,
+    EventDeviceClass,
+)
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
+
+from .common import MockConfigEntry, build_channel, build_device, setup_with_channels
 
 DOORBELL_KEY = "EventDesDoorRingingSensorActivated"
 TARGET_TEMPERATURE_KEY = "EventVirtualRoomTemperatureControllerTargetTemperature"
@@ -181,6 +193,44 @@ def test_staircase_light_sensor_description() -> None:
     assert kwargs["translation_key"] == "staircase_light_sensor"
     assert set(kwargs["event_types"]) == {state.name for state in SwitchSensorState}
     assert description["event_type_callback"]("on") == "on"
+
+
+async def test_dimming_sensor_event_types_order(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test the dimming sensor lists its event types in a fixed order."""
+    monkeypatch.setattr(
+        "custom_components.abbfreeathome_ci.PLATFORMS", [Platform.EVENT]
+    )
+    channel = build_channel(
+        DimmingSensor,
+        build_device(),
+        outputs={
+            Pairing.AL_SWITCH_ON_OFF: "0",
+            Pairing.AL_RELATIVE_SET_VALUE_CONTROL: "0",
+        },
+    )
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+
+    entity_id = entity_registry.async_get_entity_id(
+        EVENT_DOMAIN, DOMAIN, "ABB700000001_ch0000_EventDimmingSensorState"
+    )
+    # The switch sensor states, then the dimming states not among them.
+    assert hass.states.get(entity_id).attributes[ATTR_EVENT_TYPES] == [
+        "unknown",
+        "off",
+        "on",
+        "longpress_up",
+        "longpress_up_release",
+        "longpress_down",
+        "longpress_down_release",
+    ]
 
 
 async def test_async_setup_entry_adds_staircase_light_sensor(
