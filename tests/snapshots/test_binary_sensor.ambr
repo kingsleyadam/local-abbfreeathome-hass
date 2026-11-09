@@ -1,0 +1,276 @@
+# serializer version: 1
+# name: test_binary_sensor_entities[ABB700000001_ch0000_AirQualitySensorCO2Alert]
+  dict({
+    'attributes': dict({
+      'device_class': 'gas',
+      'friendly_name': 'Runtime Device CO2 Alert',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'binary_sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <BinarySensorDeviceClass.GAS: 'gas'>,
+    'original_icon': None,
+    'original_name': 'CO2 Alert',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': 'air_quality_sensor_co2_alert',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_binary_sensor_entities[ABB700000001_ch0000_AirQualitySensorVOCAlert]
+  dict({
+    'attributes': dict({
+      'device_class': 'gas',
+      'friendly_name': 'Runtime Device VOC Alert',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'binary_sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <BinarySensorDeviceClass.GAS: 'gas'>,
+    'original_icon': None,
+    'original_name': 'VOC Alert',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': 'air_quality_sensor_voc_alert',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_binary_sensor_entities[ABB700000001_ch0001_CarbonMonoxideSensorOnOff]
+  dict({
+    'attributes': dict({
+      'device_class': 'carbon_monoxide',
+      'friendly_name': 'Runtime Device Carbon monoxide',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'binary_sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <BinarySensorDeviceClass.CO: 'carbon_monoxide'>,
+    'original_icon': None,
+    'original_name': 'Carbon monoxide',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': 'carbon_monoxide_sensor',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_binary_sensor_entities[ABB700000001_ch0002_MovementDetectorMotion]
+  dict({
+    'attributes': dict({
+      'device_class': 'motion',
+      'friendly_name': 'Runtime Device Motion',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'binary_sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <BinarySensorDeviceClass.MOTION: 'motion'>,
+    'original_icon': None,
+    'original_name': 'Motion',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': 'movement_detector_motion',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_binary_sensor_entities[ABB700000001_ch0003_BlockableMovementDetectorMotion]
+  dict({
+    'attributes': dict({
+      'device_class': 'motion',
+      'friendly_name': 'Runtime Device Motion',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'binary_sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <BinarySensorDeviceClass.MOTION: 'motion'>,
+    'original_icon': None,
+    'original_name': 'Motion',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': 'movement_detector_motion',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_binary_sensor_entities[ABB700000001_ch0004_SmokeDetectorOnOff]
+  dict({
+    'attributes': dict({
+      'device_class': 'smoke',
+      'friendly_name': 'Runtime Device Smoke',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'binary_sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <BinarySensorDeviceClass.SMOKE: 'smoke'>,
+    'original_icon': None,
+    'original_name': 'Smoke',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': 'smoke_detector',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_binary_sensor_entities[ABB700000001_ch0005_WindowDoorSensorOnOff]
+  dict({
+    'attributes': dict({
+      'device_class': 'window',
+      'friendly_name': 'Runtime Device Window',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'binary_sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <BinarySensorDeviceClass.WINDOW: 'window'>,
+    'original_icon': None,
+    'original_name': 'Window',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': 'window_door',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_binary_sensor_entities[ABB700000001_ch0006_RainSensorOnOff]
+  dict({
+    'attributes': dict({
+      'device_class': 'moisture',
+      'friendly_name': 'Runtime Device Rain Alarm',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'binary_sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <BinarySensorDeviceClass.MOISTURE: 'moisture'>,
+    'original_icon': None,
+    'original_name': 'Rain Alarm',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': 'rain_sensor',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_binary_sensor_entities[ABB700000001_ch0007_BrightnessSensorOnOff]
+  dict({
+    'attributes': dict({
+      'device_class': 'light',
+      'friendly_name': 'Runtime Device Brightness Alarm',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'binary_sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <BinarySensorDeviceClass.LIGHT: 'light'>,
+    'original_icon': None,
+    'original_name': 'Brightness Alarm',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': 'brightness_sensor',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_binary_sensor_entities[ABB700000001_ch0008_TemperatureSensorOnOff]
+  dict({
+    'attributes': dict({
+      'device_class': 'cold',
+      'friendly_name': 'Runtime Device Frost Alarm',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'binary_sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <BinarySensorDeviceClass.COLD: 'cold'>,
+    'original_icon': None,
+    'original_name': 'Frost Alarm',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': 'temperature_sensor',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_binary_sensor_entities[ABB700000001_ch0009_WindSensorOnOff]
+  dict({
+    'attributes': dict({
+      'device_class': 'moving',
+      'friendly_name': 'Runtime Device Wind Alarm',
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'binary_sensor',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <BinarySensorDeviceClass.MOVING: 'moving'>,
+    'original_icon': None,
+    'original_name': 'Wind Alarm',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': 'wind_sensor',
+    'unit_of_measurement': None,
+  })
+# ---
