@@ -29,7 +29,7 @@ from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN
 from .entity import ChannelGetter, FreeAtHomeEntity, async_setup_platform_entities
 from .helpers import AnyDeviceInfo, async_get_sub_device_info
 
-SENSOR_DESCRIPTIONS = {
+BINARY_SENSOR_DESCRIPTIONS = {
     "AirQualitySensorCO2Alert": {
         "channel_class": AirQualitySensor,
         "value_attribute": "co2_alert",
@@ -140,7 +140,7 @@ async def async_setup_entry(
                 sysap_serial_number=entry.data[CONF_SERIAL],
                 create_subdevices=entry.data[CONF_CREATE_SUBDEVICES],
             )
-            for key, description in SENSOR_DESCRIPTIONS.items()
+            for key, description in BINARY_SENSOR_DESCRIPTIONS.items()
             for channel in get_channels(description.get("channel_class"))
             if getattr(channel, description.get("value_attribute")) is not None
         ]
@@ -169,7 +169,7 @@ class FreeAtHomeBinarySensorEntity(FreeAtHomeEntity, BinarySensorEntity):
         sysap_serial_number: str,
         create_subdevices: bool,
     ) -> None:
-        """Initialize the sensor."""
+        """Initialize the binary sensor."""
         super().__init__()
         self._channel = channel
         self._value_attribute = value_attribute

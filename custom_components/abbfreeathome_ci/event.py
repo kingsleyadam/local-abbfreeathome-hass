@@ -295,7 +295,7 @@ class FreeAtHomeEventEntity(FreeAtHomeEntity, EventEntity):
         extra_data: str | None = None,
         extra_data_callback: Callable[[Any], Any] | None = None,
     ) -> None:
-        """Initialize the sensor."""
+        """Initialize the event entity."""
         super().__init__()
         self._channel = channel
         self._state_attribute = state_attribute

@@ -1,4 +1,4 @@
-"""Create ABB-free@home switch entities."""
+"""Create ABB-free@home select entities."""
 
 from typing import Any
 
@@ -115,7 +115,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up switches."""
+    """Set up selects."""
 
     def build_entities(get_channels: ChannelGetter) -> list[FreeAtHomeSelectEntity]:
         return [
@@ -136,7 +136,7 @@ async def async_setup_entry(
 
 
 class FreeAtHomeSelectEntity(FreeAtHomeEntity, SelectEntity):
-    """Defines a free@home switch entity."""
+    """Defines a free@home select entity."""
 
     _attr_should_poll: bool = False
 
@@ -154,7 +154,7 @@ class FreeAtHomeSelectEntity(FreeAtHomeEntity, SelectEntity):
         sysap_serial_number: str,
         create_subdevices: bool,
     ) -> None:
-        """Initialize the switch."""
+        """Initialize the select."""
         super().__init__()
         self._channel = channel
         self._current_option_attribute = current_option_attribute
