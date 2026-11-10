@@ -242,6 +242,10 @@ def snapshot_entities(
             attributes[ATTR_UNIT_OF_MEASUREMENT] = _str_unit(
                 attributes[ATTR_UNIT_OF_MEASUREMENT]
             )
+        capabilities = _str_keys(entity_entry.capabilities)
+        # compat: homeassistant<2026.12 - climate entities report Home Assistant's temperature unit as a capability
+        if capabilities is not None:
+            capabilities.pop("temperature_unit", None)
         assert {
             "domain": entity_entry.domain,
             "device": sorted(device_entry.identifiers) if device_entry else None,
@@ -251,7 +255,7 @@ def snapshot_entities(
             "original_device_class": entity_entry.original_device_class,
             "original_icon": entity_entry.original_icon,
             "entity_category": entity_entry.entity_category,
-            "capabilities": _str_keys(entity_entry.capabilities),
+            "capabilities": capabilities,
             "supported_features": entity_entry.supported_features,
             "unit_of_measurement": _str_unit(entity_entry.unit_of_measurement),
             "state": state.state,
