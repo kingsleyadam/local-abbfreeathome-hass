@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
+import logging
 
 from abbfreeathome import FreeAtHome
 from abbfreeathome.channels.base import Base
 from abbfreeathome.device import Device
+from abbfreeathome.exceptions import FreeAtHomeException
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -15,6 +17,8 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
 
 type ChannelGetter = Callable[[type[Base]], list[Base]]
 type EntityBuilder = Callable[[ChannelGetter], Iterable[FreeAtHomeEntity]]
@@ -136,3 +140,16 @@ class FreeAtHomeEntity(Entity):
         self.async_on_remove(
             lambda: device.remove_unresponsive_callback(self.async_write_ha_state)
         )
+
+    async def _async_refresh_channel(self) -> None:
+        """Refresh the channel's values from the SysAP.
+
+        Library errors, such as an unreachable SysAP or a datapoint the channel
+        lacks, are logged as a warning without a traceback.
+        """
+        try:
+            await self._channel.refresh_state()
+        except FreeAtHomeException as err:
+            _LOGGER.warning(
+                "Could not refresh %s from the SysAP: %s", self.entity_id, err
+            )
