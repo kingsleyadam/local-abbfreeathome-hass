@@ -1,253 +1,474 @@
 """Test ABB-free@home number."""
 
-from unittest.mock import MagicMock, call, patch
+from dataclasses import dataclass
+from unittest.mock import MagicMock
 
-from abbfreeathome.channels.virtual.virtual_wind_sensor import VirtualWindSensor
-import pytest
-
-from custom_components.abbfreeathome_ci.const import DOMAIN
-from custom_components.abbfreeathome_ci.number import (
-    NUMBER_DESCRIPTIONS,
-    FreeAtHomeNumberEntity,
-    async_setup_entry,
+from abbfreeathome.bin.pairing import Pairing
+from abbfreeathome.channels.base import Base
+from abbfreeathome.channels.virtual.virtual_brightness_sensor import (
+    VirtualBrightnessSensor,
 )
-from homeassistant.components.number import NumberDeviceClass
-from homeassistant.const import UnitOfTemperature
+from abbfreeathome.channels.virtual.virtual_energy_battery import VirtualEnergyBattery
+from abbfreeathome.channels.virtual.virtual_energy_inverter import VirtualEnergyInverter
+from abbfreeathome.channels.virtual.virtual_energy_two_way_meter import (
+    VirtualEnergyTwoWayMeter,
+)
+from abbfreeathome.channels.virtual.virtual_room_temperature_controller import (
+    VirtualRoomTemperatureController,
+)
+from abbfreeathome.channels.virtual.virtual_temperature_sensor import (
+    VirtualTemperatureSensor,
+)
+from abbfreeathome.channels.virtual.virtual_wind_sensor import VirtualWindSensor
+from abbfreeathome.device import Device
+import pytest
+from syrupy.assertion import SnapshotAssertion
+
+from custom_components.abbfreeathome_ci.const import CONF_CREATE_SUBDEVICES, DOMAIN
+from custom_components.abbfreeathome_ci.number import NUMBER_DESCRIPTIONS
+from homeassistant.components.homeassistant import (
+    DOMAIN as HOMEASSISTANT_DOMAIN,
+    SERVICE_UPDATE_ENTITY,
+)
+from homeassistant.components.number import (
+    ATTR_VALUE,
+    DOMAIN as NUMBER_DOMAIN,
+    SERVICE_SET_VALUE,
+)
+from homeassistant.const import ATTR_ENTITY_ID, Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.setup import async_setup_component
+
+from .common import (
+    MockConfigEntry,
+    build_channel,
+    build_device,
+    setup_with_channels,
+    snapshot_entities,
+)
+
+SERIAL = "ABB700000001"
 
 
-def _build_channel(key, value=21.5, channel_id="ch0000"):
-    """Build a mock channel of the class used by the given description key."""
-    description = NUMBER_DESCRIPTIONS[key]
-    channel = MagicMock(spec=description["channel_class"])
-    channel.channel_name = "Channel Name"
-    channel.channel_id = channel_id
-    channel.device_serial = "ABB7F57FFFE12345"
-    channel.device_name = "Device Name"
-    channel.room_name = "Living Room"
-    channel.device.is_multi_device = False
-    setattr(channel, description["value_attribute"], value)
-    return channel
+@dataclass(frozen=True)
+class NumberCase:
+    """A number description with a real virtual channel.
+
+    Home Assistant feeds virtual channels: the SysAP reports a number on the
+    output with the pairing, at first as reported, and setting the number to
+    value sets that output to command.
+    """
+
+    channel_class: type[Base]
+    channel_id: str
+    pairing: Pairing
+    reported: str
+    value: float
+    command: str
 
 
-def _build_entity(key, channel, create_subdevices=False):
-    """Build a number entity the way async_setup_entry does for the given key."""
-    description = NUMBER_DESCRIPTIONS[key]
-    return FreeAtHomeNumberEntity(
-        channel,
-        value_attribute=description["value_attribute"],
-        entity_description_kwargs={"key": key}
-        | description["entity_description_kwargs"],
-        sysap_serial_number="TEST123456",
-        create_subdevices=create_subdevices,
+# Unique IDs must never change; each ends with the description's key, typos
+# included. All values differ, so a number that shows another one fails.
+NUMBER_CASES = {
+    "VirtualBrightnessSensor": NumberCase(
+        VirtualBrightnessSensor,
+        "ch0000",
+        Pairing.AL_BRIGHTNESS_LEVEL,
+        "1000",
+        2500,
+        "2500",
+    ),
+    "VirtualEnergyBatteryBatteryPower": NumberCase(
+        VirtualEnergyBattery, "ch0001", Pairing.AL_BATTERY_POWER, "1.5", -2.5, "-2.5"
+    ),
+    "VirtualEnergyBatterySoc": NumberCase(
+        VirtualEnergyBattery, "ch0001", Pairing.AL_SOC, "80", 55, "55"
+    ),
+    "VirtualEnergyBatteryImportedToday": NumberCase(
+        VirtualEnergyBattery,
+        "ch0001",
+        Pairing.AL_MEASURED_IMPORTED_ENERGY_TODAY,
+        "110",
+        115,
+        "115",
+    ),
+    "VirtualEnergyBatteryExportedToday": NumberCase(
+        VirtualEnergyBattery,
+        "ch0001",
+        Pairing.AL_MEASURED_EXPORTED_ENERGY_TODAY,
+        "120",
+        125,
+        "125",
+    ),
+    "VirtualEnergyBatteryImportedTotal": NumberCase(
+        VirtualEnergyBattery,
+        "ch0001",
+        Pairing.AL_MEASURED_TOTAL_ENERGY_IMPORTED,
+        "130",
+        135,
+        "135",
+    ),
+    "VirtualEnergyBatteryExportedTotal": NumberCase(
+        VirtualEnergyBattery,
+        "ch0001",
+        Pairing.AL_MEASURED_TOTAL_ENERGY_EXPORTED,
+        "140",
+        145,
+        "145",
+    ),
+    "VirtualEnergyInverterCurrentPower": NumberCase(
+        VirtualEnergyInverter,
+        "ch0002",
+        Pairing.AL_MEASURED_CURRENT_POWER_CONSUMED,
+        "500.5",
+        600.5,
+        "600.5",
+    ),
+    "VirtualEnergyInverterImportedToday": NumberCase(
+        VirtualEnergyInverter,
+        "ch0002",
+        Pairing.AL_MEASURED_IMPORTED_ENERGY_TODAY,
+        "210",
+        215,
+        "215",
+    ),
+    "VirtualEnergyInverterImportedTotal": NumberCase(
+        VirtualEnergyInverter,
+        "ch0002",
+        Pairing.AL_MEASURED_TOTAL_ENERGY_IMPORTED,
+        "230",
+        235,
+        "235",
+    ),
+    "VirtualEnergyTwoWayMeterCurrentPower": NumberCase(
+        VirtualEnergyTwoWayMeter,
+        "ch0003",
+        Pairing.AL_MEASURED_CURRENT_POWER_CONSUMED,
+        "-50.5",
+        -60.5,
+        "-60.5",
+    ),
+    "VirtualEnergyTwoMayMeterImportedToday": NumberCase(
+        VirtualEnergyTwoWayMeter,
+        "ch0003",
+        Pairing.AL_MEASURED_IMPORTED_ENERGY_TODAY,
+        "310",
+        315,
+        "315",
+    ),
+    "VirtualEnergyTwoMayMeterExportedToday": NumberCase(
+        VirtualEnergyTwoWayMeter,
+        "ch0003",
+        Pairing.AL_MEASURED_EXPORTED_ENERGY_TODAY,
+        "320",
+        325,
+        "325",
+    ),
+    "VirtualEnergyTwoMayMeterImportedTotal": NumberCase(
+        VirtualEnergyTwoWayMeter,
+        "ch0003",
+        Pairing.AL_MEASURED_TOTAL_ENERGY_IMPORTED,
+        "330",
+        335,
+        "335",
+    ),
+    "VirtualEnergyTwoMayMeterExportedTotal": NumberCase(
+        VirtualEnergyTwoWayMeter,
+        "ch0003",
+        Pairing.AL_MEASURED_TOTAL_ENERGY_EXPORTED,
+        "340",
+        345,
+        "345",
+    ),
+    "VirtualRoomTemperatureControllerCurrentTemperature": NumberCase(
+        VirtualRoomTemperatureController,
+        "ch0004",
+        Pairing.AL_MEASURED_TEMPERATURE,
+        "20.5",
+        19.5,
+        "19.5",
+    ),
+    "VirtualRoomTemperatureControllerTargetTemperature": NumberCase(
+        VirtualRoomTemperatureController,
+        "ch0004",
+        Pairing.AL_SET_POINT_TEMPERATURE,
+        "21.5",
+        22.5,
+        "22.5",
+    ),
+    "VirtualTemperatureSensor": NumberCase(
+        VirtualTemperatureSensor,
+        "ch0005",
+        Pairing.AL_OUTDOOR_TEMPERATURE,
+        "-5.5",
+        -7.5,
+        "-7.5",
+    ),
+    "VirtualWindSensorForce": NumberCase(
+        VirtualWindSensor, "ch0006", Pairing.AL_WIND_FORCE, "6", 8, "8"
+    ),
+    "VirtualWindSensorSpeed": NumberCase(
+        VirtualWindSensor, "ch0006", Pairing.AL_WIND_SPEED, "12.5", 15.5, "15.5"
+    ),
+}
+
+
+@pytest.fixture(autouse=True)
+def number_platform(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Load only the number platform."""
+    monkeypatch.setattr(
+        "custom_components.abbfreeathome_ci.PLATFORMS", [Platform.NUMBER]
     )
 
 
-async def _async_setup_entities(hass, config_entry, channels_by_class):
-    """Run the number platform setup and return the added entities."""
-    config_entry.add_to_hass(hass)
-
-    mock_free_at_home = MagicMock()
-
-    def get_channels_by_class_side_effect(channel_class):
-        """Return the mock channels for the requested channel class."""
-        return channels_by_class.get(channel_class, [])
-
-    mock_free_at_home.get_channels_by_class.side_effect = (
-        get_channels_by_class_side_effect
-    )
-    hass.data[DOMAIN] = {config_entry.entry_id: mock_free_at_home}
-
-    entities_added = []
-
-    def capture_entities(entity_generator):
-        """Capture entities from generator."""
-        entities_added.extend(list(entity_generator))
-
-    async_add_entities = MagicMock(side_effect=capture_entities)
-    await async_setup_entry(hass, config_entry, async_add_entities)
-
-    assert async_add_entities.call_count == 1
-    return entities_added
+def test_cases_cover_all_descriptions() -> None:
+    """Test every number description has a case with its channel class."""
+    assert list(NUMBER_CASES) == list(NUMBER_DESCRIPTIONS)
+    for key, case in NUMBER_CASES.items():
+        assert case.channel_class is NUMBER_DESCRIPTIONS[key]["channel_class"]
 
 
-async def test_async_setup_entry_no_numbers(
-    hass: HomeAssistant, mock_config_entry
-) -> None:
-    """Test setup with no number channels."""
-    entities = await _async_setup_entities(hass, mock_config_entry, {})
-
-    assert entities == []
-
-
-async def test_async_setup_entry_with_all_numbers(
-    hass: HomeAssistant, mock_config_entry
-) -> None:
-    """Test setup creates an entity for every number description."""
-    channels = {}
-    for key, description in NUMBER_DESCRIPTIONS.items():
-        # Descriptions sharing a channel class share one channel, as on a real
-        # virtual device with several values.
-        channel = channels.setdefault(description["channel_class"], _build_channel(key))
-        setattr(channel, description["value_attribute"], 1.0)
-
-    entities = await _async_setup_entities(
-        hass,
-        mock_config_entry,
-        {channel_class: [channel] for channel_class, channel in channels.items()},
-    )
-
-    assert all(isinstance(entity, FreeAtHomeNumberEntity) for entity in entities)
-    # Unique IDs must never change, so the expected keys are listed explicitly,
-    # including the misspelled "TwoMay" keys.
-    assert [entity.unique_id for entity in entities] == [
-        f"ABB7F57FFFE12345_ch0000_{key}"
-        for key in (
-            "VirtualBrightnessSensor",
-            "VirtualEnergyBatteryBatteryPower",
-            "VirtualEnergyBatterySoc",
-            "VirtualEnergyBatteryImportedToday",
-            "VirtualEnergyBatteryExportedToday",
-            "VirtualEnergyBatteryImportedTotal",
-            "VirtualEnergyBatteryExportedTotal",
-            "VirtualEnergyInverterCurrentPower",
-            "VirtualEnergyInverterImportedToday",
-            "VirtualEnergyInverterImportedTotal",
-            "VirtualEnergyTwoWayMeterCurrentPower",
-            "VirtualEnergyTwoMayMeterImportedToday",
-            "VirtualEnergyTwoMayMeterExportedToday",
-            "VirtualEnergyTwoMayMeterImportedTotal",
-            "VirtualEnergyTwoMayMeterExportedTotal",
-            "VirtualRoomTemperatureControllerCurrentTemperature",
-            "VirtualRoomTemperatureControllerTargetTemperature",
-            "VirtualTemperatureSensor",
-            "VirtualWindSensorForce",
-            "VirtualWindSensorSpeed",
+def _build_channels(device: Device) -> dict[str, Base]:
+    """Build one real channel per channel ID with the outputs of its cases."""
+    channel_classes: dict[str, type[Base]] = {}
+    outputs: dict[str, dict[Pairing, str]] = {}
+    for case in NUMBER_CASES.values():
+        channel_classes[case.channel_id] = case.channel_class
+        outputs.setdefault(case.channel_id, {})[case.pairing] = case.reported
+    return {
+        channel_id: build_channel(
+            channel_classes[channel_id], device, channel_id, outputs=channel_outputs
         )
-    ]
-
-
-async def test_async_setup_entry_skips_none_values(
-    hass: HomeAssistant, mock_config_entry
-) -> None:
-    """Test that numbers are not created for attributes that are None."""
-    channel = _build_channel("VirtualWindSensorForce", value=3)
-    channel.speed = None
-
-    entities = await _async_setup_entities(
-        hass, mock_config_entry, {VirtualWindSensor: [channel]}
-    )
-
-    assert [entity.entity_description.key for entity in entities] == [
-        "VirtualWindSensorForce"
-    ]
-
-
-async def test_number_entity_properties() -> None:
-    """Test number entity properties."""
-    key = "VirtualRoomTemperatureControllerTargetTemperature"
-    entity = _build_entity(key, _build_channel(key, channel_id="ch0001"))
-
-    assert entity.entity_description.key == key
-    assert entity.entity_description.name == "Channel Name"
-    assert entity.entity_description.has_entity_name is True
-    assert entity.entity_description.translation_placeholders == {
-        "channel_id": "ch0001"
+        for channel_id, channel_outputs in outputs.items()
     }
-    assert entity.translation_key == "virtual_rtc_target_temperature"
-    assert entity.device_class == NumberDeviceClass.TEMPERATURE
-    assert entity.native_min_value == 7.0
-    assert entity.native_max_value == 35.0
-    assert entity.native_step == 0.5
-    assert entity.native_unit_of_measurement == UnitOfTemperature.CELSIUS
-    assert entity.should_poll is False
 
 
-async def test_number_native_value_follows_channel() -> None:
-    """Test native_value reflects the channel's value attribute."""
-    channel = _build_channel("VirtualWindSensorSpeed", value=4.2)
-    entity = _build_entity("VirtualWindSensorSpeed", channel)
-
-    assert entity.native_value == 4.2
-
-    channel.speed = 7.5
-    assert entity.native_value == 7.5
-
-    channel.speed = None
-    assert entity.native_value is None
+def _output(channel: Base, key: str) -> str:
+    """Return the ID of the output a number case reports and sets its value on."""
+    output_id, _value = channel.get_output_by_pairing(NUMBER_CASES[key].pairing)
+    return output_id
 
 
-@pytest.mark.parametrize("key", NUMBER_DESCRIPTIONS)
-async def test_number_set_native_value(key) -> None:
-    """Test setting a value calls the channel setter for the attribute."""
-    setter = f"set_{NUMBER_DESCRIPTIONS[key]['value_attribute']}"
-    channel = _build_channel(key)
-    entity = _build_entity(key, channel)
-
-    await entity.async_set_native_value(5)
-
-    getattr(channel, setter).assert_awaited_once_with(5.0)
-    assert isinstance(getattr(channel, setter).await_args.args[0], float)
-    assert channel.mock_calls == [getattr(call, setter)(5.0)]
-
-
-async def test_number_async_update() -> None:
-    """Test updating the number refreshes the channel state."""
-    channel = _build_channel("VirtualTemperatureSensor")
-    entity = _build_entity("VirtualTemperatureSensor", channel)
-
-    await entity.async_update()
-
-    channel.refresh_state.assert_awaited_once_with()
-
-
-async def test_number_entity_callbacks() -> None:
-    """Test callbacks are registered and removed for the value attribute."""
-    channel = _build_channel("VirtualWindSensorForce")
-    entity = _build_entity("VirtualWindSensorForce", channel)
-    entity.async_write_ha_state = MagicMock()
-
-    await entity.async_added_to_hass()
-    channel.register_callback.assert_called_once_with(
-        callback_attribute="force", callback=entity.async_write_ha_state
+def _entity_id(entity_registry: er.EntityRegistry, key: str) -> str:
+    """Return the entity ID of a number case by its unique ID."""
+    entity_id = entity_registry.async_get_entity_id(
+        NUMBER_DOMAIN, DOMAIN, f"{SERIAL}_{NUMBER_CASES[key].channel_id}_{key}"
     )
-    channel.device.register_unresponsive_callback.assert_called_once_with(
-        entity.async_write_ha_state
+    assert entity_id is not None
+    return entity_id
+
+
+async def test_number_entities(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    snapshot: SnapshotAssertion,
+) -> None:
+    """Test the number entities of all descriptions and their values."""
+    channels = _build_channels(build_device(SERIAL))
+
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, list(channels.values())
     )
 
-    await entity.async_will_remove_from_hass()
-    channel.remove_callback.assert_called_once_with(
-        callback_attribute="force", callback=entity.async_write_ha_state
+    snapshot_entities(hass, snapshot, mock_config_entry.entry_id)
+    for key, case in NUMBER_CASES.items():
+        assert hass.states.get(_entity_id(entity_registry, key)).state == case.reported
+
+
+@pytest.mark.parametrize("key", NUMBER_CASES)
+async def test_number_follows_sysap(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    key: str,
+) -> None:
+    """Test a number shows the value the SysAP reports without a command."""
+    case = NUMBER_CASES[key]
+    device = build_device(SERIAL)
+    channel = _build_channels(device)[case.channel_id]
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
     )
+
+    channel.update_channel(
+        f"{SERIAL}/{case.channel_id}/{_output(channel, key)}", case.command
+    )
+    await hass.async_block_till_done()
+
+    assert hass.states.get(_entity_id(entity_registry, key)).state == case.command
+    device.api.set_datapoint.assert_not_awaited()
+
+
+@pytest.mark.parametrize("key", NUMBER_CASES)
+async def test_number_set_value(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    key: str,
+) -> None:
+    """Test setting a number sets its output on the SysAP."""
+    case = NUMBER_CASES[key]
+    device = build_device(SERIAL)
+    channel = _build_channels(device)[case.channel_id]
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+
+    await hass.services.async_call(
+        NUMBER_DOMAIN,
+        SERVICE_SET_VALUE,
+        {ATTR_ENTITY_ID: _entity_id(entity_registry, key), ATTR_VALUE: case.value},
+        blocking=True,
+    )
+
+    device.api.set_datapoint.assert_awaited_once_with(
+        device_serial=SERIAL,
+        channel_id=case.channel_id,
+        datapoint=_output(channel, key),
+        value=case.command,
+    )
+
+
+async def test_number_skips_none_values(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test no number is created for a channel attribute without a value."""
+    # Without the other outputs, the battery knows only its state of charge.
+    battery = build_channel(
+        VirtualEnergyBattery, build_device(SERIAL), outputs={Pairing.AL_SOC: "80"}
+    )
+
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [battery]
+    )
+
+    entries = er.async_entries_for_config_entry(
+        entity_registry, mock_config_entry.entry_id
+    )
+    assert [entry.unique_id for entry in entries] == [
+        f"{SERIAL}_ch0000_VirtualEnergyBatterySoc"
+    ]
+
+
+async def test_number_update_entity(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test updating a number refreshes its value from the SysAP."""
+    assert await async_setup_component(hass, HOMEASSISTANT_DOMAIN, {})
+    key = "VirtualEnergyInverterImportedToday"
+    device = build_device(SERIAL)
+    channel = _build_channels(device)["ch0002"]
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    entity_id = _entity_id(entity_registry, key)
+    device.api.get_datapoint.return_value = ["999"]
+
+    await hass.services.async_call(
+        HOMEASSISTANT_DOMAIN,
+        SERVICE_UPDATE_ENTITY,
+        {ATTR_ENTITY_ID: entity_id},
+        blocking=True,
+    )
+
+    assert hass.states.get(entity_id).state == "999"
+    device.api.get_datapoint.assert_any_await(
+        device_serial=SERIAL, channel_id="ch0002", datapoint=_output(channel, key)
+    )
+
+
+async def test_number_removes_callbacks_on_unload(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test unloaded numbers no longer follow their channel."""
+    key = "VirtualEnergyInverterImportedToday"
+    channel = _build_channels(build_device(SERIAL))["ch0002"]
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    entity_id = _entity_id(entity_registry, key)
+
+    assert await hass.config_entries.async_unload(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+    state = hass.states.get(entity_id)
+
+    channel.update_channel(f"{SERIAL}/ch0002/{_output(channel, key)}", "999")
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id) == state
+    assert channel._callbacks == {
+        "current_power": set(),
+        "imported_today": set(),
+        "imported_total": set(),
+    }
 
 
 @pytest.mark.parametrize(
-    ("create_subdevices", "is_multi_device"),
-    [(False, False), (False, True), (True, False)],
+    ("create_subdevices", "multi_device_identifier"),
+    [
+        (False, (DOMAIN, SERIAL)),
+        (True, (DOMAIN, f"{SERIAL}_ch0000")),
+    ],
 )
-async def test_number_device_info(create_subdevices, is_multi_device) -> None:
-    """Test the number belongs to the main device unless it is a subdevice."""
-    channel = _build_channel("VirtualTemperatureSensor")
-    channel.device.is_multi_device = is_multi_device
-    entity = _build_entity("VirtualTemperatureSensor", channel, create_subdevices)
-
-    assert entity.device_info == {"identifiers": {(DOMAIN, "ABB7F57FFFE12345")}}
-
-
-async def test_number_device_info_with_subdevices() -> None:
-    """Test the number belongs to a subdevice of a multi-channel device."""
-    channel = _build_channel("VirtualTemperatureSensor", channel_id="ch0002")
-    channel.device.is_multi_device = True
-    channel.device.device_id = "6000"
-    entity = _build_entity("VirtualTemperatureSensor", channel, create_subdevices=True)
-    entity.platform = MagicMock()
-
-    with patch(
-        "custom_components.abbfreeathome_ci.number.async_get_sub_device_info"
-    ) as mock_sub_device_info:
-        device_info = entity.device_info
-
-    mock_sub_device_info.assert_called_once_with(
-        entity.hass, entity.platform.config_entry.entry_id, channel
+async def test_number_device(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    device_registry: dr.DeviceRegistry,
+    create_subdevices: bool,
+    multi_device_identifier: tuple[str, str],
+) -> None:
+    """Test a number of a multi-channel device belongs to a subdevice if enabled."""
+    entry = MockConfigEntry(
+        version=mock_config_entry.version,
+        minor_version=mock_config_entry.minor_version,
+        domain=DOMAIN,
+        title=mock_config_entry.title,
+        data={**mock_config_entry.data, CONF_CREATE_SUBDEVICES: create_subdevices},
+        source=mock_config_entry.source,
+        unique_id=mock_config_entry.unique_id,
     )
-    assert device_info is mock_sub_device_info.return_value
+    # A device without a room and with several channels is a multi-device.
+    multi_device = build_device(SERIAL)
+    channels = _build_channels(multi_device)
+    assert multi_device.is_multi_device
+    single_device = build_device("ABB700000002")
+    single_channel = build_channel(
+        VirtualBrightnessSensor,
+        single_device,
+        outputs={Pairing.AL_BRIGHTNESS_LEVEL: "1000"},
+    )
+    assert not single_device.is_multi_device
+
+    await setup_with_channels(
+        hass, entry, mock_free_at_home_settings, [channels["ch0000"], single_channel]
+    )
+
+    def device_identifiers(unique_id: str) -> set[tuple[str, str]]:
+        """Return the identifiers of the device of a number."""
+        entity_id = entity_registry.async_get_entity_id(
+            NUMBER_DOMAIN, DOMAIN, unique_id
+        )
+        entity_entry = entity_registry.async_get(entity_id)
+        return device_registry.async_get(entity_entry.device_id).identifiers
+
+    assert device_identifiers(f"{SERIAL}_ch0000_VirtualBrightnessSensor") == {
+        multi_device_identifier
+    }
+    assert device_identifiers("ABB700000002_ch0000_VirtualBrightnessSensor") == {
+        (DOMAIN, "ABB700000002")
+    }
