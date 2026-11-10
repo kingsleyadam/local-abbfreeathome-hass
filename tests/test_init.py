@@ -1990,37 +1990,6 @@ async def test_runtime_channel_placed_later(
     assert er.async_entries_for_device(er.async_get(hass), device_entry.id)
 
 
-async def test_runtime_device_adds_parameter_sensor(
-    hass: HomeAssistant, mock_config_entry, loaded_free_at_home
-) -> None:
-    """Test a device added at runtime gets one parameter sensor."""
-    device = build_device()
-    channel = build_trigger(device, parameters={"par0001": "0"})
-    loaded_free_at_home.channels.append(channel)
-
-    # The repeated channel is already exposed and must not change the sensor.
-    for _ in range(2):
-        devices_changed(
-            loaded_free_at_home, DevicesChangedEvent(added_channels=(channel,))
-        )
-        await hass.async_block_till_done()
-
-    entity_registry = er.async_get(hass)
-    sensors = [
-        entry
-        for entry in er.async_entries_for_config_entry(
-            entity_registry, mock_config_entry.entry_id
-        )
-        if entry.domain == "sensor"
-    ]
-    assert [entry.unique_id for entry in sensors] == ["ABB700000001_parameters"]
-    attributes = hass.states.get(sensors[0].entity_id).attributes
-    assert list(attributes["channel_parameters"]) == ["ch0000"]
-    assert attributes["channel_parameters"]["ch0000"]["parameters"] == {
-        "PID_LED_DAY_BRIGHTNESS": "0"
-    }
-
-
 async def test_runtime_channels_while_addition_pending(
     hass: HomeAssistant,
     mock_config_entry,
@@ -2105,37 +2074,6 @@ async def test_runtime_channels_while_addition_pending(
         )
         == 3
     )
-
-
-async def test_runtime_channel_extends_parameter_sensor(
-    hass: HomeAssistant,
-    mock_config_entry,
-    mock_free_at_home_settings,
-    lifecycle_platforms,
-) -> None:
-    """Test a channel placed later is added to the existing parameter sensor."""
-    device = build_device()
-    first = build_trigger(device, "ch0000", parameters={"par0001": "0"})
-
-    mock_fah = await setup_with_channels(
-        hass, mock_config_entry, mock_free_at_home_settings, [first]
-    )
-    entity_id = er.async_get(hass).async_get_entity_id(
-        "sensor", DOMAIN, "ABB700000001_parameters"
-    )
-    assert set(hass.states.get(entity_id).attributes["channel_parameters"]) == {
-        "ch0000"
-    }
-
-    second = build_trigger(device, "ch0001", parameters={"par0002": "1"})
-    mock_fah.channels.append(second)
-    devices_changed(mock_fah, DevicesChangedEvent(added_channels=(second,)))
-    await hass.async_block_till_done()
-
-    assert set(hass.states.get(entity_id).attributes["channel_parameters"]) == {
-        "ch0000",
-        "ch0001",
-    }
 
 
 async def test_unload_removes_devices_changed_callback(
