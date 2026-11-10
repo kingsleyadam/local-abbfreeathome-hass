@@ -1,7 +1,9 @@
 """Test ABB-free@home climate."""
 
+from collections.abc import Callable, Mapping
 from runpy import run_path
-from unittest.mock import AsyncMock, MagicMock, patch
+from typing import Any
+from unittest.mock import MagicMock, call
 
 from abbfreeathome.bin.function import Function
 from abbfreeathome.bin.pairing import Pairing
@@ -10,341 +12,814 @@ from abbfreeathome.channels.room_temperature_controller import (
     RoomTemperatureController,
 )
 from abbfreeathome.const import FUNCTION_CHANNEL_MAPPING
+from abbfreeathome.device import Device
 import pytest
+from syrupy.assertion import SnapshotAssertion
 
 from custom_components.abbfreeathome_ci import climate as climate_platform
-from custom_components.abbfreeathome_ci.climate import (
-    FreeAtHomeClimateEntity,
-    FreeAtHomeRadiatorClimateEntity,
-    async_setup_entry,
+from custom_components.abbfreeathome_ci.const import CONF_CREATE_SUBDEVICES, DOMAIN
+from homeassistant.components.climate import (
+    ATTR_CURRENT_TEMPERATURE,
+    ATTR_HVAC_ACTION,
+    ATTR_HVAC_MODE,
+    ATTR_PRESET_MODE,
+    DOMAIN as CLIMATE_DOMAIN,
+    SERVICE_SET_HVAC_MODE,
+    SERVICE_SET_PRESET_MODE,
+    SERVICE_SET_TEMPERATURE,
+    ClimateEntity,
+    HVACAction,
+    HVACMode,
 )
-from custom_components.abbfreeathome_ci.const import DOMAIN
-from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature
-from homeassistant.components.climate.const import HVACAction, HVACMode
-from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
+from homeassistant.components.homeassistant import (
+    DOMAIN as HOMEASSISTANT_DOMAIN,
+    SERVICE_UPDATE_ENTITY,
+)
+from homeassistant.const import (
+    ATTR_ENTITY_ID,
+    ATTR_TEMPERATURE,
+    SERVICE_TURN_OFF,
+    SERVICE_TURN_ON,
+    Platform,
+    UnitOfTemperature,
+)
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.setup import async_setup_component
-from homeassistant.util.unit_system import METRIC_SYSTEM, US_CUSTOMARY_SYSTEM
+from homeassistant.util.unit_system import (
+    METRIC_SYSTEM,
+    US_CUSTOMARY_SYSTEM,
+    UnitSystem,
+)
 
-from .common import async_setup_entity_platform
+from .common import (
+    MockConfigEntry,
+    build_channel,
+    build_device,
+    setup_with_channels,
+    snapshot_entities,
+)
 
+SERIAL = "ABB700000001"
+RTC = "ch0000"
+RADIATOR = "ch0001"
 
-def _radiator_outputs(
-    *,
-    on: str = "1",
-    set_point: str = "21.5",
-    measured: str = "20.42",
-    state_indication: str = "96",
-    heating_active: str = "0",
-    heating_demand: str = "0",
-) -> dict[str, dict[str, str | int]]:
-    """Build the outputs of a FID_RADIATOR_ACTUATOR_MASTER channel."""
-    return {
-        "odp0000": {
-            "pairingID": Pairing.AL_SET_POINT_TEMPERATURE.value,
-            "value": set_point,
-        },
-        "odp0002": {
-            "pairingID": Pairing.AL_CONTROLLER_ON_OFF.value,
-            "value": on,
-        },
-        "odp0003": {
-            "pairingID": Pairing.AL_STATE_INDICATION.value,
-            "value": state_indication,
-        },
-        "odp0007": {
-            "pairingID": Pairing.AL_MEASURED_TEMPERATURE.value,
-            "value": measured,
-        },
-        "odp0008": {
-            "pairingID": Pairing.AL_HEATING_ACTIVE.value,
-            "value": heating_active,
-        },
-        "odp0009": {
-            "pairingID": Pairing.AL_HEATING_DEMAND.value,
-            "value": heating_demand,
-        },
-    }
-
-
-def _radiator_inputs() -> dict[str, dict[str, str | int]]:
-    """Build the inputs of a FID_RADIATOR_ACTUATOR_MASTER channel."""
-    return {
-        "idp0004": {"pairingID": Pairing.AL_ECO_ON_OFF.value, "value": "0"},
-        "idp0005": {
-            "pairingID": Pairing.AL_CONTROLLER_ON_OFF_REQUEST.value,
-            "value": "0",
-        },
-        "idp0009": {
-            "pairingID": Pairing.AL_INFO_ABSOLUTE_SET_POINT_REQUEST.value,
-            "value": "22",
-        },
-    }
+# Both channels take commands on the same inputs: switching on and off on
+# idp0000, eco mode on idp0001, and the target temperature on idp0002.
+INPUTS = {
+    Pairing.AL_CONTROLLER_ON_OFF_REQUEST: "0",
+    Pairing.AL_ECO_ON_OFF: "0",
+    Pairing.AL_INFO_ABSOLUTE_SET_POINT_REQUEST: "21",
+}
+# Switched on in comfort and heating mode (0x21), heating or cooling allowed;
+# 0x04 adds eco mode, 0x40 forbids heating and cooling, and without 0x20 the
+# controller is in cooling mode.
+RTC_OUTPUTS = {
+    Pairing.AL_CONTROLLER_ON_OFF: "1",
+    Pairing.AL_SET_POINT_TEMPERATURE: "21",
+    Pairing.AL_MEASURED_TEMPERATURE: "21.3",
+    Pairing.AL_STATE_INDICATION: "33",
+    Pairing.AL_ACTUATING_VALUE_HEATING: "0",
+    Pairing.AL_ACTUATING_VALUE_COOLING: "0",
+}
+RADIATOR_OUTPUTS = {
+    Pairing.AL_CONTROLLER_ON_OFF: "1",
+    Pairing.AL_SET_POINT_TEMPERATURE: "21.5",
+    Pairing.AL_MEASURED_TEMPERATURE: "20.4",
+    Pairing.AL_STATE_INDICATION: "33",
+    Pairing.AL_HEATING_ACTIVE: "0",
+    Pairing.AL_HEATING_DEMAND: "0",
+}
 
 
-def _radiator_channel(**kwargs) -> RadiatorActuator:
-    """Build a RadiatorActuator channel backed by a mocked api."""
-    device = MagicMock()
-    device.api.set_datapoint = AsyncMock()
-    device.api.get_datapoint = AsyncMock(return_value=["1"])
-
-    return RadiatorActuator(
-        device=device,
-        channel_id="ch0000",
-        channel_name="Hobbyraum",
-        inputs=_radiator_inputs(),
-        outputs=_radiator_outputs(**kwargs),
-        parameters={},
+@pytest.fixture(autouse=True)
+def climate_platform_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Load only the climate platform."""
+    monkeypatch.setattr(
+        "custom_components.abbfreeathome_ci.PLATFORMS", [Platform.CLIMATE]
     )
 
 
-def _mock_radiator_entity_channel() -> MagicMock:
-    """Build a mocked radiator channel for entity level tests."""
-    channel = MagicMock(spec=RadiatorActuator)
-    channel.channel_name = "Hobbyraum"
-    channel.channel_id = "ch0000"
-    channel.device_serial = "ABB7F630796A"
-    channel.device_name = "Hobbyraum"
-    channel.room_name = "Hobbyraum"
-    channel.device.is_multi_device = False
-    channel.state = True
-    channel.current_temperature = 20.42
-    channel.target_temperature = 21.5
-    channel.eco_mode = False
-    channel.heating = 0
-    channel.heating_active = False
-    channel.turn_on = AsyncMock()
-    channel.turn_off = AsyncMock()
-
-    return channel
+def _outputs(
+    defaults: Mapping[Pairing, str], overrides: Mapping[Pairing, str | None]
+) -> dict[Pairing, str]:
+    """Return outputs with overridden values; None leaves an output out."""
+    outputs = {**defaults, **overrides}
+    return {pairing: value for pairing, value in outputs.items() if value is not None}
 
 
-async def _setup_entry_for_class(
-    hass: HomeAssistant, mock_config_entry, expected_class, channel
-) -> list:
-    """Run async_setup_entry returning only channels of the given class."""
-    mock_config_entry.add_to_hass(hass)
-
-    mock_free_at_home = MagicMock()
-    mock_free_at_home.get_channels_by_class.side_effect = lambda channel_class: (
-        [channel] if channel_class is expected_class else []
+def _build_rtc(
+    device: Device,
+    channel_id: str = RTC,
+    outputs: Mapping[Pairing, str | None] | None = None,
+) -> RoomTemperatureController:
+    """Build a real room temperature controller, idle in heating mode."""
+    return build_channel(
+        RoomTemperatureController,
+        device,
+        channel_id,
+        inputs=INPUTS,
+        outputs=_outputs(RTC_OUTPUTS, outputs or {}),
     )
-    hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
 
-    entities_added = []
-    async_add_entities = MagicMock(
-        side_effect=lambda generator: entities_added.extend(list(generator))
+
+def _build_radiator(
+    device: Device,
+    channel_id: str = RADIATOR,
+    outputs: Mapping[Pairing, str | None] | None = None,
+) -> RadiatorActuator:
+    """Build a real radiator thermostat, idle in heating mode."""
+    return build_channel(
+        RadiatorActuator,
+        device,
+        channel_id,
+        inputs=INPUTS,
+        outputs=_outputs(RADIATOR_OUTPUTS, outputs or {}),
     )
-    await async_setup_entry(hass, mock_config_entry, async_add_entities)
-
-    return entities_added
 
 
-async def test_async_setup_entry_no_climate_channels(
-    hass: HomeAssistant, mock_config_entry
+def _report(channel: RoomTemperatureController, pairing: Pairing, value: str) -> None:
+    """Report the value of the channel's output with the pairing, as the SysAP."""
+    datapoint, _ = channel.get_output_by_pairing(pairing)
+    channel.update_channel(
+        f"{channel.device_serial}/{channel.channel_id}/{datapoint}", value
+    )
+
+
+def _entity_id(entity_registry: er.EntityRegistry, channel_id: str) -> str:
+    """Return the entity ID of the climate entity of a channel by its unique ID."""
+    entity_id = entity_registry.async_get_entity_id(
+        CLIMATE_DOMAIN, DOMAIN, f"{SERIAL}_{channel_id}_climate"
+    )
+    assert entity_id is not None
+    return entity_id
+
+
+def _set_datapoint(channel_id: str, datapoint: str, value: str) -> Any:
+    """Return the expected call to set an input datapoint of a channel."""
+    return call(
+        device_serial=SERIAL, channel_id=channel_id, datapoint=datapoint, value=value
+    )
+
+
+async def test_climate_entities(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    snapshot: SnapshotAssertion,
 ) -> None:
-    """Test setup with no climate entities."""
-    mock_config_entry.add_to_hass(hass)
+    """Test the climate entities of a controller and a radiator thermostat."""
+    device = build_device(SERIAL)
+    await setup_with_channels(
+        hass,
+        mock_config_entry,
+        mock_free_at_home_settings,
+        [_build_rtc(device), _build_radiator(device)],
+    )
 
-    mock_free_at_home = MagicMock()
-    mock_free_at_home.get_channels_by_class.return_value = []
-    hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_free_at_home}
-
-    async_add_entities = MagicMock()
-    await async_setup_entry(hass, mock_config_entry, async_add_entities)
-
-    assert async_add_entities.call_count == 1
+    snapshot_entities(hass, snapshot, mock_config_entry.entry_id)
 
 
-async def test_async_setup_entry_with_room_temperature_controller(
-    hass: HomeAssistant, mock_config_entry
+@pytest.mark.parametrize(
+    ("state_indication", "heating", "cooling", "expected"),
+    [
+        # Without a state indication, the larger actuating value wins.
+        (None, "0", "0", HVACAction.IDLE),
+        (None, "40", "0", HVACAction.HEATING),
+        (None, "0", "40", HVACAction.COOLING),
+        (None, "40", "40", HVACAction.IDLE),
+        # Heating or cooling forbidden (0x40): the actuating values are not
+        # carried out.
+        ("97", "0", "100", HVACAction.IDLE),
+        ("65", "0", "100", HVACAction.IDLE),
+        # Otherwise only the actuating value of the indicated mode counts.
+        ("33", "18", "0", HVACAction.HEATING),
+        ("33", "0", "0", HVACAction.IDLE),
+        ("1", "0", "100", HVACAction.COOLING),
+        ("1", "0", "0", HVACAction.IDLE),
+        ("33", "10", "100", HVACAction.HEATING),
+        ("1", "100", "10", HVACAction.COOLING),
+    ],
+)
+async def test_rtc_hvac_action(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    state_indication: str | None,
+    heating: str,
+    cooling: str,
+    expected: HVACAction,
 ) -> None:
-    """Test setup with a room temperature controller."""
-    channel = MagicMock(spec=RoomTemperatureController)
-    channel.channel_name = "Wohnzimmer"
-    channel.channel_id = "ch0000"
-    channel.device_serial = "ABB7F57FFFE12345"
-    channel.device.is_multi_device = False
-
-    entities_added = await _setup_entry_for_class(
-        hass, mock_config_entry, RoomTemperatureController, channel
+    """Test a controller's action follows its state indication and values."""
+    await setup_with_channels(
+        hass,
+        mock_config_entry,
+        mock_free_at_home_settings,
+        [
+            _build_rtc(
+                build_device(SERIAL),
+                outputs={
+                    Pairing.AL_STATE_INDICATION: state_indication,
+                    Pairing.AL_ACTUATING_VALUE_HEATING: heating,
+                    Pairing.AL_ACTUATING_VALUE_COOLING: cooling,
+                },
+            )
+        ],
     )
 
-    assert len(entities_added) == 1
-    entity = entities_added[0]
-
-    assert isinstance(entity, FreeAtHomeClimateEntity)
-    assert not isinstance(entity, FreeAtHomeRadiatorClimateEntity)
-    assert entity.entity_description.key == "RoomTemperatureController"
-    assert entity.unique_id == "ABB7F57FFFE12345_ch0000_climate"
-    assert entity.hvac_modes == [HVACMode.HEAT_COOL, HVACMode.OFF]
+    state = hass.states.get(_entity_id(entity_registry, RTC))
+    assert state.state == HVACMode.HEAT_COOL
+    assert state.attributes[ATTR_HVAC_ACTION] == expected
 
 
-async def test_async_setup_entry_with_radiator_actuator(
-    hass: HomeAssistant, mock_config_entry
+@pytest.mark.parametrize(
+    ("heating_active", "demand", "expected"),
+    [
+        ("0", "0", HVACAction.IDLE),
+        ("1", "0", HVACAction.HEATING),
+        # Some thermostats report a demand without the active flag.
+        ("0", "30", HVACAction.HEATING),
+    ],
+)
+async def test_radiator_hvac_action(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    heating_active: str,
+    demand: str,
+    expected: HVACAction,
 ) -> None:
-    """Test setup with a radiator thermostat."""
-    entities_added = await _setup_entry_for_class(
-        hass, mock_config_entry, RadiatorActuator, _mock_radiator_entity_channel()
+    """Test a radiator thermostat's action follows its heating state."""
+    await setup_with_channels(
+        hass,
+        mock_config_entry,
+        mock_free_at_home_settings,
+        [
+            _build_radiator(
+                build_device(SERIAL),
+                outputs={
+                    Pairing.AL_HEATING_ACTIVE: heating_active,
+                    Pairing.AL_HEATING_DEMAND: demand,
+                },
+            )
+        ],
     )
 
-    assert len(entities_added) == 1
-    entity = entities_added[0]
-
-    assert isinstance(entity, FreeAtHomeRadiatorClimateEntity)
-    assert entity.entity_description.key == "RadiatorActuator"
-    assert entity.entity_description.name == "Hobbyraum"
-    assert entity.unique_id == "ABB7F630796A_ch0000_climate"
-    assert entity.hvac_modes == [HVACMode.HEAT, HVACMode.OFF]
-    assert entity.preset_modes == ["none", "eco"]
+    state = hass.states.get(_entity_id(entity_registry, RADIATOR))
+    assert state.state == HVACMode.HEAT
+    assert state.attributes[ATTR_HVAC_ACTION] == expected
 
 
-def test_radiator_entity_reports_heat_instead_of_heat_cool() -> None:
-    """Test the radiator entity never offers a cooling mode."""
-    channel = _mock_radiator_entity_channel()
-    entity = FreeAtHomeRadiatorClimateEntity(
-        channel, sysap_serial_number="TEST123456", create_subdevices=False
+@pytest.mark.parametrize(
+    "build", [_build_rtc, _build_radiator], ids=["controller", "radiator"]
+)
+async def test_climate_off(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    build: Callable[..., RoomTemperatureController],
+) -> None:
+    """Test a switched off climate entity has no action and no target."""
+    channel = build(
+        build_device(SERIAL),
+        outputs={
+            Pairing.AL_CONTROLLER_ON_OFF: "0",
+            Pairing.AL_STATE_INDICATION: "36",
+        },
+    )
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
     )
 
-    assert entity.hvac_mode == HVACMode.HEAT
-    assert entity.state == HVACMode.HEAT
-    assert entity.hvac_action == HVACAction.IDLE
-
-    channel.heating_active = True
-    assert entity.hvac_action == HVACAction.HEATING
-
-    channel.state = False
-    assert entity.hvac_mode == HVACMode.OFF
-    assert entity.state == HVACMode.OFF
-    assert entity.hvac_action == HVACAction.OFF
-    assert entity.native_target_temperature is None
+    state = hass.states.get(_entity_id(entity_registry, channel.channel_id))
+    assert state.state == HVACMode.OFF
+    assert state.attributes[ATTR_HVAC_ACTION] == HVACAction.OFF
+    assert state.attributes[ATTR_TEMPERATURE] is None
+    assert state.attributes[ATTR_CURRENT_TEMPERATURE] == channel.current_temperature
+    assert state.attributes[ATTR_PRESET_MODE] == "eco"
 
 
-def test_radiator_entity_extra_state_attributes() -> None:
-    """Test the radiator entity reports heating instead of cooling."""
-    channel = _mock_radiator_entity_channel()
-    channel.heating = 42
-    channel.heating_active = True
-    entity = FreeAtHomeRadiatorClimateEntity(
-        channel, sysap_serial_number="TEST123456", create_subdevices=False
+# Each report from the default state, with the state and the attributes it
+# changes. The library reads unreadable temperatures as unknown and an
+# unreadable actuating value or demand as 0.
+RTC_REPORTS = [
+    (
+        Pairing.AL_CONTROLLER_ON_OFF,
+        "0",
+        HVACMode.OFF,
+        {ATTR_HVAC_ACTION: HVACAction.OFF, ATTR_TEMPERATURE: None},
+    ),
+    (Pairing.AL_SET_POINT_TEMPERATURE, "23.5", None, {ATTR_TEMPERATURE: 23.5}),
+    (Pairing.AL_SET_POINT_TEMPERATURE, "", None, {ATTR_TEMPERATURE: None}),
+    (Pairing.AL_MEASURED_TEMPERATURE, "19.8", None, {ATTR_CURRENT_TEMPERATURE: 19.8}),
+    (Pairing.AL_MEASURED_TEMPERATURE, "", None, {ATTR_CURRENT_TEMPERATURE: None}),
+    (
+        Pairing.AL_ACTUATING_VALUE_HEATING,
+        "40",
+        None,
+        {"heating": 40, ATTR_HVAC_ACTION: HVACAction.HEATING},
+    ),
+    # In heating mode, a cooling value is not carried out.
+    (Pairing.AL_ACTUATING_VALUE_COOLING, "60", None, {"cooling": 60}),
+    (Pairing.AL_STATE_INDICATION, "37", None, {ATTR_PRESET_MODE: "eco"}),
+]
+RADIATOR_REPORTS = [
+    (
+        Pairing.AL_CONTROLLER_ON_OFF,
+        "0",
+        HVACMode.OFF,
+        {ATTR_HVAC_ACTION: HVACAction.OFF, ATTR_TEMPERATURE: None},
+    ),
+    (Pairing.AL_SET_POINT_TEMPERATURE, "23.5", None, {ATTR_TEMPERATURE: 23.5}),
+    (Pairing.AL_MEASURED_TEMPERATURE, "19.8", None, {ATTR_CURRENT_TEMPERATURE: 19.8}),
+    (
+        Pairing.AL_HEATING_ACTIVE,
+        "1",
+        None,
+        {"heating_active": True, ATTR_HVAC_ACTION: HVACAction.HEATING},
+    ),
+    (
+        Pairing.AL_HEATING_DEMAND,
+        "55",
+        None,
+        {"heating": 55, "heating_active": True, ATTR_HVAC_ACTION: HVACAction.HEATING},
+    ),
+    (Pairing.AL_STATE_INDICATION, "37", None, {ATTR_PRESET_MODE: "eco"}),
+]
+
+
+@pytest.mark.parametrize(
+    ("build", "pairing", "value", "expected_state", "changes"),
+    [
+        *((_build_rtc, *report) for report in RTC_REPORTS),
+        *((_build_radiator, *report) for report in RADIATOR_REPORTS),
+    ],
+    ids=[
+        *(f"controller-{pairing.name}-{value!r}" for pairing, value, *_ in RTC_REPORTS),
+        *(
+            f"radiator-{pairing.name}-{value!r}"
+            for pairing, value, *_ in RADIATOR_REPORTS
+        ),
+    ],
+)
+async def test_climate_follows_sysap(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    build: Callable[..., RoomTemperatureController],
+    pairing: Pairing,
+    value: str,
+    expected_state: HVACMode | None,
+    changes: dict[str, Any],
+) -> None:
+    """Test a climate entity shows what the SysAP reports without a command."""
+    device = build_device(SERIAL)
+    channel = build(device)
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
     )
+    entity_id = _entity_id(entity_registry, channel.channel_id)
+    before = hass.states.get(entity_id)
 
-    assert entity.extra_state_attributes == {
-        "heating": 42,
-        "heating_active": True,
-    }
+    _report(channel, pairing, value)
+    await hass.async_block_till_done()
+
+    state = hass.states.get(entity_id)
+    assert state.state == (expected_state or before.state)
+    assert state.attributes == {**before.attributes, **changes}
+    device.api.set_datapoint.assert_not_awaited()
 
 
-async def test_radiator_entity_set_hvac_mode() -> None:
-    """Test setting the hvac mode on a radiator entity."""
-    channel = _mock_radiator_entity_channel()
-    entity = FreeAtHomeRadiatorClimateEntity(
-        channel, sysap_serial_number="TEST123456", create_subdevices=False
+async def test_rtc_hvac_action_follows_state_indication(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test a reported state indication alone changes a controller's action."""
+    channel = _build_rtc(
+        build_device(SERIAL),
+        outputs={
+            Pairing.AL_STATE_INDICATION: "65",
+            Pairing.AL_ACTUATING_VALUE_HEATING: "20",
+            Pairing.AL_ACTUATING_VALUE_COOLING: "100",
+        },
     )
-
-    await entity.async_set_hvac_mode(HVACMode.HEAT)
-    channel.turn_on.assert_awaited_once()
-
-    await entity.async_set_hvac_mode(HVACMode.OFF)
-    channel.turn_off.assert_awaited_once()
-
-    # HEAT_COOL is not offered and must not switch the thermostat on
-    channel.turn_on.reset_mock()
-    await entity.async_set_hvac_mode(HVACMode.HEAT_COOL)
-    channel.turn_on.assert_not_awaited()
-
-
-async def test_radiator_entity_registers_heating_active_callback() -> None:
-    """Test the radiator entity subscribes to every channel attribute."""
-    channel = _radiator_channel()
-    entity = FreeAtHomeRadiatorClimateEntity(
-        channel, sysap_serial_number="TEST123456", create_subdevices=False
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
     )
+    entity_id = _entity_id(entity_registry, RTC)
+    assert hass.states.get(entity_id).attributes[ATTR_HVAC_ACTION] == HVACAction.IDLE
 
-    await entity.async_added_to_hass()
-    assert "heating_active" in channel._callbacks
+    for state_indication, expected in (
+        ("33", HVACAction.HEATING),
+        ("1", HVACAction.COOLING),
+        ("97", HVACAction.IDLE),
+    ):
+        _report(channel, Pairing.AL_STATE_INDICATION, state_indication)
+        await hass.async_block_till_done()
+        assert hass.states.get(entity_id).attributes[ATTR_HVAC_ACTION] == expected
 
-    await entity.async_will_remove_from_hass()
-    assert not channel._callbacks["heating_active"]
 
-
-def test_radiator_channel_reads_state_from_outputs() -> None:
-    """Test the channel picks up its state from the free@home outputs."""
-    channel = _radiator_channel(
-        on="1", set_point="21.5", measured="20.42", state_indication="68"
+async def test_radiator_hvac_action_follows_demand(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test a radiator thermostat heats while it reports a demand."""
+    channel = _build_radiator(build_device(SERIAL))
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
     )
+    entity_id = _entity_id(entity_registry, RADIATOR)
 
-    assert channel.state is True
-    assert channel.target_temperature == 21.5
-    assert channel.current_temperature == 20.42
-    assert channel.eco_mode is True
-    assert channel.heating_active is False
-
-
-def test_radiator_channel_heating_state() -> None:
-    """Test the heating state comes from the radiator specific pairings."""
-    channel = _radiator_channel()
-
-    assert channel._refresh_state_from_datapoint(
-        {"pairingID": Pairing.AL_HEATING_ACTIVE.value, "value": "1"}
-    ) == ["heating_active"]
-    assert channel.heating_active is True
+    # The library reads an unreadable demand as 0.
+    for demand, heating, expected in (
+        ("55", 55, HVACAction.HEATING),
+        ("70", 70, HVACAction.HEATING),
+        ("", 0, HVACAction.IDLE),
+    ):
+        _report(channel, Pairing.AL_HEATING_DEMAND, demand)
+        await hass.async_block_till_done()
+        attributes = hass.states.get(entity_id).attributes
+        assert attributes["heating"] == heating
+        assert attributes[ATTR_HVAC_ACTION] == expected
 
 
-def test_radiator_channel_demand_change_notifies_heating_active() -> None:
-    """Test a demand change that flips heating_active reports both attributes.
-
-    The climate entity derives its hvac_action from heating_active and only
-    redraws on that callback. A demand reported without the active flag must
-    therefore fire it too, or the heating indicator goes stale.
-    """
-    channel = _radiator_channel(heating_active="0", heating_demand="0")
-    assert channel.heating_active is False
-
-    assert channel._refresh_state_from_datapoint(
-        {"pairingID": Pairing.AL_HEATING_DEMAND.value, "value": "55"}
-    ) == ["heating", "heating_active"]
-    assert channel.heating == 55
-    assert channel.heating_active is True
-
-    # Still heating, so only the demand itself changed
-    assert channel._refresh_state_from_datapoint(
-        {"pairingID": Pairing.AL_HEATING_DEMAND.value, "value": "70"}
-    ) == ["heating"]
-
-
-def test_radiator_channel_heating_active_falls_back_to_demand() -> None:
-    """Test a demand without an active flag still counts as heating."""
-    channel = _radiator_channel(heating_active="0", heating_demand="30")
-
-    assert channel.heating == 30
-    assert channel.heating_active is True
-
-
-def test_radiator_channel_ignores_unparsable_demand() -> None:
-    """Test a non numeric heating demand does not raise."""
-    channel = _radiator_channel()
-
-    channel._refresh_state_from_datapoint(
-        {"pairingID": Pairing.AL_HEATING_DEMAND.value, "value": ""}
+@pytest.mark.parametrize(
+    ("build", "on_mode"),
+    [(_build_rtc, HVACMode.HEAT_COOL), (_build_radiator, HVACMode.HEAT)],
+    ids=["controller", "radiator"],
+)
+async def test_climate_switch_on_and_off(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    build: Callable[..., RoomTemperatureController],
+    on_mode: HVACMode,
+) -> None:
+    """Test the HVAC modes and turning on and off switch the channel."""
+    device = build_device(SERIAL)
+    channel = build(device)
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
     )
+    entity_id = _entity_id(entity_registry, channel.channel_id)
 
-    assert channel.heating == 0
+    for mode in (on_mode, HVACMode.OFF):
+        await hass.services.async_call(
+            CLIMATE_DOMAIN,
+            SERVICE_SET_HVAC_MODE,
+            {ATTR_ENTITY_ID: entity_id, ATTR_HVAC_MODE: mode},
+            blocking=True,
+        )
+    for service in (SERVICE_TURN_ON, SERVICE_TURN_OFF):
+        await hass.services.async_call(
+            CLIMATE_DOMAIN, service, {ATTR_ENTITY_ID: entity_id}, blocking=True
+        )
 
-
-async def test_radiator_channel_control_datapoints() -> None:
-    """Test the channel writes to the expected free@home datapoints."""
-    channel = _radiator_channel()
-
-    await channel.set_temperature(21.5)
-    await channel.turn_on()
-    await channel.eco_on()
-
-    written = [
-        call.kwargs["datapoint"]
-        for call in channel.device.api.set_datapoint.await_args_list
+    switch_on = _set_datapoint(channel.channel_id, "idp0000", "1")
+    switch_off = _set_datapoint(channel.channel_id, "idp0000", "0")
+    assert device.api.set_datapoint.await_args_list == [
+        switch_on,
+        switch_off,
+        switch_on,
+        switch_off,
     ]
-    assert written == ["idp0009", "idp0005", "idp0004"]
+
+
+@pytest.mark.parametrize(
+    ("build", "unsupported_mode"),
+    [(_build_rtc, HVACMode.HEAT), (_build_radiator, HVACMode.HEAT_COOL)],
+    ids=["controller", "radiator"],
+)
+async def test_climate_rejects_unsupported_hvac_mode(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    build: Callable[..., RoomTemperatureController],
+    unsupported_mode: HVACMode,
+) -> None:
+    """Test a controller only heats and cools, and a radiator only heats."""
+    device = build_device(SERIAL)
+    channel = build(device)
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            CLIMATE_DOMAIN,
+            SERVICE_SET_HVAC_MODE,
+            {
+                ATTR_ENTITY_ID: _entity_id(entity_registry, channel.channel_id),
+                ATTR_HVAC_MODE: unsupported_mode,
+            },
+            blocking=True,
+        )
+    device.api.set_datapoint.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "build", [_build_rtc, _build_radiator], ids=["controller", "radiator"]
+)
+async def test_climate_preset_mode(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    build: Callable[..., RoomTemperatureController],
+) -> None:
+    """Test the eco preset switches the channel's eco mode."""
+    device = build_device(SERIAL)
+    channel = build(device)
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    entity_id = _entity_id(entity_registry, channel.channel_id)
+
+    for preset_mode in ("eco", "none"):
+        await hass.services.async_call(
+            CLIMATE_DOMAIN,
+            SERVICE_SET_PRESET_MODE,
+            {ATTR_ENTITY_ID: entity_id, ATTR_PRESET_MODE: preset_mode},
+            blocking=True,
+        )
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            CLIMATE_DOMAIN,
+            SERVICE_SET_PRESET_MODE,
+            {ATTR_ENTITY_ID: entity_id, ATTR_PRESET_MODE: "away"},
+            blocking=True,
+        )
+
+    assert device.api.set_datapoint.await_args_list == [
+        _set_datapoint(channel.channel_id, "idp0001", "1"),
+        _set_datapoint(channel.channel_id, "idp0001", "0"),
+    ]
+
+
+@pytest.mark.parametrize(
+    "build", [_build_rtc, _build_radiator], ids=["controller", "radiator"]
+)
+async def test_climate_set_temperature(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    build: Callable[..., RoomTemperatureController],
+) -> None:
+    """Test setting a target temperature from 7 to 35 °C."""
+    device = build_device(SERIAL)
+    channel = build(device)
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    entity_id = _entity_id(entity_registry, channel.channel_id)
+
+    for temperature in (7, 22.5, 35):
+        await hass.services.async_call(
+            CLIMATE_DOMAIN,
+            SERVICE_SET_TEMPERATURE,
+            {ATTR_ENTITY_ID: entity_id, ATTR_TEMPERATURE: temperature},
+            blocking=True,
+        )
+    for temperature in (6.5, 35.5):
+        with pytest.raises(ServiceValidationError):
+            await hass.services.async_call(
+                CLIMATE_DOMAIN,
+                SERVICE_SET_TEMPERATURE,
+                {ATTR_ENTITY_ID: entity_id, ATTR_TEMPERATURE: temperature},
+                blocking=True,
+            )
+
+    # The library clamps to the same range and sends its lower bound as 7.
+    assert device.api.set_datapoint.await_args_list == [
+        _set_datapoint(channel.channel_id, "idp0002", value)
+        for value in ("7", "22.5", "35.0")
+    ]
+
+
+@pytest.mark.parametrize(
+    ("unit_system", "current_temperature", "target_temperature", "set_temperature"),
+    [(METRIC_SYSTEM, 21.3, 21.5, 22.5), (US_CUSTOMARY_SYSTEM, 70, 71, 72.5)],
+    ids=["metric", "us_customary"],
+)
+async def test_climate_temperature_unit_conversion(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    unit_system: UnitSystem,
+    current_temperature: float,
+    target_temperature: float,
+    set_temperature: float,
+) -> None:
+    """Test Home Assistant converts temperatures from and to Celsius."""
+    hass.config.units = unit_system
+    device = build_device(SERIAL)
+    await setup_with_channels(
+        hass,
+        mock_config_entry,
+        mock_free_at_home_settings,
+        [_build_rtc(device, outputs={Pairing.AL_SET_POINT_TEMPERATURE: "21.5"})],
+    )
+    entity_id = _entity_id(entity_registry, RTC)
+
+    attributes = hass.states.get(entity_id).attributes
+    assert attributes[ATTR_CURRENT_TEMPERATURE] == current_temperature
+    assert attributes[ATTR_TEMPERATURE] == target_temperature
+
+    await hass.services.async_call(
+        CLIMATE_DOMAIN,
+        SERVICE_SET_TEMPERATURE,
+        {ATTR_ENTITY_ID: entity_id, ATTR_TEMPERATURE: set_temperature},
+        blocking=True,
+    )
+    device.api.set_datapoint.assert_awaited_once_with(
+        device_serial=SERIAL, channel_id=RTC, datapoint="idp0002", value="22.5"
+    )
+
+
+async def test_climate_update_entity(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test updating a climate entity refreshes its state from the SysAP."""
+    assert await async_setup_component(hass, HOMEASSISTANT_DOMAIN, {})
+    device = build_device(SERIAL)
+    channel = _build_rtc(device)
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    entity_id = _entity_id(entity_registry, RTC)
+    values = {
+        channel.get_output_by_pairing(pairing)[0]: value
+        for pairing, value in {
+            Pairing.AL_CONTROLLER_ON_OFF: "1",
+            Pairing.AL_SET_POINT_TEMPERATURE: "23",
+            Pairing.AL_MEASURED_TEMPERATURE: "22.4",
+            Pairing.AL_STATE_INDICATION: "1",
+            Pairing.AL_ACTUATING_VALUE_HEATING: "0",
+            Pairing.AL_ACTUATING_VALUE_COOLING: "60",
+        }.items()
+    }
+    device.api.get_datapoint.side_effect = lambda **kwargs: [
+        values[kwargs["datapoint"]]
+    ]
+
+    await hass.services.async_call(
+        HOMEASSISTANT_DOMAIN,
+        SERVICE_UPDATE_ENTITY,
+        {ATTR_ENTITY_ID: entity_id},
+        blocking=True,
+    )
+
+    attributes = hass.states.get(entity_id).attributes
+    assert attributes[ATTR_TEMPERATURE] == 23
+    assert attributes[ATTR_CURRENT_TEMPERATURE] == 22.4
+    assert attributes["cooling"] == 60
+    assert attributes[ATTR_HVAC_ACTION] == HVACAction.COOLING
+    assert sorted(
+        call.kwargs["datapoint"] for call in device.api.get_datapoint.await_args_list
+    ) == sorted(values)
+
+
+async def test_climate_removes_callbacks_on_unload(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test unloaded climate entities no longer follow their channels."""
+    device = build_device(SERIAL)
+    rtc = _build_rtc(device)
+    radiator = _build_radiator(device)
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [rtc, radiator]
+    )
+    entity_ids = [
+        _entity_id(entity_registry, channel_id) for channel_id in (RTC, RADIATOR)
+    ]
+
+    assert await hass.config_entries.async_unload(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+    states = [hass.states.get(entity_id) for entity_id in entity_ids]
+
+    for channel in (rtc, radiator):
+        _report(channel, Pairing.AL_CONTROLLER_ON_OFF, "0")
+    await hass.async_block_till_done()
+    assert [hass.states.get(entity_id) for entity_id in entity_ids] == states
+    common = ["state", "current_temperature", "heating", "cooling"]
+    common += ["target_temperature", "eco_mode"]
+    assert rtc._callbacks == dict.fromkeys(
+        [*common, "heating_mode", "heating_cooling_active"], set()
+    )
+    assert radiator._callbacks == dict.fromkeys([*common, "heating_active"], set())
+
+
+@pytest.mark.parametrize(
+    ("create_subdevices", "multi_device_identifier"),
+    [
+        (False, (DOMAIN, SERIAL)),
+        (True, (DOMAIN, f"{SERIAL}_{RTC}")),
+    ],
+)
+async def test_climate_device(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    device_registry: dr.DeviceRegistry,
+    create_subdevices: bool,
+    multi_device_identifier: tuple[str, str],
+) -> None:
+    """Test a climate entity of a multi-channel device belongs to a subdevice."""
+    entry = MockConfigEntry(
+        version=mock_config_entry.version,
+        minor_version=mock_config_entry.minor_version,
+        domain=DOMAIN,
+        title=mock_config_entry.title,
+        data={**mock_config_entry.data, CONF_CREATE_SUBDEVICES: create_subdevices},
+        source=mock_config_entry.source,
+        unique_id=mock_config_entry.unique_id,
+    )
+    # A device without a room and with several channels is a multi-device.
+    multi_device = build_device(SERIAL)
+    multi_channel = _build_rtc(multi_device)
+    _build_rtc(multi_device, "ch0001")
+    assert multi_device.is_multi_device
+    single_device = build_device("ABB700000002")
+    single_channel = _build_radiator(single_device, RTC)
+    assert not single_device.is_multi_device
+
+    await setup_with_channels(
+        hass, entry, mock_free_at_home_settings, [multi_channel, single_channel]
+    )
+
+    def device_identifiers(unique_id: str) -> set[tuple[str, str]]:
+        """Return the identifiers of the device of a climate entity."""
+        entity_id = entity_registry.async_get_entity_id(
+            CLIMATE_DOMAIN, DOMAIN, unique_id
+        )
+        entity_entry = entity_registry.async_get(entity_id)
+        return device_registry.async_get(entity_entry.device_id).identifiers
+
+    assert device_identifiers(f"{SERIAL}_{RTC}_climate") == {multi_device_identifier}
+    assert device_identifiers(f"ABB700000002_{RTC}_climate") == {
+        (DOMAIN, "ABB700000002")
+    }
+
+
+# compat: homeassistant<2026.11 - native_* temperature properties replaced the legacy names
+@pytest.mark.parametrize("native_api", [False, True])
+def test_temperature_api_compatibility(
+    monkeypatch: pytest.MonkeyPatch, native_api: bool
+) -> None:
+    """Expose legacy aliases only when HA lacks the native temperature API.
+
+    Each Home Assistant release takes only one branch, so the module is run
+    again with and without the native API, and the entity is built directly.
+    """
+    properties = ("temperature_unit", "current_temperature", "target_temperature")
+    for name in properties:
+        if native_api:
+            monkeypatch.setattr(
+                ClimateEntity,
+                f"native_{name}",
+                property(lambda self: None),
+                raising=False,
+            )
+        else:
+            monkeypatch.delattr(ClimateEntity, f"native_{name}", raising=False)
+
+    platform = run_path(climate_platform.__file__, run_name=climate_platform.__name__)
+    base_class = platform["FreeAtHomeClimateEntity"]
+    channel = _build_rtc(build_device(SERIAL))
+    entity = base_class(
+        channel, sysap_serial_number="TEST123456", create_subdevices=False
+    )
+
+    for name in properties:
+        assert (name in base_class.__dict__) is not native_api
+    if native_api:
+        return
+    assert entity.temperature_unit == UnitOfTemperature.CELSIUS
+    assert entity.current_temperature == 21.3
+    assert entity.target_temperature == 21.0
+
+    _report(channel, Pairing.AL_CONTROLLER_ON_OFF, "0")
+    assert entity.target_temperature is None
 
 
 def test_library_maps_the_radiator_function() -> None:
@@ -358,361 +833,3 @@ def test_library_maps_the_radiator_function() -> None:
         FUNCTION_CHANNEL_MAPPING[Function.FID_RADIATOR_ACTUATOR_MASTER]
         is RadiatorActuator
     )
-
-
-def _mock_rtc_channel() -> MagicMock:
-    """Build a mocked room temperature controller channel."""
-    channel = MagicMock(spec=RoomTemperatureController)
-    channel.channel_name = "Wohnzimmer"
-    channel.channel_id = "ch0000"
-    channel.device_serial = "ABB7F57FFFE12345"
-    channel.device_name = "Wohnzimmer RTC"
-    channel.room_name = "Wohnzimmer"
-    channel.device.is_multi_device = False
-    channel.device.device_id = "1234"
-    channel.device.unresponsive = False
-    channel.state = True
-    channel.current_temperature = 21.3
-    channel.target_temperature = 21.0
-    channel.eco_mode = False
-    channel.heating = 0
-    channel.cooling = 0
-    channel.heating_mode = None
-    channel.heating_cooling_active = None
-    channel.turn_on = AsyncMock()
-    channel.turn_off = AsyncMock()
-    channel.eco_on = AsyncMock()
-    channel.eco_off = AsyncMock()
-    channel.set_temperature = AsyncMock()
-    channel.refresh_state = AsyncMock()
-
-    return channel
-
-
-def _rtc_entity(channel, *, create_subdevices: bool = False) -> FreeAtHomeClimateEntity:
-    """Build a room temperature controller entity."""
-    return FreeAtHomeClimateEntity(
-        channel,
-        sysap_serial_number="TEST123456",
-        create_subdevices=create_subdevices,
-    )
-
-
-def test_rtc_entity_static_properties() -> None:
-    """Test the fixed properties of the room temperature controller entity."""
-    entity = _rtc_entity(_mock_rtc_channel())
-
-    assert entity.native_temperature_unit == UnitOfTemperature.CELSIUS
-    assert entity.target_temperature_step == 0.5
-    assert entity.min_temp == 7.0
-    assert entity.max_temp == 35.0
-    assert entity.native_current_temperature == 21.3
-    assert entity.supported_features == (
-        ClimateEntityFeature.TARGET_TEMPERATURE
-        | ClimateEntityFeature.PRESET_MODE
-        | ClimateEntityFeature.TURN_OFF
-        | ClimateEntityFeature.TURN_ON
-    )
-    assert entity.extra_state_attributes == {"heating": 0, "cooling": 0}
-
-
-def test_rtc_entity_device_info() -> None:
-    """Test a single channel device is linked to the device itself."""
-    entity = _rtc_entity(_mock_rtc_channel())
-
-    assert entity.device_info == {"identifiers": {(DOMAIN, "ABB7F57FFFE12345")}}
-
-
-def test_rtc_entity_device_info_with_subdevices() -> None:
-    """Test a multi channel device gets a sub device per channel."""
-    channel = _mock_rtc_channel()
-    channel.device.is_multi_device = True
-    entity = _rtc_entity(channel, create_subdevices=True)
-    entity.platform = MagicMock()
-
-    with patch(
-        "custom_components.abbfreeathome_ci.climate.async_get_sub_device_info"
-    ) as mock_sub_device_info:
-        device_info = entity.device_info
-
-    mock_sub_device_info.assert_called_once_with(
-        entity.hass, entity.platform.config_entry.entry_id, channel
-    )
-    assert device_info is mock_sub_device_info.return_value
-
-
-def test_rtc_entity_hvac_mode_and_state() -> None:
-    """Test the controller reports HEAT_COOL when on and OFF when off."""
-    channel = _mock_rtc_channel()
-    entity = _rtc_entity(channel)
-
-    assert entity.hvac_mode == HVACMode.HEAT_COOL
-    assert entity.state == HVACMode.HEAT_COOL
-    assert entity.native_target_temperature == 21.0
-
-    channel.state = False
-    assert entity.hvac_mode == HVACMode.OFF
-    assert entity.state == HVACMode.OFF
-    assert entity.native_target_temperature is None
-
-
-def test_rtc_entity_hvac_action() -> None:
-    """Test the action follows the heating and cooling actuating values."""
-    channel = _mock_rtc_channel()
-    entity = _rtc_entity(channel)
-
-    assert entity.hvac_action == HVACAction.IDLE
-
-    channel.heating = 40
-    assert entity.hvac_action == HVACAction.HEATING
-
-    channel.heating = 0
-    channel.cooling = 40
-    assert entity.hvac_action == HVACAction.COOLING
-
-    channel.state = False
-    assert entity.hvac_action == HVACAction.OFF
-
-
-@pytest.mark.parametrize(
-    ("heating_mode", "active", "heating", "cooling", "expected"),
-    [
-        # Heating mode, room too warm: the cooling value is not carried out.
-        (False, False, 0, 100, HVACAction.IDLE),
-        (True, False, 0, 100, HVACAction.IDLE),
-        (True, True, 18, 0, HVACAction.HEATING),
-        (True, True, 0, 0, HVACAction.IDLE),
-        (False, True, 0, 100, HVACAction.COOLING),
-        (False, True, 0, 0, HVACAction.IDLE),
-        # The indicated mode wins over a larger opposite actuating value.
-        (True, True, 10, 100, HVACAction.HEATING),
-        (False, True, 100, 10, HVACAction.COOLING),
-    ],
-)
-def test_rtc_entity_hvac_action_from_state_indication(
-    heating_mode: bool,
-    active: bool,
-    heating: int,
-    cooling: int,
-    expected: HVACAction,
-) -> None:
-    """Test the action honours the indicated heating/cooling mode and activity."""
-    channel = _mock_rtc_channel()
-    channel.heating_mode = heating_mode
-    channel.heating_cooling_active = active
-    channel.heating = heating
-    channel.cooling = cooling
-    entity = _rtc_entity(channel)
-
-    assert entity.hvac_action == expected
-
-
-async def test_rtc_entity_hvac_action_follows_state_indication_updates(
-    hass: HomeAssistant, mock_config_entry
-) -> None:
-    """Test a state indication push updates the action without a value update."""
-    device = MagicMock(unresponsive=False, device_serial="ABB7F57FFFE12345")
-    channel = RoomTemperatureController(
-        device=device,
-        channel_id="ch0000",
-        channel_name="RT Andi",
-        inputs={},
-        outputs={
-            "odp0000": {
-                "pairingID": Pairing.AL_ACTUATING_VALUE_HEATING.value,
-                "value": "20",
-            },
-            "odp0001": {
-                "pairingID": Pairing.AL_ACTUATING_VALUE_COOLING.value,
-                "value": "100",
-            },
-            "odp0008": {"pairingID": Pairing.AL_CONTROLLER_ON_OFF.value, "value": "1"},
-            "odp0009": {"pairingID": Pairing.AL_STATE_INDICATION.value, "value": "65"},
-        },
-        parameters={},
-    )
-    entity = _rtc_entity(channel)
-    entity.entity_id = "climate.rt_andi"
-
-    mock_config_entry.add_to_hass(hass)
-    await async_setup_entity_platform(hass, mock_config_entry, "climate", [entity])
-    assert hass.states.get(entity.entity_id).attributes["hvac_action"] == "idle"
-
-    channel.update_channel("AL_STATE_INDICATION/odp0009", "33")
-    assert hass.states.get(entity.entity_id).attributes["hvac_action"] == "heating"
-
-    channel.update_channel("AL_STATE_INDICATION/odp0009", "1")
-    assert hass.states.get(entity.entity_id).attributes["hvac_action"] == "cooling"
-
-
-def test_rtc_entity_preset_mode() -> None:
-    """Test the preset follows the channel's eco mode."""
-    channel = _mock_rtc_channel()
-    entity = _rtc_entity(channel)
-
-    assert entity.preset_modes == ["none", "eco"]
-    assert entity.preset_mode is None
-
-    channel.eco_mode = True
-    assert entity.preset_mode == "eco"
-
-
-async def test_rtc_entity_set_hvac_mode() -> None:
-    """Test setting the hvac mode switches the controller."""
-    channel = _mock_rtc_channel()
-    entity = _rtc_entity(channel)
-
-    await entity.async_set_hvac_mode(HVACMode.HEAT_COOL)
-    channel.turn_on.assert_awaited_once()
-
-    await entity.async_set_hvac_mode(HVACMode.OFF)
-    channel.turn_off.assert_awaited_once()
-
-    # HEAT is not offered by the controller and must not switch it on
-    channel.turn_on.reset_mock()
-    await entity.async_set_hvac_mode(HVACMode.HEAT)
-    channel.turn_on.assert_not_awaited()
-
-
-async def test_rtc_entity_turn_on_and_off() -> None:
-    """Test turning the controller on and off."""
-    channel = _mock_rtc_channel()
-    entity = _rtc_entity(channel)
-
-    await entity.async_turn_on()
-    channel.turn_on.assert_awaited_once()
-
-    await entity.async_turn_off()
-    channel.turn_off.assert_awaited_once()
-
-
-async def test_rtc_entity_set_preset_mode() -> None:
-    """Test the eco preset toggles the channel's eco mode."""
-    channel = _mock_rtc_channel()
-    entity = _rtc_entity(channel)
-
-    await entity.async_set_preset_mode("eco")
-    channel.eco_on.assert_awaited_once()
-
-    await entity.async_set_preset_mode("none")
-    channel.eco_off.assert_awaited_once()
-
-
-async def test_rtc_entity_set_temperature() -> None:
-    """Test setting the target temperature."""
-    channel = _mock_rtc_channel()
-    entity = _rtc_entity(channel)
-
-    await entity.async_set_temperature(**{ATTR_TEMPERATURE: 22.5})
-
-    channel.set_temperature.assert_awaited_once_with(22.5)
-
-
-async def test_rtc_entity_update() -> None:
-    """Test a manual update refreshes the channel state."""
-    channel = _mock_rtc_channel()
-    entity = _rtc_entity(channel)
-
-    await entity.async_update()
-
-    channel.refresh_state.assert_awaited_once()
-
-
-# compat: homeassistant<2026.11 - native_* temperature properties replaced the legacy names
-@pytest.mark.parametrize("native_api", [False, True])
-@pytest.mark.parametrize(
-    ("entity_class", "channel_factory"),
-    [
-        ("FreeAtHomeClimateEntity", _mock_rtc_channel),
-        ("FreeAtHomeRadiatorClimateEntity", _mock_radiator_entity_channel),
-    ],
-)
-def test_temperature_api_compatibility(
-    monkeypatch, native_api, entity_class, channel_factory
-) -> None:
-    """Expose legacy aliases only when HA lacks the native temperature API."""
-    properties = (
-        "temperature_unit",
-        "current_temperature",
-        "target_temperature",
-    )
-    for name in properties:
-        if native_api:
-            monkeypatch.setattr(
-                ClimateEntity,
-                f"native_{name}",
-                property(lambda self: None),
-                raising=False,
-            )
-        else:
-            monkeypatch.delattr(ClimateEntity, f"native_{name}", raising=False)
-
-    platform = run_path(climate_platform.__file__, run_name=climate_platform.__name__)
-    channel = channel_factory()
-    entity = platform[entity_class](
-        channel, sysap_serial_number="TEST123456", create_subdevices=False
-    )
-    base_class = platform["FreeAtHomeClimateEntity"]
-
-    for name in properties:
-        assert (name in base_class.__dict__) is not native_api
-        if not native_api:
-            assert getattr(entity, name) == getattr(entity, f"native_{name}")
-
-    assert entity.native_temperature_unit == UnitOfTemperature.CELSIUS
-    assert entity.native_current_temperature == channel.current_temperature
-    assert entity.native_target_temperature == channel.target_temperature
-
-    channel.current_temperature = 19.5
-    channel.target_temperature = 22.5
-    assert entity.native_current_temperature == 19.5
-    assert entity.native_target_temperature == 22.5
-    if not native_api:
-        assert entity.current_temperature == 19.5
-        assert entity.target_temperature == 22.5
-
-    channel.state = False
-    assert entity.native_target_temperature is None
-    if not native_api:
-        assert entity.target_temperature is None
-
-    channel.current_temperature = None
-    assert entity.native_current_temperature is None
-
-
-@pytest.mark.parametrize(
-    ("unit_system", "current_temperature", "target_temperature"),
-    [(METRIC_SYSTEM, 21.3, 21.0), (US_CUSTOMARY_SYSTEM, 70.3, 69.8)],
-)
-async def test_temperature_state_and_service_unit_conversion(
-    hass: HomeAssistant,
-    mock_config_entry,
-    unit_system,
-    current_temperature,
-    target_temperature,
-) -> None:
-    """Keep display and service temperature conversion working on older HA."""
-    channel = _mock_rtc_channel()
-    entity = _rtc_entity(channel)
-    entity.entity_id = "climate.test_controller"
-    entity._attr_precision = 0.1
-    hass.config.units = unit_system
-
-    assert await async_setup_component(hass, "climate", {})
-    mock_config_entry.add_to_hass(hass)
-    await async_setup_entity_platform(hass, mock_config_entry, "climate", [entity])
-    state = hass.states.get(entity.entity_id)
-    assert state.attributes["current_temperature"] == current_temperature
-    assert state.attributes[ATTR_TEMPERATURE] == target_temperature
-
-    await hass.services.async_call(
-        "climate",
-        "set_temperature",
-        {"entity_id": entity.entity_id, ATTR_TEMPERATURE: target_temperature},
-        blocking=True,
-    )
-    channel.set_temperature.assert_awaited_once_with(pytest.approx(21.0))
-
-    channel.state = False
-    entity.async_write_ha_state()
-    assert hass.states.get(entity.entity_id).attributes[ATTR_TEMPERATURE] is None

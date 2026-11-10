@@ -1,0 +1,109 @@
+# serializer version: 1
+# name: test_climate_entities[ABB700000001_ch0000_climate]
+  dict({
+    'attributes': dict({
+      'cooling': 0,
+      'current_temperature': 21.3,
+      'friendly_name': 'Runtime Device RoomTemperatureController ch0000',
+      'heating': 0,
+      'hvac_action': <HVACAction.IDLE: 'idle'>,
+      'hvac_modes': list([
+        <HVACMode.HEAT_COOL: 'heat_cool'>,
+        <HVACMode.OFF: 'off'>,
+      ]),
+      'max_temp': 35.0,
+      'min_temp': 7.0,
+      'preset_mode': None,
+      'preset_modes': list([
+        'none',
+        'eco',
+      ]),
+      'supported_features': <ClimateEntityFeature: 401>,
+      'target_temp_step': 0.5,
+      'temperature': 21.0,
+    }),
+    'capabilities': dict({
+      'hvac_modes': list([
+        <HVACMode.HEAT_COOL: 'heat_cool'>,
+        <HVACMode.OFF: 'off'>,
+      ]),
+      'max_temp': 35.0,
+      'min_temp': 7.0,
+      'preset_modes': list([
+        'none',
+        'eco',
+      ]),
+      'target_temp_step': 0.5,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'climate',
+    'entity_category': None,
+    'has_entity_name': False,
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'RoomTemperatureController ch0000',
+    'state': 'heat_cool',
+    'supported_features': <ClimateEntityFeature: 401>,
+    'translation_key': None,
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_climate_entities[ABB700000001_ch0001_climate]
+  dict({
+    'attributes': dict({
+      'current_temperature': 20.4,
+      'friendly_name': 'Runtime Device RadiatorActuator ch0001',
+      'heating': 0,
+      'heating_active': False,
+      'hvac_action': <HVACAction.IDLE: 'idle'>,
+      'hvac_modes': list([
+        <HVACMode.HEAT: 'heat'>,
+        <HVACMode.OFF: 'off'>,
+      ]),
+      'max_temp': 35.0,
+      'min_temp': 7.0,
+      'preset_mode': None,
+      'preset_modes': list([
+        'none',
+        'eco',
+      ]),
+      'supported_features': <ClimateEntityFeature: 401>,
+      'target_temp_step': 0.5,
+      'temperature': 21.5,
+    }),
+    'capabilities': dict({
+      'hvac_modes': list([
+        <HVACMode.HEAT: 'heat'>,
+        <HVACMode.OFF: 'off'>,
+      ]),
+      'max_temp': 35.0,
+      'min_temp': 7.0,
+      'preset_modes': list([
+        'none',
+        'eco',
+      ]),
+      'target_temp_step': 0.5,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'climate',
+    'entity_category': None,
+    'has_entity_name': False,
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'RadiatorActuator ch0001',
+    'state': 'heat',
+    'supported_features': <ClimateEntityFeature: 401>,
+    'translation_key': None,
+    'unit_of_measurement': None,
+  })
+# ---
