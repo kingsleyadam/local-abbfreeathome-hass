@@ -411,6 +411,10 @@ async def test_sensor_update_entity(
             ClientConnectionError("http://sysap"),
             id="sysap_unreachable",
         ),
+        # aiohttp raises its total request timeout as plain TimeoutError.
+        pytest.param(
+            SENSOR_CASES["WindSensorSpeed"].outputs, TimeoutError(), id="timeout"
+        ),
         # The library also reads the wind alarm when it refreshes the channel.
         pytest.param(
             {Pairing.AL_WIND_SPEED: "5", Pairing.AL_WIND_FORCE: "3"},

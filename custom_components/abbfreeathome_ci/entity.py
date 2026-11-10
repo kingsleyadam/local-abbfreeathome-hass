@@ -145,11 +145,17 @@ class FreeAtHomeEntity(Entity):
         """Refresh the channel's values from the SysAP.
 
         Library errors, such as an unreachable SysAP or a datapoint the channel
-        lacks, are logged as a warning without a traceback.
+        lacks, and request timeouts are logged as a warning without a traceback.
         """
         try:
             await self._channel.refresh_state()
         except FreeAtHomeException as err:
             _LOGGER.warning(
                 "Could not refresh %s from the SysAP: %s", self.entity_id, err
+            )
+        except TimeoutError:
+            # aiohttp raises its total request timeout as plain TimeoutError.
+            _LOGGER.warning(
+                "Could not refresh %s from the SysAP: request timed out",
+                self.entity_id,
             )
