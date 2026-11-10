@@ -402,6 +402,14 @@ class FreeAtHomeSensorEntity(FreeAtHomeEntity, SensorEntity):
             callback_attribute=self._value_attribute, callback=self.async_write_ha_state
         )
 
+    async def async_update(self) -> None:
+        """Refresh the channel's values from the SysAP.
+
+        The entity does not poll, so this runs only when the entity is updated
+        on request, such as with the homeassistant.update_entity action.
+        """
+        await self._async_refresh_channel()
+
     @property
     def device_info(self) -> AnyDeviceInfo:
         """Information about this entity/device."""

@@ -245,6 +245,44 @@ are re-created five minutes after startup if the device is still unresponsive.
 The option is disabled by default and can be changed at any time via
 **Reconfigure** on the integration.
 
+### Refreshing Entities on Request
+
+Entities don't poll; the SysAP pushes every change over its WebSocket. To read
+the current values from the SysAP instead, call the
+`homeassistant.update_entity` action for the entity. This works for lights,
+switches, climate entities, valves, locks, numbers, sensors, and binary
+sensors.
+
+A refresh reads all datapoints of the entity's channel, but only the entities
+named in the action show the new values right away. If a sensor or binary
+sensor cannot be refreshed, for example while the SysAP is unreachable, the
+integration logs a warning.
+
+#### Wind Speed of the Weather Station
+
+After a short time, the SysAP stops pushing the wind speed of the free@home
+weather station; it pushes it again only while the free@home app is open
+([#138](https://github.com/kingsleyadam/local-abbfreeathome-hass/issues/138)).
+Wind force and the wind alarm are not affected. The SysAP still has the
+current wind speed, so an automation can read it periodically. Replace the
+entity ID with that of your wind speed sensor:
+
+```yaml
+alias: Refresh wind speed
+description: The SysAP does not push wind speed changes, so read them.
+triggers:
+  - trigger: time_pattern
+    minutes: /1
+actions:
+  - action: homeassistant.update_entity
+    target:
+      entity_id: sensor.weather_station_wind_speed
+mode: single
+```
+
+Each refresh sends three requests to the SysAP (wind speed, wind alarm, and
+wind force), so refresh only as often as you need.
+
 ## Device and Channel Parameters
 
 By default, each physical device with included channels and at least one parameter
