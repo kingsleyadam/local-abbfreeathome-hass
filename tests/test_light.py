@@ -522,6 +522,48 @@ async def test_virtual_light_publishes_state(
     assert state.attributes.get(ATTR_BRIGHTNESS) == expected_brightness
 
 
+@pytest.mark.parametrize(
+    ("service", "data", "state"),
+    [
+        (SERVICE_TURN_ON, {}, STATE_OFF),
+        (SERVICE_TURN_OFF, {}, STATE_ON),
+        (SERVICE_TURN_ON, {ATTR_BRIGHTNESS: 255}, STATE_OFF),
+    ],
+    ids=["on", "off", "brightness"],
+)
+async def test_virtual_light_publish_fails(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    service: str,
+    data: dict[str, Any],
+    state: str,
+) -> None:
+    """Test a virtual dimmer keeps its state when publishing it fails."""
+    device = build_device(SERIAL)
+    channel = _build_virtual_dimmer(
+        device, outputs={Pairing.AL_INFO_ON_OFF: "1" if state == STATE_ON else "0"}
+    )
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    entity_id = _entity_id(entity_registry, VIRTUAL)
+    before = hass.states.get(entity_id)
+    device.api.set_datapoint.side_effect = OSError("Disconnected")
+
+    with pytest.raises(OSError, match="Disconnected"):
+        await hass.services.async_call(
+            LIGHT_DOMAIN, service, {ATTR_ENTITY_ID: entity_id, **data}, blocking=True
+        )
+
+    assert hass.states.get(entity_id) == before
+    assert before.state == state
+    # A failed brightness does not go on to switch the dimmer on.
+    device.api.set_datapoint.assert_awaited_once()
+    assert channel.brightness == 25
+
+
 async def test_color_temperature_on_light_without_it() -> None:
     """Test a light without the color temperature mode ignores one.
 
