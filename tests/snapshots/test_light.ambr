@@ -1,0 +1,121 @@
+# serializer version: 1
+# name: test_light_entities[ABB700000001_ch0000_light]
+  dict({
+    'attributes': dict({
+      'brightness': 128,
+      'color_mode': <ColorMode.BRIGHTNESS: 'brightness'>,
+      'friendly_name': 'Runtime Device DimmingActuator ch0000',
+      'supported_color_modes': list([
+        <ColorMode.BRIGHTNESS: 'brightness'>,
+      ]),
+      'supported_features': <LightEntityFeature: 0>,
+    }),
+    'capabilities': dict({
+      'supported_color_modes': list([
+        <ColorMode.BRIGHTNESS: 'brightness'>,
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'light',
+    'entity_category': None,
+    'has_entity_name': False,
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'DimmingActuator ch0000',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': None,
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_light_entities[ABB700000001_ch0001_light]
+  dict({
+    'attributes': dict({
+      'brightness': 204,
+      'color_mode': <ColorMode.COLOR_TEMP: 'color_temp'>,
+      'color_temp_kelvin': 4600.0,
+      'friendly_name': 'Runtime Device ColorTemperatureActuator ch0001',
+      'hs_color': tuple(
+        26.749,
+        24.966,
+      ),
+      'max_color_temp_kelvin': 6535,
+      'min_color_temp_kelvin': 2000,
+      'rgb_color': tuple(
+        255,
+        220,
+        191,
+      ),
+      'supported_color_modes': list([
+        <ColorMode.COLOR_TEMP: 'color_temp'>,
+      ]),
+      'supported_features': <LightEntityFeature: 0>,
+      'xy_color': tuple(
+        0.388,
+        0.356,
+      ),
+    }),
+    'capabilities': dict({
+      'max_color_temp_kelvin': 6535,
+      'min_color_temp_kelvin': 2000,
+      'supported_color_modes': list([
+        <ColorMode.COLOR_TEMP: 'color_temp'>,
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'light',
+    'entity_category': None,
+    'has_entity_name': False,
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'ColorTemperatureActuator ch0001',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': None,
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_light_entities[ABB700000001_ch0002_light]
+  dict({
+    'attributes': dict({
+      'brightness': 64,
+      'color_mode': <ColorMode.BRIGHTNESS: 'brightness'>,
+      'friendly_name': 'Runtime Device VirtualDimmingActuator ch0002',
+      'supported_color_modes': list([
+        <ColorMode.BRIGHTNESS: 'brightness'>,
+      ]),
+      'supported_features': <LightEntityFeature: 0>,
+    }),
+    'capabilities': dict({
+      'supported_color_modes': list([
+        <ColorMode.BRIGHTNESS: 'brightness'>,
+      ]),
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'light',
+    'entity_category': None,
+    'has_entity_name': False,
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'VirtualDimmingActuator ch0002',
+    'state': 'on',
+    'supported_features': 0,
+    'translation_key': None,
+    'unit_of_measurement': None,
+  })
+# ---
