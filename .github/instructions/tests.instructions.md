@@ -84,9 +84,6 @@ Platform tests:
 - Mock only what cannot be real, such as the SysAP connection. Instantiate an
   entity directly only for a branch Home Assistant cannot reach, and say why in
   the test's docstring.
-- Older platform tests still build `Mock` channels and instantiate entities
-  directly, or use `async_setup_entity_platform()`; convert them to this
-  pattern when touching them.
 
 Other patterns:
 
