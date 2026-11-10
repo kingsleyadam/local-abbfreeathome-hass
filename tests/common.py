@@ -276,6 +276,8 @@ def snapshot_entities(
         assert state, f"State not found for {entity_entry.entity_id}"
         device_entry = device_registry.async_get(entity_entry.device_id)
         attributes = _str_keys(state.attributes)
+        # compat: homeassistant<2026.11 - climate entities report Home Assistant's temperature unit
+        attributes.pop("temperature_unit", None)
         if ATTR_UNIT_OF_MEASUREMENT in attributes:
             attributes[ATTR_UNIT_OF_MEASUREMENT] = _str_unit(
                 attributes[ATTR_UNIT_OF_MEASUREMENT]
