@@ -1,0 +1,113 @@
+# serializer version: 1
+# name: test_valve_entities[ABB700000001_ch0000_valve]
+  dict({
+    'attributes': dict({
+      'current_position': 30,
+      'device_class': 'water',
+      'friendly_name': 'Runtime Device Heating Valve',
+      'is_closed': False,
+      'supported_features': <ValveEntityFeature: 4>,
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'valve',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <ValveDeviceClass.WATER: 'water'>,
+    'original_icon': None,
+    'original_name': 'Heating Valve',
+    'state': 'open',
+    'supported_features': <ValveEntityFeature: 4>,
+    'translation_key': 'heating_actuator',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_valve_entities[ABB700000001_ch0001_CoolingActuatorValve]
+  dict({
+    'attributes': dict({
+      'current_position': 60,
+      'device_class': 'water',
+      'friendly_name': 'Runtime Device Cooling Valve',
+      'is_closed': False,
+      'supported_features': <ValveEntityFeature: 4>,
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'valve',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <ValveDeviceClass.WATER: 'water'>,
+    'original_icon': None,
+    'original_name': 'Cooling Valve',
+    'state': 'open',
+    'supported_features': <ValveEntityFeature: 4>,
+    'translation_key': 'cooling_actuator',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_valve_entities[ABB700000001_ch0002_HeatingCoolingActuatorCoolingValve]
+  dict({
+    'attributes': dict({
+      'current_position': 60,
+      'device_class': 'water',
+      'friendly_name': 'Runtime Device Cooling Valve',
+      'is_closed': False,
+      'supported_features': <ValveEntityFeature: 4>,
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'valve',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <ValveDeviceClass.WATER: 'water'>,
+    'original_icon': None,
+    'original_name': 'Cooling Valve',
+    'state': 'open',
+    'supported_features': <ValveEntityFeature: 4>,
+    'translation_key': 'cooling_actuator',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_valve_entities[ABB700000001_ch0002_HeatingCoolingActuatorHeatingValve]
+  dict({
+    'attributes': dict({
+      'current_position': 30,
+      'device_class': 'water',
+      'friendly_name': 'Runtime Device Heating Valve',
+      'is_closed': False,
+      'supported_features': <ValveEntityFeature: 4>,
+    }),
+    'capabilities': None,
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'valve',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <ValveDeviceClass.WATER: 'water'>,
+    'original_icon': None,
+    'original_name': 'Heating Valve',
+    'state': 'open',
+    'supported_features': <ValveEntityFeature: 4>,
+    'translation_key': 'heating_actuator',
+    'unit_of_measurement': None,
+  })
+# ---
