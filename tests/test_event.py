@@ -1,6 +1,9 @@
 """Test ABB-free@home event."""
 
 from dataclasses import dataclass, field
+import json
+from pathlib import Path
+import re
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -249,6 +252,12 @@ EVENT_CASES = {
     ),
 }
 
+VIRTUAL_DIMMER_KEYS = [
+    key
+    for key, case in EVENT_CASES.items()
+    if case.channel_class is VirtualDimmingActuator
+]
+
 # Requests that can repeat with the same value, such as two presses on a
 # virtual dimmer's button, or two identical cover position requests.
 REPEATABLE_KEYS = [
@@ -428,10 +437,94 @@ async def test_event_repeated_request_fires_again(
 
 
 @pytest.mark.parametrize(
+    ("key", "value", "event_type", "extra_data"),
+    [
+        ("EventVirtualDimmingActuatorOnOff", "1", "on", None),
+        ("EventVirtualDimmingActuatorOnOff", "0", "off", None),
+        # A physical dimming sensor sends 9 or 1 for a long press up or down,
+        # and 8 or 0 on release; the free@home app steps with 15 and 7.
+        ("EventVirtualDimmingActuatorDimming", "9", "longpress_up", None),
+        ("EventVirtualDimmingActuatorDimming", "8", "longpress_up_release", None),
+        ("EventVirtualDimmingActuatorDimming", "1", "longpress_down", None),
+        ("EventVirtualDimmingActuatorDimming", "0", "longpress_down_release", None),
+        ("EventVirtualDimmingActuatorDimming", "15", "step_up", None),
+        ("EventVirtualDimmingActuatorDimming", "7", "step_down", None),
+        ("EventVirtualDimmingActuatorBrightness", "0", "requested_brightness", 0.0),
+        ("EventVirtualDimmingActuatorBrightness", "42.5", "requested_brightness", 42.5),
+        ("EventVirtualDimmingActuatorBrightness", "100", "requested_brightness", 100.0),
+    ],
+)
+async def test_event_virtual_dimmer_request(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    key: str,
+    value: str,
+    event_type: str,
+    extra_data: float | None,
+) -> None:
+    """Test each request to a virtual dimmer fires only the event of its input."""
+    channel = await _setup_channel(
+        hass, mock_config_entry, mock_free_at_home_settings, key
+    )
+    states = {
+        dimmer_key: _track_states(hass, _entity_id(entity_registry, dimmer_key))
+        for dimmer_key in VIRTUAL_DIMMER_KEYS
+    }
+
+    _report(channel, key, value)
+    await hass.async_block_till_done()
+
+    assert {dimmer_key: _fired(states[dimmer_key]) for dimmer_key in states} == {
+        dimmer_key: [(event_type, extra_data)] if dimmer_key == key else []
+        for dimmer_key in states
+    }
+
+
+async def test_event_virtual_dimmer_steps_and_stops(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test a release after a dimming step fires a stop, also when repeated."""
+    key = "EventVirtualDimmingActuatorDimming"
+    channel = await _setup_channel(
+        hass, mock_config_entry, mock_free_at_home_settings, key
+    )
+    states = _track_states(hass, _entity_id(entity_registry, key))
+
+    for value in ("15", "0", "0", "7", "0", "9", "8", "1", "0"):
+        _report(channel, key, value)
+    await hass.async_block_till_done()
+
+    assert [event_type for event_type, _ in _fired(states)] == [
+        "step_up",
+        "stop",
+        "stop",
+        "step_down",
+        "stop",
+        "longpress_up",
+        "longpress_up_release",
+        "longpress_down",
+        "longpress_down_release",
+    ]
+
+
+@pytest.mark.parametrize(
     ("key", "value"),
     [
         ("EventVirtualDimmingActuatorOnOff", ""),
+        ("EventVirtualDimmingActuatorOnOff", "2"),
+        ("EventVirtualDimmingActuatorOnOff", "true"),
         ("EventVirtualDimmingActuatorDimming", "16"),
+        ("EventVirtualDimmingActuatorDimming", "invalid"),
+        ("EventVirtualDimmingActuatorBrightness", ""),
+        ("EventVirtualDimmingActuatorBrightness", "invalid"),
+        ("EventVirtualDimmingActuatorBrightness", "-1"),
+        ("EventVirtualDimmingActuatorBrightness", "101"),
+        ("EventVirtualDimmingActuatorBrightness", "nan"),
         ("EventBlindActuatorRequestedPosition", "invalid"),
     ],
 )
@@ -470,6 +563,51 @@ async def test_event_ignores_cover_position_feedback(
     await hass.async_block_till_done()
 
     assert hass.states.get(_entity_id(entity_registry, key)).state == STATE_UNKNOWN
+
+
+async def test_event_ignores_virtual_dimmer_feedback(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test the state a virtual dimmer publishes fires no request event."""
+    channel = await _setup_channel(
+        hass, mock_config_entry, mock_free_at_home_settings, VIRTUAL_DIMMER_KEYS[0]
+    )
+
+    channel.update_channel(f"{SERIAL}/ch0000/odp0000", "1")
+    channel.update_channel(f"{SERIAL}/ch0000/odp0001", "50")
+    await hass.async_block_till_done()
+
+    assert [
+        hass.states.get(_entity_id(entity_registry, key)).state
+        for key in VIRTUAL_DIMMER_KEYS
+    ] == [STATE_UNKNOWN] * 3
+
+
+@pytest.mark.parametrize(
+    "filename", ["strings.json", "translations/en.json", "translations/de.json"]
+)
+def test_virtual_dimmer_event_types_are_translated(filename: str) -> None:
+    """Test each event type of the virtual dimmer has a translation.
+
+    The virtual switch and room temperature controller fire "On" and "Off",
+    which their translations lack, so this checks the virtual dimmer only.
+    """
+    strings = json.loads(
+        Path("custom_components/abbfreeathome_ci", filename).read_text(encoding="utf-8")
+    )
+    for key in VIRTUAL_DIMMER_KEYS:
+        kwargs = EVENT_DESCRIPTIONS[key]["entity_description_kwargs"]
+        translated = strings["entity"]["event"][kwargs["translation_key"]][
+            "state_attributes"
+        ]["event_type"]["state"]
+        assert set(translated) == set(kwargs["event_types"])
+        assert all(
+            re.fullmatch(r"[a-z0-9]+(?:[_-][a-z0-9]+)*", event_type)
+            for event_type in translated
+        )
 
 
 @pytest.mark.parametrize(("value", "position"), [("100", 100), ("0", 0)])
