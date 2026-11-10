@@ -22,7 +22,7 @@ import pytest
 from syrupy.assertion import SnapshotAssertion
 
 from custom_components.abbfreeathome_ci.binary_sensor import (
-    SENSOR_DESCRIPTIONS,
+    BINARY_SENSOR_DESCRIPTIONS,
     FreeAtHomeBinarySensorEntity,
 )
 from custom_components.abbfreeathome_ci.const import CONF_CREATE_SUBDEVICES, DOMAIN
@@ -147,9 +147,9 @@ def binary_sensor_platform(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_cases_cover_all_descriptions() -> None:
     """Test every binary sensor description has a case with its channel class."""
-    assert list(BINARY_SENSOR_CASES) == list(SENSOR_DESCRIPTIONS)
+    assert list(BINARY_SENSOR_CASES) == list(BINARY_SENSOR_DESCRIPTIONS)
     for key, case in BINARY_SENSOR_CASES.items():
-        assert case.channel_class is SENSOR_DESCRIPTIONS[key]["channel_class"]
+        assert case.channel_class is BINARY_SENSOR_DESCRIPTIONS[key]["channel_class"]
 
 
 def _build_channels(device: Device) -> dict[str, Base]:

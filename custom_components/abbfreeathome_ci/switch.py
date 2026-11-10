@@ -201,7 +201,7 @@ class FreeAtHomeSwitchEntity(FreeAtHomeEntity, SwitchEntity):
         sysap_serial_number: str,
         create_subdevices: bool,
     ) -> None:
-        """Initialize the sensor."""
+        """Initialize the switch."""
         super().__init__()
         self._channel = channel
         self._value_attribute = value_attribute

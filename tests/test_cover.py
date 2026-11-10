@@ -16,7 +16,7 @@ import pytest
 from syrupy.assertion import SnapshotAssertion
 
 from custom_components.abbfreeathome_ci.const import CONF_CREATE_SUBDEVICES, DOMAIN
-from custom_components.abbfreeathome_ci.cover import SELECT_DESCRIPTIONS
+from custom_components.abbfreeathome_ci.cover import COVER_DESCRIPTIONS
 from homeassistant.components.cover import (
     ATTR_CURRENT_POSITION,
     ATTR_CURRENT_TILT_POSITION,
@@ -127,10 +127,9 @@ def cover_platform(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_cases_cover_all_descriptions() -> None:
     """Test every cover description has a case with its channel class."""
-    # cover.py calls its cover descriptions SELECT_DESCRIPTIONS.
-    assert list(COVER_CASES) == list(SELECT_DESCRIPTIONS)
+    assert list(COVER_CASES) == list(COVER_DESCRIPTIONS)
     for key, case in COVER_CASES.items():
-        assert case.channel_class is SELECT_DESCRIPTIONS[key]["channel_class"]
+        assert case.channel_class is COVER_DESCRIPTIONS[key]["channel_class"]
 
 
 def _build_cover(device: Device, key: str, movement: str = "1") -> CoverActuator:

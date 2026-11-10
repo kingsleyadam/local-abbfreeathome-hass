@@ -26,7 +26,7 @@ from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN
 from .entity import ChannelGetter, FreeAtHomeEntity, async_setup_platform_entities
 from .helpers import AnyDeviceInfo, async_get_sub_device_info
 
-SELECT_DESCRIPTIONS = {
+COVER_DESCRIPTIONS = {
     "AtticWindowActuator": {
         "channel_class": AtticWindowActuator,
         "entity_description_kwargs": {
@@ -59,7 +59,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up switches."""
+    """Set up covers."""
 
     def build_entities(get_channels: ChannelGetter) -> list[FreeAtHomeCoverEntity]:
         return [
@@ -70,7 +70,7 @@ async def async_setup_entry(
                 sysap_serial_number=entry.data[CONF_SERIAL],
                 create_subdevices=entry.data[CONF_CREATE_SUBDEVICES],
             )
-            for key, description in SELECT_DESCRIPTIONS.items()
+            for key, description in COVER_DESCRIPTIONS.items()
             for channel in get_channels(description.get("channel_class"))
         ]
 
