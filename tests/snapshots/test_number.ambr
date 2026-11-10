@@ -1,0 +1,700 @@
+# serializer version: 1
+# name: test_number_entities[ABB700000001_ch0000_VirtualBrightnessSensor]
+  dict({
+    'attributes': dict({
+      'device_class': 'illuminance',
+      'friendly_name': 'Runtime Device Virtual Illuminance',
+      'max': 1000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+      'unit_of_measurement': 'lx',
+    }),
+    'capabilities': dict({
+      'max': 1000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'number',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <NumberDeviceClass.ILLUMINANCE: 'illuminance'>,
+    'original_icon': None,
+    'original_name': 'Virtual Illuminance',
+    'state': '1000',
+    'supported_features': 0,
+    'translation_key': 'virtual_brightness_sensor',
+    'unit_of_measurement': 'lx',
+  })
+# ---
+# name: test_number_entities[ABB700000001_ch0001_VirtualEnergyBatteryBatteryPower]
+  dict({
+    'attributes': dict({
+      'device_class': 'power',
+      'friendly_name': 'Runtime Device Virtual Battery Power',
+      'max': 99999.999,
+      'min': -99999.999,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 0.001,
+      'unit_of_measurement': 'kW',
+    }),
+    'capabilities': dict({
+      'max': 99999.999,
+      'min': -99999.999,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 0.001,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'number',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <NumberDeviceClass.POWER: 'power'>,
+    'original_icon': None,
+    'original_name': 'Virtual Battery Power',
+    'state': '1.5',
+    'supported_features': 0,
+    'translation_key': 'virtual_energy_battery_battery_power',
+    'unit_of_measurement': 'kW',
+  })
+# ---
+# name: test_number_entities[ABB700000001_ch0001_VirtualEnergyBatteryExportedToday]
+  dict({
+    'attributes': dict({
+      'device_class': 'energy',
+      'friendly_name': 'Runtime Device Virtual Battery Exported Energy Today',
+      'max': 1000000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+      'unit_of_measurement': 'Wh',
+    }),
+    'capabilities': dict({
+      'max': 1000000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'number',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <NumberDeviceClass.ENERGY: 'energy'>,
+    'original_icon': None,
+    'original_name': 'Virtual Battery Exported Energy Today',
+    'state': '120',
+    'supported_features': 0,
+    'translation_key': 'virtual_energy_battery_exported_today',
+    'unit_of_measurement': 'Wh',
+  })
+# ---
+# name: test_number_entities[ABB700000001_ch0001_VirtualEnergyBatteryExportedTotal]
+  dict({
+    'attributes': dict({
+      'device_class': 'energy',
+      'friendly_name': 'Runtime Device Virtual Battery Total Exported Energy',
+      'max': 1000000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+      'unit_of_measurement': 'Wh',
+    }),
+    'capabilities': dict({
+      'max': 1000000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'number',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <NumberDeviceClass.ENERGY: 'energy'>,
+    'original_icon': None,
+    'original_name': 'Virtual Battery Total Exported Energy',
+    'state': '140',
+    'supported_features': 0,
+    'translation_key': 'virtual_energy_battery_exported_total',
+    'unit_of_measurement': 'Wh',
+  })
+# ---
+# name: test_number_entities[ABB700000001_ch0001_VirtualEnergyBatteryImportedToday]
+  dict({
+    'attributes': dict({
+      'device_class': 'energy',
+      'friendly_name': 'Runtime Device Virtual Battery Imported Energy Today',
+      'max': 1000000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+      'unit_of_measurement': 'Wh',
+    }),
+    'capabilities': dict({
+      'max': 1000000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'number',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <NumberDeviceClass.ENERGY: 'energy'>,
+    'original_icon': None,
+    'original_name': 'Virtual Battery Imported Energy Today',
+    'state': '110',
+    'supported_features': 0,
+    'translation_key': 'virtual_energy_battery_imported_today',
+    'unit_of_measurement': 'Wh',
+  })
+# ---
+# name: test_number_entities[ABB700000001_ch0001_VirtualEnergyBatteryImportedTotal]
+  dict({
+    'attributes': dict({
+      'device_class': 'energy',
+      'friendly_name': 'Runtime Device Virtual Battery Total Imported Energy',
+      'max': 1000000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+      'unit_of_measurement': 'Wh',
+    }),
+    'capabilities': dict({
+      'max': 1000000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'number',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <NumberDeviceClass.ENERGY: 'energy'>,
+    'original_icon': None,
+    'original_name': 'Virtual Battery Total Imported Energy',
+    'state': '130',
+    'supported_features': 0,
+    'translation_key': 'virtual_energy_battery_imported_total',
+    'unit_of_measurement': 'Wh',
+  })
+# ---
+# name: test_number_entities[ABB700000001_ch0001_VirtualEnergyBatterySoc]
+  dict({
+    'attributes': dict({
+      'friendly_name': 'Runtime Device Virtual Battery SOC',
+      'max': 100.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+      'unit_of_measurement': '%',
+    }),
+    'capabilities': dict({
+      'max': 100.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'number',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Virtual Battery SOC',
+    'state': '80',
+    'supported_features': 0,
+    'translation_key': 'virtual_energy_battery_soc',
+    'unit_of_measurement': '%',
+  })
+# ---
+# name: test_number_entities[ABB700000001_ch0002_VirtualEnergyInverterCurrentPower]
+  dict({
+    'attributes': dict({
+      'device_class': 'power',
+      'friendly_name': 'Runtime Device Virtual Inverter Current Power Consumed',
+      'max': 99999.9,
+      'min': -99999.9,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 0.1,
+      'unit_of_measurement': 'W',
+    }),
+    'capabilities': dict({
+      'max': 99999.9,
+      'min': -99999.9,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 0.1,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'number',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <NumberDeviceClass.POWER: 'power'>,
+    'original_icon': None,
+    'original_name': 'Virtual Inverter Current Power Consumed',
+    'state': '500.5',
+    'supported_features': 0,
+    'translation_key': 'virtual_energy_inverter_current_power',
+    'unit_of_measurement': 'W',
+  })
+# ---
+# name: test_number_entities[ABB700000001_ch0002_VirtualEnergyInverterImportedToday]
+  dict({
+    'attributes': dict({
+      'device_class': 'energy',
+      'friendly_name': 'Runtime Device Virtual Inverter Imported Energy Today',
+      'max': 1000000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+      'unit_of_measurement': 'Wh',
+    }),
+    'capabilities': dict({
+      'max': 1000000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'number',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <NumberDeviceClass.ENERGY: 'energy'>,
+    'original_icon': None,
+    'original_name': 'Virtual Inverter Imported Energy Today',
+    'state': '210',
+    'supported_features': 0,
+    'translation_key': 'virtual_energy_inverter_imported_today',
+    'unit_of_measurement': 'Wh',
+  })
+# ---
+# name: test_number_entities[ABB700000001_ch0002_VirtualEnergyInverterImportedTotal]
+  dict({
+    'attributes': dict({
+      'device_class': 'energy',
+      'friendly_name': 'Runtime Device Virtual Inverter Total Imported Energy',
+      'max': 1000000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+      'unit_of_measurement': 'Wh',
+    }),
+    'capabilities': dict({
+      'max': 1000000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'number',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <NumberDeviceClass.ENERGY: 'energy'>,
+    'original_icon': None,
+    'original_name': 'Virtual Inverter Total Imported Energy',
+    'state': '230',
+    'supported_features': 0,
+    'translation_key': 'virtual_energy_inverter_imported_total',
+    'unit_of_measurement': 'Wh',
+  })
+# ---
+# name: test_number_entities[ABB700000001_ch0003_VirtualEnergyTwoMayMeterExportedToday]
+  dict({
+    'attributes': dict({
+      'device_class': 'energy',
+      'friendly_name': 'Runtime Device Virtual Two Way Meter Exported Energy Today',
+      'max': 1000000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+      'unit_of_measurement': 'Wh',
+    }),
+    'capabilities': dict({
+      'max': 1000000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'number',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <NumberDeviceClass.ENERGY: 'energy'>,
+    'original_icon': None,
+    'original_name': 'Virtual Two Way Meter Exported Energy Today',
+    'state': '320',
+    'supported_features': 0,
+    'translation_key': 'virtual_energy_two_way_meter_exported_today',
+    'unit_of_measurement': 'Wh',
+  })
+# ---
+# name: test_number_entities[ABB700000001_ch0003_VirtualEnergyTwoMayMeterExportedTotal]
+  dict({
+    'attributes': dict({
+      'device_class': 'energy',
+      'friendly_name': 'Runtime Device Virtual Two Way Meter Total Exported Energy',
+      'max': 1000000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+      'unit_of_measurement': 'Wh',
+    }),
+    'capabilities': dict({
+      'max': 1000000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'number',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <NumberDeviceClass.ENERGY: 'energy'>,
+    'original_icon': None,
+    'original_name': 'Virtual Two Way Meter Total Exported Energy',
+    'state': '340',
+    'supported_features': 0,
+    'translation_key': 'virtual_energy_two_way_meter_exported_total',
+    'unit_of_measurement': 'Wh',
+  })
+# ---
+# name: test_number_entities[ABB700000001_ch0003_VirtualEnergyTwoMayMeterImportedToday]
+  dict({
+    'attributes': dict({
+      'device_class': 'energy',
+      'friendly_name': 'Runtime Device Virtual Two Way Meter Imported Energy Today',
+      'max': 1000000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+      'unit_of_measurement': 'Wh',
+    }),
+    'capabilities': dict({
+      'max': 1000000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'number',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <NumberDeviceClass.ENERGY: 'energy'>,
+    'original_icon': None,
+    'original_name': 'Virtual Two Way Meter Imported Energy Today',
+    'state': '310',
+    'supported_features': 0,
+    'translation_key': 'virtual_energy_two_way_meter_imported_today',
+    'unit_of_measurement': 'Wh',
+  })
+# ---
+# name: test_number_entities[ABB700000001_ch0003_VirtualEnergyTwoMayMeterImportedTotal]
+  dict({
+    'attributes': dict({
+      'device_class': 'energy',
+      'friendly_name': 'Runtime Device Virtual Two Way Meter Total Imported Energy',
+      'max': 1000000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+      'unit_of_measurement': 'Wh',
+    }),
+    'capabilities': dict({
+      'max': 1000000000.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'number',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <NumberDeviceClass.ENERGY: 'energy'>,
+    'original_icon': None,
+    'original_name': 'Virtual Two Way Meter Total Imported Energy',
+    'state': '330',
+    'supported_features': 0,
+    'translation_key': 'virtual_energy_two_way_meter_imported_total',
+    'unit_of_measurement': 'Wh',
+  })
+# ---
+# name: test_number_entities[ABB700000001_ch0003_VirtualEnergyTwoWayMeterCurrentPower]
+  dict({
+    'attributes': dict({
+      'device_class': 'power',
+      'friendly_name': 'Runtime Device Virtual Two Way Meter Current Power Consumed',
+      'max': 99999.9,
+      'min': -99999.9,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 0.1,
+      'unit_of_measurement': 'W',
+    }),
+    'capabilities': dict({
+      'max': 99999.9,
+      'min': -99999.9,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 0.1,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'number',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <NumberDeviceClass.POWER: 'power'>,
+    'original_icon': None,
+    'original_name': 'Virtual Two Way Meter Current Power Consumed',
+    'state': '-50.5',
+    'supported_features': 0,
+    'translation_key': 'virtual_energy_two_way_meter_current_power',
+    'unit_of_measurement': 'W',
+  })
+# ---
+# name: test_number_entities[ABB700000001_ch0004_VirtualRoomTemperatureControllerCurrentTemperature]
+  dict({
+    'attributes': dict({
+      'device_class': 'temperature',
+      'friendly_name': 'Runtime Device Virtual RTC Current Temperature',
+      'max': 999.9,
+      'min': -999.9,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 0.1,
+      'unit_of_measurement': '°C',
+    }),
+    'capabilities': dict({
+      'max': 999.9,
+      'min': -999.9,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 0.1,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'number',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <NumberDeviceClass.TEMPERATURE: 'temperature'>,
+    'original_icon': None,
+    'original_name': 'Virtual RTC Current Temperature',
+    'state': '20.5',
+    'supported_features': 0,
+    'translation_key': 'virtual_rtc_current_temperature',
+    'unit_of_measurement': '°C',
+  })
+# ---
+# name: test_number_entities[ABB700000001_ch0004_VirtualRoomTemperatureControllerTargetTemperature]
+  dict({
+    'attributes': dict({
+      'device_class': 'temperature',
+      'friendly_name': 'Runtime Device Virtual RTC Target Temperature',
+      'max': 35.0,
+      'min': 7.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 0.5,
+      'unit_of_measurement': '°C',
+    }),
+    'capabilities': dict({
+      'max': 35.0,
+      'min': 7.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 0.5,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'number',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <NumberDeviceClass.TEMPERATURE: 'temperature'>,
+    'original_icon': None,
+    'original_name': 'Virtual RTC Target Temperature',
+    'state': '21.5',
+    'supported_features': 0,
+    'translation_key': 'virtual_rtc_target_temperature',
+    'unit_of_measurement': '°C',
+  })
+# ---
+# name: test_number_entities[ABB700000001_ch0005_VirtualTemperatureSensor]
+  dict({
+    'attributes': dict({
+      'device_class': 'temperature',
+      'friendly_name': 'Runtime Device Virtual Temperature',
+      'max': 999.9,
+      'min': -999.9,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 0.1,
+      'unit_of_measurement': '°C',
+    }),
+    'capabilities': dict({
+      'max': 999.9,
+      'min': -999.9,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 0.1,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'number',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <NumberDeviceClass.TEMPERATURE: 'temperature'>,
+    'original_icon': None,
+    'original_name': 'Virtual Temperature',
+    'state': '-5.5',
+    'supported_features': 0,
+    'translation_key': 'virtual_temperature_sensor',
+    'unit_of_measurement': '°C',
+  })
+# ---
+# name: test_number_entities[ABB700000001_ch0006_VirtualWindSensorForce]
+  dict({
+    'attributes': dict({
+      'device_class': 'wind_speed',
+      'friendly_name': 'Runtime Device Virtual Wind Force',
+      'max': 12.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+      'unit_of_measurement': 'Beaufort',
+    }),
+    'capabilities': dict({
+      'max': 12.0,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 1.0,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'number',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <NumberDeviceClass.WIND_SPEED: 'wind_speed'>,
+    'original_icon': None,
+    'original_name': 'Virtual Wind Force',
+    'state': '6',
+    'supported_features': 0,
+    'translation_key': 'virtual_wind_sensor_force',
+    'unit_of_measurement': 'Beaufort',
+  })
+# ---
+# name: test_number_entities[ABB700000001_ch0006_VirtualWindSensorSpeed]
+  dict({
+    'attributes': dict({
+      'device_class': 'wind_speed',
+      'friendly_name': 'Runtime Device Virtual Wind Speed',
+      'max': 999.9,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 0.1,
+      'unit_of_measurement': 'm/s',
+    }),
+    'capabilities': dict({
+      'max': 999.9,
+      'min': 0.0,
+      'mode': <NumberMode.AUTO: 'auto'>,
+      'step': 0.1,
+    }),
+    'device': list([
+      tuple(
+        'abbfreeathome_ci',
+        'ABB700000001',
+      ),
+    ]),
+    'domain': 'number',
+    'entity_category': None,
+    'has_entity_name': True,
+    'original_device_class': <NumberDeviceClass.WIND_SPEED: 'wind_speed'>,
+    'original_icon': None,
+    'original_name': 'Virtual Wind Speed',
+    'state': '12.5',
+    'supported_features': 0,
+    'translation_key': 'virtual_wind_sensor_speed',
+    'unit_of_measurement': 'm/s',
+  })
+# ---
