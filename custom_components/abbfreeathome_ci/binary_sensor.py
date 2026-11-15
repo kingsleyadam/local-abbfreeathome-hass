@@ -197,12 +197,12 @@ class FreeAtHomeBinarySensorEntity(FreeAtHomeEntity, BinarySensorEntity):
         )
 
     async def async_update(self) -> None:
-        """Refresh the channel's values from the SysAP.
+        """Refresh the value from the SysAP.
 
         The entity does not poll, so this runs only when the entity is updated
         on request, such as with the homeassistant.update_entity action.
         """
-        await self._async_refresh_channel()
+        await self._async_refresh_channel(self._value_attribute)
 
     @property
     def device_info(self) -> AnyDeviceInfo:
