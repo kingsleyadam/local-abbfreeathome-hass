@@ -323,25 +323,11 @@ async def test_binary_sensor_update_entity(
 
 
 @pytest.mark.parametrize(
-    ("outputs", "side_effect"),
+    "side_effect",
     [
-        pytest.param(
-            BINARY_SENSOR_CASES["WindSensorOnOff"].outputs,
-            ClientConnectionError("http://sysap"),
-            id="sysap_unreachable",
-        ),
+        pytest.param(ClientConnectionError("http://sysap"), id="sysap_unreachable"),
         # aiohttp raises its total request timeout as plain TimeoutError.
-        pytest.param(
-            BINARY_SENSOR_CASES["WindSensorOnOff"].outputs,
-            TimeoutError(),
-            id="timeout",
-        ),
-        # The library also reads the wind speed when it refreshes the channel.
-        pytest.param(
-            {Pairing.AL_WIND_ALARM: "1", Pairing.AL_WIND_FORCE: "7"},
-            None,
-            id="missing_datapoint",
-        ),
+        pytest.param(TimeoutError(), id="timeout"),
     ],
 )
 async def test_binary_sensor_update_entity_error(
@@ -350,20 +336,20 @@ async def test_binary_sensor_update_entity_error(
     mock_free_at_home_settings: MagicMock,
     entity_registry: er.EntityRegistry,
     caplog: pytest.LogCaptureFixture,
-    outputs: dict[Pairing, str],
-    side_effect: Exception | None,
+    side_effect: Exception,
 ) -> None:
     """Test a failed refresh logs one warning without a traceback."""
     assert await async_setup_component(hass, HOMEASSISTANT_DOMAIN, {})
     device = build_device(SERIAL)
-    channel = build_channel(WindSensor, device, outputs=outputs)
+    channel = build_channel(
+        WindSensor, device, outputs=BINARY_SENSOR_CASES["WindSensorOnOff"].outputs
+    )
     await setup_with_channels(
         hass, mock_config_entry, mock_free_at_home_settings, [channel]
     )
     entity_id = entity_registry.async_get_entity_id(
         BINARY_SENSOR_DOMAIN, DOMAIN, f"{SERIAL}_ch0000_WindSensorOnOff"
     )
-    device.api.get_datapoint.return_value = ["1"]
     device.api.get_datapoint.side_effect = side_effect
     caplog.clear()
 

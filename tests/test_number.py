@@ -35,7 +35,7 @@ from homeassistant.components.number import (
     DOMAIN as NUMBER_DOMAIN,
     SERVICE_SET_VALUE,
 )
-from homeassistant.const import ATTR_ENTITY_ID, Platform
+from homeassistant.const import ATTR_ENTITY_ID, STATE_UNKNOWN, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.setup import async_setup_component
@@ -223,10 +223,11 @@ def number_platform(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_cases_cover_all_descriptions() -> None:
-    """Test every number description has a case with its channel class."""
+    """Test every number description has a case with its channel and output."""
     assert list(NUMBER_CASES) == list(NUMBER_DESCRIPTIONS)
     for key, case in NUMBER_CASES.items():
         assert case.channel_class is NUMBER_DESCRIPTIONS[key]["channel_class"]
+        assert case.pairing is NUMBER_DESCRIPTIONS[key]["output_pairing"]
 
 
 def _build_channels(device: Device) -> dict[str, Base]:
@@ -304,6 +305,49 @@ async def test_number_follows_sysap(
 
 
 @pytest.mark.parametrize("key", NUMBER_CASES)
+async def test_number_unreadable_value(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    key: str,
+) -> None:
+    """Test a number is unknown while its value is unreadable, and can be set."""
+    case = NUMBER_CASES[key]
+    device = build_device(SERIAL)
+    # The SysAP reports empty values for all outputs of the channel.
+    channel = build_channel(
+        case.channel_class,
+        device,
+        case.channel_id,
+        outputs={
+            other.pairing: ""
+            for other in NUMBER_CASES.values()
+            if other.channel_id == case.channel_id
+        },
+    )
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    entity_id = _entity_id(entity_registry, key)
+    assert hass.states.get(entity_id).state == STATE_UNKNOWN
+
+    await hass.services.async_call(
+        NUMBER_DOMAIN,
+        SERVICE_SET_VALUE,
+        {ATTR_ENTITY_ID: entity_id, ATTR_VALUE: case.value},
+        blocking=True,
+    )
+
+    device.api.set_datapoint.assert_awaited_once_with(
+        device_serial=SERIAL,
+        channel_id=case.channel_id,
+        datapoint=_output(channel, key),
+        value=case.command,
+    )
+
+
+@pytest.mark.parametrize("key", NUMBER_CASES)
 async def test_number_set_value(
     hass: HomeAssistant,
     mock_config_entry: MockConfigEntry,
@@ -334,14 +378,13 @@ async def test_number_set_value(
     )
 
 
-async def test_number_skips_none_values(
+async def test_number_skips_missing_outputs(
     hass: HomeAssistant,
     mock_config_entry: MockConfigEntry,
     mock_free_at_home_settings: MagicMock,
     entity_registry: er.EntityRegistry,
 ) -> None:
-    """Test no number is created for a channel attribute without a value."""
-    # Without the other outputs, the battery knows only its state of charge.
+    """Test no number is created for an output the channel lacks."""
     battery = build_channel(
         VirtualEnergyBattery, build_device(SERIAL), outputs={Pairing.AL_SOC: "80"}
     )

@@ -2,6 +2,8 @@
 
 from typing import Any
 
+from abbfreeathome.bin.pairing import Pairing
+from abbfreeathome.channels.base import Base
 from abbfreeathome.channels.virtual.virtual_brightness_sensor import (
     VirtualBrightnessSensor,
 )
@@ -17,6 +19,7 @@ from abbfreeathome.channels.virtual.virtual_temperature_sensor import (
     VirtualTemperatureSensor,
 )
 from abbfreeathome.channels.virtual.virtual_wind_sensor import VirtualWindSensor
+from abbfreeathome.exceptions import InvalidDeviceChannelPairing
 
 from homeassistant.components.number import (
     NumberDeviceClass,
@@ -43,6 +46,7 @@ NUMBER_DESCRIPTIONS = {
     "VirtualBrightnessSensor": {
         "channel_class": VirtualBrightnessSensor,
         "value_attribute": "brightness",
+        "output_pairing": Pairing.AL_BRIGHTNESS_LEVEL,
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ILLUMINANCE,
             "translation_key": "virtual_brightness_sensor",
@@ -55,6 +59,7 @@ NUMBER_DESCRIPTIONS = {
     "VirtualEnergyBatteryBatteryPower": {
         "channel_class": VirtualEnergyBattery,
         "value_attribute": "battery_power",
+        "output_pairing": Pairing.AL_BATTERY_POWER,
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.POWER,
             "translation_key": "virtual_energy_battery_battery_power",
@@ -67,6 +72,7 @@ NUMBER_DESCRIPTIONS = {
     "VirtualEnergyBatterySoc": {
         "channel_class": VirtualEnergyBattery,
         "value_attribute": "soc",
+        "output_pairing": Pairing.AL_SOC,
         "entity_description_kwargs": {
             "device_class": None,
             "translation_key": "virtual_energy_battery_soc",
@@ -79,6 +85,7 @@ NUMBER_DESCRIPTIONS = {
     "VirtualEnergyBatteryImportedToday": {
         "channel_class": VirtualEnergyBattery,
         "value_attribute": "imported_today",
+        "output_pairing": Pairing.AL_MEASURED_IMPORTED_ENERGY_TODAY,
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ENERGY,
             "translation_key": "virtual_energy_battery_imported_today",
@@ -91,6 +98,7 @@ NUMBER_DESCRIPTIONS = {
     "VirtualEnergyBatteryExportedToday": {
         "channel_class": VirtualEnergyBattery,
         "value_attribute": "exported_today",
+        "output_pairing": Pairing.AL_MEASURED_EXPORTED_ENERGY_TODAY,
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ENERGY,
             "translation_key": "virtual_energy_battery_exported_today",
@@ -103,6 +111,7 @@ NUMBER_DESCRIPTIONS = {
     "VirtualEnergyBatteryImportedTotal": {
         "channel_class": VirtualEnergyBattery,
         "value_attribute": "imported_total",
+        "output_pairing": Pairing.AL_MEASURED_TOTAL_ENERGY_IMPORTED,
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ENERGY,
             "translation_key": "virtual_energy_battery_imported_total",
@@ -115,6 +124,7 @@ NUMBER_DESCRIPTIONS = {
     "VirtualEnergyBatteryExportedTotal": {
         "channel_class": VirtualEnergyBattery,
         "value_attribute": "exported_total",
+        "output_pairing": Pairing.AL_MEASURED_TOTAL_ENERGY_EXPORTED,
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ENERGY,
             "translation_key": "virtual_energy_battery_exported_total",
@@ -127,6 +137,7 @@ NUMBER_DESCRIPTIONS = {
     "VirtualEnergyInverterCurrentPower": {
         "channel_class": VirtualEnergyInverter,
         "value_attribute": "current_power",
+        "output_pairing": Pairing.AL_MEASURED_CURRENT_POWER_CONSUMED,
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.POWER,
             "translation_key": "virtual_energy_inverter_current_power",
@@ -139,6 +150,7 @@ NUMBER_DESCRIPTIONS = {
     "VirtualEnergyInverterImportedToday": {
         "channel_class": VirtualEnergyInverter,
         "value_attribute": "imported_today",
+        "output_pairing": Pairing.AL_MEASURED_IMPORTED_ENERGY_TODAY,
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ENERGY,
             "translation_key": "virtual_energy_inverter_imported_today",
@@ -151,6 +163,7 @@ NUMBER_DESCRIPTIONS = {
     "VirtualEnergyInverterImportedTotal": {
         "channel_class": VirtualEnergyInverter,
         "value_attribute": "imported_total",
+        "output_pairing": Pairing.AL_MEASURED_TOTAL_ENERGY_IMPORTED,
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ENERGY,
             "translation_key": "virtual_energy_inverter_imported_total",
@@ -163,6 +176,7 @@ NUMBER_DESCRIPTIONS = {
     "VirtualEnergyTwoWayMeterCurrentPower": {
         "channel_class": VirtualEnergyTwoWayMeter,
         "value_attribute": "current_power",
+        "output_pairing": Pairing.AL_MEASURED_CURRENT_POWER_CONSUMED,
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.POWER,
             "translation_key": "virtual_energy_two_way_meter_current_power",
@@ -175,6 +189,7 @@ NUMBER_DESCRIPTIONS = {
     "VirtualEnergyTwoMayMeterImportedToday": {
         "channel_class": VirtualEnergyTwoWayMeter,
         "value_attribute": "imported_today",
+        "output_pairing": Pairing.AL_MEASURED_IMPORTED_ENERGY_TODAY,
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ENERGY,
             "translation_key": "virtual_energy_two_way_meter_imported_today",
@@ -187,6 +202,7 @@ NUMBER_DESCRIPTIONS = {
     "VirtualEnergyTwoMayMeterExportedToday": {
         "channel_class": VirtualEnergyTwoWayMeter,
         "value_attribute": "exported_today",
+        "output_pairing": Pairing.AL_MEASURED_EXPORTED_ENERGY_TODAY,
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ENERGY,
             "translation_key": "virtual_energy_two_way_meter_exported_today",
@@ -199,6 +215,7 @@ NUMBER_DESCRIPTIONS = {
     "VirtualEnergyTwoMayMeterImportedTotal": {
         "channel_class": VirtualEnergyTwoWayMeter,
         "value_attribute": "imported_total",
+        "output_pairing": Pairing.AL_MEASURED_TOTAL_ENERGY_IMPORTED,
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ENERGY,
             "translation_key": "virtual_energy_two_way_meter_imported_total",
@@ -211,6 +228,7 @@ NUMBER_DESCRIPTIONS = {
     "VirtualEnergyTwoMayMeterExportedTotal": {
         "channel_class": VirtualEnergyTwoWayMeter,
         "value_attribute": "exported_total",
+        "output_pairing": Pairing.AL_MEASURED_TOTAL_ENERGY_EXPORTED,
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.ENERGY,
             "translation_key": "virtual_energy_two_way_meter_exported_total",
@@ -223,6 +241,7 @@ NUMBER_DESCRIPTIONS = {
     "VirtualRoomTemperatureControllerCurrentTemperature": {
         "channel_class": VirtualRoomTemperatureController,
         "value_attribute": "current_temperature",
+        "output_pairing": Pairing.AL_MEASURED_TEMPERATURE,
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.TEMPERATURE,
             "translation_key": "virtual_rtc_current_temperature",
@@ -235,6 +254,7 @@ NUMBER_DESCRIPTIONS = {
     "VirtualRoomTemperatureControllerTargetTemperature": {
         "channel_class": VirtualRoomTemperatureController,
         "value_attribute": "target_temperature",
+        "output_pairing": Pairing.AL_SET_POINT_TEMPERATURE,
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.TEMPERATURE,
             "translation_key": "virtual_rtc_target_temperature",
@@ -247,6 +267,7 @@ NUMBER_DESCRIPTIONS = {
     "VirtualTemperatureSensor": {
         "channel_class": VirtualTemperatureSensor,
         "value_attribute": "temperature",
+        "output_pairing": Pairing.AL_OUTDOOR_TEMPERATURE,
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.TEMPERATURE,
             "translation_key": "virtual_temperature_sensor",
@@ -259,6 +280,7 @@ NUMBER_DESCRIPTIONS = {
     "VirtualWindSensorForce": {
         "channel_class": VirtualWindSensor,
         "value_attribute": "force",
+        "output_pairing": Pairing.AL_WIND_FORCE,
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.WIND_SPEED,
             "translation_key": "virtual_wind_sensor_force",
@@ -271,6 +293,7 @@ NUMBER_DESCRIPTIONS = {
     "VirtualWindSensorSpeed": {
         "channel_class": VirtualWindSensor,
         "value_attribute": "speed",
+        "output_pairing": Pairing.AL_WIND_SPEED,
         "entity_description_kwargs": {
             "device_class": NumberDeviceClass.WIND_SPEED,
             "translation_key": "virtual_wind_sensor_speed",
@@ -291,6 +314,9 @@ async def async_setup_entry(
     """Set up numbers."""
 
     def build_entities(get_channels: ChannelGetter) -> list[FreeAtHomeNumberEntity]:
+        # Unlike other platforms, skip only the outputs a channel lacks, not
+        # unknown values: numbers set the values of virtual devices, so a
+        # number must exist before its first value is set.
         return [
             FreeAtHomeNumberEntity(
                 channel,
@@ -302,10 +328,19 @@ async def async_setup_entry(
             )
             for key, description in NUMBER_DESCRIPTIONS.items()
             for channel in get_channels(description.get("channel_class"))
-            if getattr(channel, description.get("value_attribute")) is not None
+            if _has_output(channel, description.get("output_pairing"))
         ]
 
     async_setup_platform_entities(hass, entry, async_add_entities, build_entities)
+
+
+def _has_output(channel: Base, pairing: Pairing) -> bool:
+    """Return whether the channel has the output with the pairing."""
+    try:
+        channel.get_output_by_pairing(pairing)
+    except InvalidDeviceChannelPairing:
+        return False
+    return True
 
 
 class FreeAtHomeNumberEntity(FreeAtHomeEntity, NumberEntity):

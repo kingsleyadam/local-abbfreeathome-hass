@@ -189,6 +189,11 @@ async def test_climate_entities(
         (None, "40", "0", HVACAction.HEATING),
         (None, "0", "40", HVACAction.COOLING),
         (None, "40", "40", HVACAction.IDLE),
+        # An unreadable actuating value is unknown and inactive; with both
+        # unknown, so is the action.
+        (None, "", "40", HVACAction.COOLING),
+        (None, "40", "", HVACAction.HEATING),
+        (None, "", "", None),
         # Heating or cooling forbidden (0x40): the actuating values are not
         # carried out.
         ("97", "0", "100", HVACAction.IDLE),
@@ -210,7 +215,7 @@ async def test_rtc_hvac_action(
     state_indication: str | None,
     heating: str,
     cooling: str,
-    expected: HVACAction,
+    expected: HVACAction | None,
 ) -> None:
     """Test a controller's action follows its state indication and values."""
     await setup_with_channels(
@@ -231,7 +236,7 @@ async def test_rtc_hvac_action(
 
     state = hass.states.get(_entity_id(entity_registry, RTC))
     assert state.state == HVACMode.HEAT_COOL
-    assert state.attributes[ATTR_HVAC_ACTION] == expected
+    assert state.attributes.get(ATTR_HVAC_ACTION) == expected
 
 
 @pytest.mark.parametrize(
@@ -439,11 +444,11 @@ async def test_radiator_hvac_action_follows_demand(
     )
     entity_id = _entity_id(entity_registry, RADIATOR)
 
-    # The library reads an unreadable demand as 0.
+    # An unreadable demand is unknown and does not count as heating.
     for demand, heating, expected in (
         ("55", 55, HVACAction.HEATING),
         ("70", 70, HVACAction.HEATING),
-        ("", 0, HVACAction.IDLE),
+        ("", None, HVACAction.IDLE),
     ):
         _report(channel, Pairing.AL_HEATING_DEMAND, demand)
         await hass.async_block_till_done()

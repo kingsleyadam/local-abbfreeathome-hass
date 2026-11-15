@@ -11,7 +11,9 @@ applyTo: "custom_components/**/*.py,tests/**/*.py"
   `device_class`, `translation_key`, or `options`. Add support for a channel by
   adding an entry before writing new entity code. Skip a channel when its
   attribute is `None`, as existing builders do, so unsupported features do not
-  create dead entities.
+  create dead entities. `number.py` is the exception: its numbers set the values
+  of virtual devices, so it skips only outputs a channel lacks, checked with
+  `get_output_by_pairing()`, and creates numbers while their value is unknown.
 - Each platform's `async_setup_entry()` defines a `build_entities(get_channels)`
   function and passes it to `async_setup_platform_entities()` in `entity.py`;
   do not call `async_add_entities` for channels directly. The same builder runs

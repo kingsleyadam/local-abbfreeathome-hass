@@ -144,8 +144,8 @@ class FreeAtHomeEntity(Entity):
     async def _async_refresh_channel(self) -> None:
         """Refresh the channel's values from the SysAP.
 
-        Library errors, such as an unreachable SysAP or a datapoint the channel
-        lacks, and request timeouts are logged as a warning without a traceback.
+        Library errors, such as an unreachable SysAP, and request timeouts are
+        logged as a warning without a traceback.
         """
         try:
             await self._channel.refresh_state()
