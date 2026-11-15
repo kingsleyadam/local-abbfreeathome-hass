@@ -4,6 +4,7 @@ from collections.abc import Iterable
 from typing import Any
 
 from abbfreeathome import FreeAtHome
+from abbfreeathome.bin.pairing import Pairing
 from abbfreeathome.channels.air_quality_sensor import AirQualitySensor
 from abbfreeathome.channels.base import Base
 from abbfreeathome.channels.brightness_sensor import BrightnessSensor
@@ -43,6 +44,7 @@ from .entity import (
     FreeAtHomeEntity,
     async_release_removed_entities,
     async_setup_platform_entities,
+    channel_has_output,
     signal_channels_added,
 )
 from .helpers import AnyDeviceInfo, async_get_sub_device_info
@@ -59,6 +61,7 @@ SENSOR_DESCRIPTIONS = {
     "AirQualitySensorCO2": {
         "channel_class": AirQualitySensor,
         "value_attribute": "co2",
+        "output_pairing": Pairing.AL_INFO_CO_2,
         "entity_description_kwargs": {
             "device_class": SensorDeviceClass.CO2,
             "native_unit_of_measurement": PARTS_PER_MILLION,
@@ -69,6 +72,7 @@ SENSOR_DESCRIPTIONS = {
     "AirQualitySensorVOC": {
         "channel_class": AirQualitySensor,
         "value_attribute": "voc_index",
+        "output_pairing": Pairing.AL_INFO_VOC_INDEX,
         "entity_description_kwargs": {
             "device_class": SensorDeviceClass.VOLATILE_ORGANIC_COMPOUNDS_PARTS,
             "state_class": SensorStateClass.MEASUREMENT,
@@ -78,6 +82,7 @@ SENSOR_DESCRIPTIONS = {
     "AirQualitySensorHumidity": {
         "channel_class": AirQualitySensor,
         "value_attribute": "humidity",
+        "output_pairing": Pairing.AL_HUMIDITY,
         "entity_description_kwargs": {
             "device_class": SensorDeviceClass.HUMIDITY,
             "native_unit_of_measurement": PERCENTAGE,
@@ -88,6 +93,7 @@ SENSOR_DESCRIPTIONS = {
     "BrightnessSensor": {
         "channel_class": BrightnessSensor,
         "value_attribute": "state",
+        "output_pairing": Pairing.AL_BRIGHTNESS_LEVEL,
         "entity_description_kwargs": {
             "device_class": SensorDeviceClass.ILLUMINANCE,
             "native_unit_of_measurement": LIGHT_LUX,
@@ -98,6 +104,7 @@ SENSOR_DESCRIPTIONS = {
     "HeatingCoolingSensor": {
         "channel_class": HeatingCoolingSensor,
         "value_attribute": "state",
+        "output_pairing": Pairing.AL_HEATING_COOLING,
         "entity_description_kwargs": {
             "device_class": SensorDeviceClass.ENUM,
             "options": [state.name for state in HeatingCoolingSensorState],
@@ -107,6 +114,7 @@ SENSOR_DESCRIPTIONS = {
     "MovementDetectorBrightness": {
         "channel_class": MovementDetector,
         "value_attribute": "brightness",
+        "output_pairing": Pairing.AL_BRIGHTNESS_LEVEL,
         "entity_description_kwargs": {
             "device_class": SensorDeviceClass.ILLUMINANCE,
             "native_unit_of_measurement": LIGHT_LUX,
@@ -117,6 +125,7 @@ SENSOR_DESCRIPTIONS = {
     "BlockableMovementDetectorBrightness": {
         "channel_class": BlockableMovementDetector,
         "value_attribute": "brightness",
+        "output_pairing": Pairing.AL_BRIGHTNESS_LEVEL,
         "entity_description_kwargs": {
             "device_class": SensorDeviceClass.ILLUMINANCE,
             "native_unit_of_measurement": LIGHT_LUX,
@@ -127,6 +136,7 @@ SENSOR_DESCRIPTIONS = {
     "WindowDoorSensorPosition": {
         "channel_class": WindowDoorSensor,
         "value_attribute": "position",
+        "output_pairing": Pairing.AL_WINDOW_DOOR_POSITION,
         "entity_description_kwargs": {
             "device_class": SensorDeviceClass.ENUM,
             "options": [position.name for position in WindowDoorSensorPosition],
@@ -136,6 +146,7 @@ SENSOR_DESCRIPTIONS = {
     "TemperatureSensor": {
         "channel_class": TemperatureSensor,
         "value_attribute": "state",
+        "output_pairing": Pairing.AL_OUTDOOR_TEMPERATURE,
         "entity_description_kwargs": {
             "device_class": SensorDeviceClass.TEMPERATURE,
             "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
@@ -146,6 +157,7 @@ SENSOR_DESCRIPTIONS = {
     "WindSensorSpeed": {
         "channel_class": WindSensor,
         "value_attribute": "state",
+        "output_pairing": Pairing.AL_WIND_SPEED,
         "entity_description_kwargs": {
             "device_class": SensorDeviceClass.WIND_SPEED,
             "native_unit_of_measurement": UnitOfSpeed.METERS_PER_SECOND,
@@ -156,6 +168,7 @@ SENSOR_DESCRIPTIONS = {
     "WindSensorForce": {
         "channel_class": WindSensor,
         "value_attribute": "force",
+        "output_pairing": Pairing.AL_WIND_FORCE,
         "entity_description_kwargs": {
             "device_class": SensorDeviceClass.WIND_SPEED,
             "native_unit_of_measurement": UnitOfSpeed.BEAUFORT,
@@ -175,6 +188,10 @@ async def async_setup_entry(
     """Set up sensors."""
 
     def build_entities(get_channels: ChannelGetter) -> list[FreeAtHomeSensorEntity]:
+        # Create a sensor if the channel has its output, also while the value
+        # is unreadable (None), so it shows the value once the SysAP reports
+        # one. Window positions and heating/cooling modes are unknown, not
+        # None, without the output, so their sensors are created anyway.
         return [
             FreeAtHomeSensorEntity(
                 channel,
@@ -186,7 +203,8 @@ async def async_setup_entry(
             )
             for key, description in SENSOR_DESCRIPTIONS.items()
             for channel in get_channels(description.get("channel_class"))
-            if getattr(channel, description.get("value_attribute")) is not None
+            if channel_has_output(channel, description.get("output_pairing"))
+            or getattr(channel, description.get("value_attribute")) is not None
         ]
 
     async_setup_platform_entities(hass, entry, async_add_entities, build_entities)

@@ -173,10 +173,17 @@ def sensor_platform_only(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_cases_cover_all_descriptions() -> None:
-    """Test every sensor description has a case with its channel class."""
+    """Test every sensor description has a case with its channel and output."""
     assert list(SENSOR_CASES) == list(SENSOR_DESCRIPTIONS)
+    channels = _build_channels(build_device(SERIAL))
     for key, case in SENSOR_CASES.items():
-        assert case.channel_class is SENSOR_DESCRIPTIONS[key]["channel_class"]
+        description = SENSOR_DESCRIPTIONS[key]
+        assert case.channel_class is description["channel_class"]
+        # The case reports its value on the description's output.
+        datapoint, _ = channels[case.channel_id].get_output_by_pairing(
+            description["output_pairing"]
+        )
+        assert datapoint == case.datapoint
 
 
 def _build_channels(device: Device) -> dict[str, Base]:
@@ -315,19 +322,44 @@ async def test_sensor_unknown_value(
     assert hass.states.get(entity_id).state == STATE_UNKNOWN
 
 
-async def test_sensor_skips_none_values(
+@pytest.mark.parametrize("key", SENSOR_CASES)
+async def test_sensor_unreadable_at_startup(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    key: str,
+) -> None:
+    """Test a sensor whose value is unreadable at startup shows the next value."""
+    case = SENSOR_CASES[key]
+    channel = _build_channels(build_device(SERIAL))[case.channel_id]
+    # The SysAP reported an unreadable value before the setup.
+    channel.update_channel(f"{SERIAL}/{case.channel_id}/{case.datapoint}", "")
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    entity_id = _entity_id(entity_registry, f"{SERIAL}_{case.channel_id}_{key}")
+    assert hass.states.get(entity_id).state == STATE_UNKNOWN
+
+    channel.update_channel(f"{SERIAL}/{case.channel_id}/{case.datapoint}", case.value)
+    await hass.async_block_till_done()
+
+    assert hass.states.get(entity_id).state == case.state
+
+
+async def test_sensor_skips_missing_outputs(
     hass: HomeAssistant,
     mock_config_entry: MockConfigEntry,
     mock_free_at_home_settings: MagicMock,
     entity_registry: er.EntityRegistry,
 ) -> None:
-    """Test no sensor is created for a channel attribute without a value."""
+    """Test no sensor is created for an output the channel lacks."""
     device = build_device(SERIAL)
-    # Without the VOC and humidity outputs, only the CO2 value is known.
+    # Without the VOC and humidity outputs, only the CO2 sensor is created.
     air_quality = build_channel(
         AirQualitySensor, device, outputs={Pairing.AL_INFO_CO_2: "800"}
     )
-    # Without the force output, only the wind speed is known.
+    # Without the force output, only the wind speed sensor is created.
     wind = build_channel(
         WindSensor, device, "ch0001", outputs={Pairing.AL_WIND_SPEED: "5"}
     )
@@ -340,6 +372,29 @@ async def test_sensor_skips_none_values(
         f"{SERIAL}_ch0000_AirQualitySensorCO2",
         f"{SERIAL}_ch0001_WindSensorSpeed",
     ]
+
+
+async def test_sensor_window_position_without_output(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test a window contact without the position output has a position sensor.
+
+    The library reports the position of such a contact as unknown, not None,
+    so the sensor is created, and it always shows unknown.
+    """
+    window = build_channel(
+        WindowDoorSensor, build_device(SERIAL), outputs={Pairing.AL_WINDOW_DOOR: "1"}
+    )
+
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [window]
+    )
+
+    entity_id = _entity_id(entity_registry, f"{SERIAL}_ch0000_WindowDoorSensorPosition")
+    assert hass.states.get(entity_id).state == STATE_UNKNOWN
 
 
 async def test_sensor_removes_callbacks_on_unload(
