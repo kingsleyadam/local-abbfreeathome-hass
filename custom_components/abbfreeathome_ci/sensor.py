@@ -190,8 +190,7 @@ async def async_setup_entry(
     def build_entities(get_channels: ChannelGetter) -> list[FreeAtHomeSensorEntity]:
         # Create a sensor if the channel has its output, also while the value
         # is unreadable (None), so it shows the value once the SysAP reports
-        # one. Window positions and heating/cooling modes are unknown, not
-        # None, without the output, so their sensors are created anyway.
+        # one.
         return [
             FreeAtHomeSensorEntity(
                 channel,
@@ -204,7 +203,6 @@ async def async_setup_entry(
             for key, description in SENSOR_DESCRIPTIONS.items()
             for channel in get_channels(description.get("channel_class"))
             if channel_has_output(channel, description.get("output_pairing"))
-            or getattr(channel, description.get("value_attribute")) is not None
         ]
 
     async_setup_platform_entities(hass, entry, async_add_entities, build_entities)
