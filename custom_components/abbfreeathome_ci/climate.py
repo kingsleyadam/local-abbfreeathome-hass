@@ -166,9 +166,16 @@ class FreeAtHomeClimateEntity(FreeAtHomeEntity, ClimateEntity):
         if self._channel.heating_mode is False:
             return HVACAction.COOLING if self._channel.cooling else HVACAction.IDLE
 
-        if self._channel.heating > self._channel.cooling:
+        # An unreadable actuating value is unknown (None). One unknown value
+        # counts as inactive, as it does for the indicated mode above; with
+        # both unknown, so is the action.
+        if self._channel.heating is None and self._channel.cooling is None:
+            return None
+        heating = self._channel.heating or 0
+        cooling = self._channel.cooling or 0
+        if heating > cooling:
             return HVACAction.HEATING
-        if self._channel.cooling > self._channel.heating:
+        if cooling > heating:
             return HVACAction.COOLING
 
         return HVACAction.IDLE

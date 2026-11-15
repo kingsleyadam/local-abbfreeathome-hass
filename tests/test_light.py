@@ -248,6 +248,13 @@ async def test_light_entities(
             {ATTR_BRIGHTNESS: 204, ATTR_COLOR_TEMP_KELVIN: None},
         ),
         (
+            _build_color_light,
+            None,
+            {WARMEST: "invalid"},
+            STATE_ON,
+            {ATTR_BRIGHTNESS: 204, ATTR_COLOR_TEMP_KELVIN: None},
+        ),
+        (
             _build_virtual_dimmer,
             {Pairing.AL_INFO_ON_OFF: None},
             None,
@@ -260,6 +267,7 @@ async def test_light_entities(
         "color-no-color-temperature",
         "color-no-warmest",
         "color-no-coolest",
+        "color-invalid-warmest",
         "virtual-no-state",
     ],
 )
@@ -274,7 +282,7 @@ async def test_light_without_values(
     expected_state: str,
     expected: dict[str, Any],
 ) -> None:
-    """Test a light without a reported value or color temperature bounds."""
+    """Test a light without a reported value or readable color temperature bounds."""
     kwargs = {"outputs": outputs}
     if parameters is not None:
         kwargs["parameters"] = parameters
@@ -294,6 +302,7 @@ DIMMER_REPORTS = [
     (Pairing.AL_INFO_ACTUAL_DIMMING_VALUE, "100", STATE_ON, {ATTR_BRIGHTNESS: 255}),
     (Pairing.AL_INFO_ACTUAL_DIMMING_VALUE, "1", STATE_ON, {ATTR_BRIGHTNESS: 3}),
     (Pairing.AL_INFO_ACTUAL_DIMMING_VALUE, "0", STATE_ON, {ATTR_BRIGHTNESS: 0}),
+    (Pairing.AL_INFO_ACTUAL_DIMMING_VALUE, "", STATE_ON, {ATTR_BRIGHTNESS: None}),
 ]
 COLOR_REPORTS = [
     (
@@ -309,6 +318,12 @@ COLOR_REPORTS = [
         "100",
         STATE_ON,
         {ATTR_COLOR_TEMP_KELVIN: 6500},
+    ),
+    (
+        Pairing.AL_INFO_COLOR_TEMPERATURE,
+        "",
+        STATE_ON,
+        {ATTR_COLOR_TEMP_KELVIN: None},
     ),
 ]
 VIRTUAL_REPORTS = [

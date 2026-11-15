@@ -521,10 +521,6 @@ async def test_event_virtual_dimmer_steps_and_stops(
         ("EventVirtualDimmingActuatorDimming", "16"),
         ("EventVirtualDimmingActuatorDimming", "invalid"),
         ("EventVirtualDimmingActuatorBrightness", ""),
-        ("EventVirtualDimmingActuatorBrightness", "invalid"),
-        ("EventVirtualDimmingActuatorBrightness", "-1"),
-        ("EventVirtualDimmingActuatorBrightness", "101"),
-        ("EventVirtualDimmingActuatorBrightness", "nan"),
         ("EventBlindActuatorRequestedPosition", "invalid"),
     ],
 )
@@ -542,6 +538,31 @@ async def test_event_ignores_unknown_request(
     )
 
     _report(channel, key, value)
+    await hass.async_block_till_done()
+
+    assert hass.states.get(_entity_id(entity_registry, key)).state == STATE_UNKNOWN
+
+
+@pytest.mark.parametrize("value", ["invalid", "-1", "101", "nan"])
+async def test_event_rejects_invalid_brightness_request(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    value: str,
+) -> None:
+    """Test a brightness request the library rejects fires no event.
+
+    The library raises for it; while listening to the SysAP, it logs the error
+    and continues with the next update.
+    """
+    key = "EventVirtualDimmingActuatorBrightness"
+    channel = await _setup_channel(
+        hass, mock_config_entry, mock_free_at_home_settings, key
+    )
+
+    with pytest.raises(ValueError):
+        _report(channel, key, value)
     await hass.async_block_till_done()
 
     assert hass.states.get(_entity_id(entity_registry, key)).state == STATE_UNKNOWN
