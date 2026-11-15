@@ -256,9 +256,9 @@ sensors.
 For the weather station's wind sensor and for air quality sensors, a refresh
 reads only the entity's datapoint, such as the wind speed. For other devices, it
 reads all datapoints of the entity's channel and updates all of its entities,
-such as the brightness alarm along with the brightness. If a sensor or binary
-sensor cannot be refreshed, for example while the SysAP is unreachable, the
-integration logs a warning.
+such as the brightness alarm along with the brightness. If an entity cannot be
+refreshed, for example while the SysAP is unreachable, the integration logs a
+warning.
 
 #### Wind Speed of the Weather Station
 

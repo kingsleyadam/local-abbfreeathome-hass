@@ -1,6 +1,7 @@
 """Test ABB-free@home climate."""
 
 from collections.abc import Callable, Mapping
+import logging
 from runpy import run_path
 from typing import Any
 from unittest.mock import MagicMock, call
@@ -13,6 +14,7 @@ from abbfreeathome.channels.room_temperature_controller import (
 )
 from abbfreeathome.const import FUNCTION_CHANNEL_MAPPING
 from abbfreeathome.device import Device
+from abbfreeathome.exceptions import ClientConnectionError
 import pytest
 from syrupy.assertion import SnapshotAssertion
 
@@ -698,6 +700,47 @@ async def test_climate_update_entity(
     assert sorted(
         call.kwargs["datapoint"] for call in device.api.get_datapoint.await_args_list
     ) == sorted(values)
+
+
+async def test_climate_update_entity_error(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test a failed refresh logs one warning without a traceback."""
+    assert await async_setup_component(hass, HOMEASSISTANT_DOMAIN, {})
+    device = build_device(SERIAL)
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [_build_rtc(device)]
+    )
+    entity_id = _entity_id(entity_registry, RTC)
+    before = hass.states.get(entity_id)
+    error = ClientConnectionError("http://sysap")
+    device.api.get_datapoint.side_effect = error
+    caplog.clear()
+
+    await hass.services.async_call(
+        HOMEASSISTANT_DOMAIN,
+        SERVICE_UPDATE_ENTITY,
+        {ATTR_ENTITY_ID: entity_id},
+        blocking=True,
+    )
+
+    after = hass.states.get(entity_id)
+    assert (after.state, after.attributes) == (before.state, before.attributes)
+    assert [
+        (record.levelno, record.exc_info, record.getMessage())
+        for record in caplog.records
+        if record.levelno >= logging.WARNING
+    ] == [
+        (
+            logging.WARNING,
+            None,
+            f"Could not refresh {entity_id} from the SysAP: {error}",
+        )
+    ]
 
 
 async def test_climate_removes_callbacks_on_unload(

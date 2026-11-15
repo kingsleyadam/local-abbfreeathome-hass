@@ -1,6 +1,7 @@
 """Test ABB-free@home switch."""
 
 from dataclasses import dataclass, field
+import logging
 from unittest.mock import MagicMock, call
 
 from abbfreeathome.bin.pairing import Pairing
@@ -29,6 +30,7 @@ from abbfreeathome.channels.virtual.virtual_window_door_sensor import (
     VirtualWindowDoorSensor,
 )
 from abbfreeathome.device import Device
+from abbfreeathome.exceptions import ClientConnectionError
 import pytest
 from syrupy.assertion import SnapshotAssertion
 
@@ -418,6 +420,50 @@ async def test_switch_update_entity(
     device.api.get_datapoint.assert_any_await(
         device_serial=SERIAL, channel_id="ch0001", datapoint="odp0000"
     )
+
+
+async def test_switch_update_entity_error(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test a failed refresh logs one warning without a traceback."""
+    assert await async_setup_component(hass, HOMEASSISTANT_DOMAIN, {})
+    device = build_device(SERIAL)
+    await setup_with_channels(
+        hass,
+        mock_config_entry,
+        mock_free_at_home_settings,
+        [_build_channels(device)["ch0001"]],
+    )
+    entity_id = _entity_id(entity_registry, "SwitchActuator")
+    before = hass.states.get(entity_id)
+    error = ClientConnectionError("http://sysap")
+    device.api.get_datapoint.side_effect = error
+    caplog.clear()
+
+    await hass.services.async_call(
+        HOMEASSISTANT_DOMAIN,
+        SERVICE_UPDATE_ENTITY,
+        {ATTR_ENTITY_ID: entity_id},
+        blocking=True,
+    )
+
+    after = hass.states.get(entity_id)
+    assert (after.state, after.attributes) == (before.state, before.attributes)
+    assert [
+        (record.levelno, record.exc_info, record.getMessage())
+        for record in caplog.records
+        if record.levelno >= logging.WARNING
+    ] == [
+        (
+            logging.WARNING,
+            None,
+            f"Could not refresh {entity_id} from the SysAP: {error}",
+        )
+    ]
 
 
 async def test_switch_removes_callback_on_unload(

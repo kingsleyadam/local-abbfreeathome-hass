@@ -411,6 +411,10 @@ class FreeAtHomeNumberEntity(FreeAtHomeEntity, NumberEntity):
         _method_to_call = "set_" + self._value_attribute
         await getattr(self._channel, _method_to_call)(float(value))
 
-    async def async_update(self, **kwargs: Any) -> None:
-        """Update the number state."""
-        await self._channel.refresh_state()
+    async def async_update(self) -> None:
+        """Refresh the channel's values from the SysAP.
+
+        The entity does not poll, so this runs only when the entity is updated
+        on request, such as with the homeassistant.update_entity action.
+        """
+        await self._async_refresh_channel()

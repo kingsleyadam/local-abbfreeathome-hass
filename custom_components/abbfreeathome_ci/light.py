@@ -207,9 +207,13 @@ class FreeAtHomeLightEntity(FreeAtHomeEntity, LightEntity):
         if isinstance(self._channel, VirtualDimmingActuator):
             self.async_write_ha_state()
 
-    async def async_update(self, **kwargs: Any) -> None:
-        """Update the light state."""
-        await self._channel.refresh_state()
+    async def async_update(self) -> None:
+        """Refresh the channel's values from the SysAP.
+
+        The entity does not poll, so this runs only when the entity is updated
+        on request, such as with the homeassistant.update_entity action.
+        """
+        await self._async_refresh_channel()
 
 
 def map_range(

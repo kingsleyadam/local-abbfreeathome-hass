@@ -27,7 +27,10 @@ applyTo: "custom_components/**/*.py,tests/**/*.py"
   and register `async_write_ha_state` with `channel.register_callback()` for
   every attribute the entity reads; remove the same callbacks in
   `async_will_remove_from_hass()`. Do not override `available` unless the entity
-  can be unavailable for a reason other than an unresponsive device.
+  can be unavailable for a reason other than an unresponsive device. Entities
+  with a state refresh on `homeassistant.update_entity` through an
+  `async_update()` that awaits `self._async_refresh_channel()`, which logs a
+  failed refresh as one warning; do not call `refresh_state()` directly.
 - Library commands run with `wait_for_result=False`, so state normally changes
   only when the WebSocket update arrives. Do not write optimistic state; the
   exception is virtual channels whose state the library updates locally (see
