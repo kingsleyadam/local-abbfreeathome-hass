@@ -151,23 +151,31 @@ class FreeAtHomeEntity(Entity):
             lambda: device.remove_unresponsive_callback(self.async_write_ha_state)
         )
 
-    async def _async_refresh_channel(self, attribute: str) -> None:
-        """Refresh a channel attribute from the SysAP.
+    async def _async_refresh_channel(self, attribute: str | None = None) -> None:
+        """Refresh the channel, or one of its attributes, from the SysAP.
 
-        Channels that map their attributes to datapoints, such as wind and air
-        quality sensors, read only the attribute's datapoints; others read all
-        datapoints of the channel. Library errors, such as an unreachable SysAP,
-        and request timeouts are logged as a warning without a traceback.
+        For an attribute, channels that map their attributes to datapoints,
+        such as wind and air quality sensors, read only the attribute's
+        datapoints; otherwise all datapoints of the channel are read. Library
+        errors, such as an unreachable SysAP, values the channel rejects, and
+        request timeouts are logged as a warning without a traceback; debug
+        logging adds the traceback.
         """
         try:
-            await self._channel.refresh_state(attributes=[attribute])
-        except FreeAtHomeException as err:
+            await self._channel.refresh_state(
+                attributes=None if attribute is None else [attribute]
+            )
+        # Channels raise ValueError for values they reject, such as a virtual
+        # dimmer's brightness outside 0-100 percent.
+        except (FreeAtHomeException, ValueError) as err:
             _LOGGER.warning(
                 "Could not refresh %s from the SysAP: %s", self.entity_id, err
             )
+            _LOGGER.debug("Refresh of %s failed", self.entity_id, exc_info=True)
         except TimeoutError:
             # aiohttp raises its total request timeout as plain TimeoutError.
             _LOGGER.warning(
                 "Could not refresh %s from the SysAP: request timed out",
                 self.entity_id,
             )
+            _LOGGER.debug("Refresh of %s failed", self.entity_id, exc_info=True)

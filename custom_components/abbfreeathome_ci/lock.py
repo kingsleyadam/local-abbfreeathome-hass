@@ -1,7 +1,5 @@
 """Create ABB-free@home lock entities."""
 
-from typing import Any
-
 from abbfreeathome.channels.des_door_opener_actuator import DesDoorOpenerActuator
 
 from homeassistant.components.lock import LockEntity, LockEntityDescription
@@ -100,6 +98,10 @@ class FreeAtHomeLockEntity(FreeAtHomeEntity, LockEntity):
         """Unlock the device."""
         await self._channel.unlock()
 
-    async def async_update(self, **kwargs: Any) -> None:
-        """Update the lock state."""
-        await self._channel.refresh_state()
+    async def async_update(self) -> None:
+        """Refresh the channel's values from the SysAP.
+
+        The entity does not poll, so this runs only when the entity is updated
+        on request, such as with the homeassistant.update_entity action.
+        """
+        await self._async_refresh_channel()

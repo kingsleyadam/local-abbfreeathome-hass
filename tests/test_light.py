@@ -1,6 +1,7 @@
 """Test ABB-free@home light."""
 
 from collections.abc import Callable, Mapping
+import logging
 from typing import Any
 from unittest.mock import MagicMock, call
 
@@ -15,6 +16,7 @@ from abbfreeathome.channels.virtual.virtual_dimming_actuator import (
     VirtualDimmingActuator,
 )
 from abbfreeathome.device import Device
+from abbfreeathome.exceptions import ClientConnectionError
 import pytest
 from syrupy.assertion import SnapshotAssertion
 
@@ -639,6 +641,114 @@ async def test_light_update_entity(
     assert sorted(
         call.kwargs["datapoint"] for call in device.api.get_datapoint.await_args_list
     ) == sorted(values)
+
+
+async def test_light_update_entity_error(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test a failed refresh logs one warning without a traceback."""
+    assert await async_setup_component(hass, HOMEASSISTANT_DOMAIN, {})
+    device = build_device(SERIAL)
+    await setup_with_channels(
+        hass,
+        mock_config_entry,
+        mock_free_at_home_settings,
+        [_build_color_light(device)],
+    )
+    entity_id = _entity_id(entity_registry, COLOR)
+    before = hass.states.get(entity_id)
+    error = ClientConnectionError("http://sysap")
+    device.api.get_datapoint.side_effect = error
+    caplog.clear()
+
+    await hass.services.async_call(
+        HOMEASSISTANT_DOMAIN,
+        SERVICE_UPDATE_ENTITY,
+        {ATTR_ENTITY_ID: entity_id},
+        blocking=True,
+    )
+
+    after = hass.states.get(entity_id)
+    assert (after.state, after.attributes) == (before.state, before.attributes)
+    assert [
+        (record.levelno, record.exc_info, record.getMessage())
+        for record in caplog.records
+        if record.levelno >= logging.WARNING
+    ] == [
+        (
+            logging.WARNING,
+            None,
+            f"Could not refresh {entity_id} from the SysAP: {error}",
+        )
+    ]
+
+
+async def test_light_update_entity_invalid_brightness(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test a brightness the virtual dimmer rejects logs one warning.
+
+    The SysAP returns a brightness outside 0-100 percent, which the library
+    rejects with a ValueError; the light keeps its brightness. The traceback
+    is logged at debug level.
+    """
+    assert await async_setup_component(hass, HOMEASSISTANT_DOMAIN, {})
+    device = build_device(SERIAL)
+    channel = _build_virtual_dimmer(device)
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    entity_id = _entity_id(entity_registry, VIRTUAL)
+    before = hass.states.get(entity_id)
+    values = {
+        channel.get_output_by_pairing(pairing)[0]: value
+        for pairing, value in {
+            Pairing.AL_INFO_ON_OFF: "1",
+            Pairing.AL_INFO_ACTUAL_DIMMING_VALUE: "150",
+        }.items()
+    }
+    device.api.get_datapoint.side_effect = lambda **kwargs: [
+        values[kwargs["datapoint"]]
+    ]
+    reason = (
+        f"brightness feedback '150' outside 0-100 percent for {channel.channel_name}"
+    )
+    caplog.set_level(logging.DEBUG, logger="custom_components.abbfreeathome_ci")
+    caplog.clear()
+
+    await hass.services.async_call(
+        HOMEASSISTANT_DOMAIN,
+        SERVICE_UPDATE_ENTITY,
+        {ATTR_ENTITY_ID: entity_id},
+        blocking=True,
+    )
+
+    after = hass.states.get(entity_id)
+    assert (after.state, after.attributes) == (before.state, before.attributes)
+    assert [
+        (record.levelno, record.exc_info, record.getMessage())
+        for record in caplog.records
+        if record.levelno >= logging.WARNING
+    ] == [
+        (
+            logging.WARNING,
+            None,
+            f"Could not refresh {entity_id} from the SysAP: {reason}",
+        )
+    ]
+    assert [
+        (record.levelno, type(record.exc_info[1]), str(record.exc_info[1]))
+        for record in caplog.records
+        if record.getMessage() == f"Refresh of {entity_id} failed"
+    ] == [(logging.DEBUG, ValueError, reason)]
 
 
 async def test_light_removes_callbacks_on_unload(

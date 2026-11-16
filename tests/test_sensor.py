@@ -566,7 +566,10 @@ async def test_sensor_update_entity_error(
     caplog: pytest.LogCaptureFixture,
     side_effect: Exception,
 ) -> None:
-    """Test a failed refresh logs one warning without a traceback."""
+    """Test a failed refresh logs one warning without a traceback.
+
+    The traceback is logged at debug level.
+    """
     assert await async_setup_component(hass, HOMEASSISTANT_DOMAIN, {})
     device = build_device(SERIAL)
     channel = build_channel(
@@ -577,6 +580,7 @@ async def test_sensor_update_entity_error(
     )
     entity_id = _entity_id(entity_registry, f"{SERIAL}_ch0000_WindSensorSpeed")
     device.api.get_datapoint.side_effect = side_effect
+    caplog.set_level(logging.DEBUG, logger="custom_components.abbfreeathome_ci")
     caplog.clear()
 
     await hass.services.async_call(
@@ -595,6 +599,11 @@ async def test_sensor_update_entity_error(
     ]
     prefix = f"Could not refresh {entity_id} from the SysAP: "
     assert warnings[0].getMessage().startswith(prefix)
+    assert [
+        (record.levelno, record.exc_info[1])
+        for record in caplog.records
+        if record.getMessage() == f"Refresh of {entity_id} failed"
+    ] == [(logging.DEBUG, side_effect)]
 
 
 async def test_sensor_update_entity_without_datapoint(
