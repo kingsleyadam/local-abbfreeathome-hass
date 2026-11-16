@@ -6,9 +6,10 @@ from collections.abc import Callable, Iterable
 import logging
 
 from abbfreeathome import FreeAtHome
+from abbfreeathome.bin.pairing import Pairing
 from abbfreeathome.channels.base import Base
 from abbfreeathome.device import Device
-from abbfreeathome.exceptions import FreeAtHomeException
+from abbfreeathome.exceptions import FreeAtHomeException, InvalidDeviceChannelPairing
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -34,6 +35,15 @@ def signal_channels_added(entry_id: str) -> str:
 def signal_devices_removed(entry_id: str) -> str:
     """Return the dispatcher signal for devices removed at runtime."""
     return f"{DOMAIN}_{entry_id}_devices_removed"
+
+
+def channel_has_output(channel: Base, pairing: Pairing) -> bool:
+    """Return whether the channel has the output with the pairing."""
+    try:
+        channel.get_output_by_pairing(pairing)
+    except InvalidDeviceChannelPairing:
+        return False
+    return True
 
 
 @callback
