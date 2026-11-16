@@ -697,7 +697,8 @@ async def test_light_update_entity_invalid_brightness(
     """Test a brightness the virtual dimmer rejects logs one warning.
 
     The SysAP returns a brightness outside 0-100 percent, which the library
-    rejects with a ValueError; the light keeps its brightness.
+    rejects with a ValueError; the light keeps its brightness. The traceback
+    is logged at debug level.
     """
     assert await async_setup_component(hass, HOMEASSISTANT_DOMAIN, {})
     device = build_device(SERIAL)
@@ -720,6 +721,7 @@ async def test_light_update_entity_invalid_brightness(
     reason = (
         f"brightness feedback '150' outside 0-100 percent for {channel.channel_name}"
     )
+    caplog.set_level(logging.DEBUG, logger="custom_components.abbfreeathome_ci")
     caplog.clear()
 
     await hass.services.async_call(
@@ -742,6 +744,11 @@ async def test_light_update_entity_invalid_brightness(
             f"Could not refresh {entity_id} from the SysAP: {reason}",
         )
     ]
+    assert [
+        (record.levelno, type(record.exc_info[1]), str(record.exc_info[1]))
+        for record in caplog.records
+        if record.getMessage() == f"Refresh of {entity_id} failed"
+    ] == [(logging.DEBUG, ValueError, reason)]
 
 
 async def test_light_removes_callbacks_on_unload(

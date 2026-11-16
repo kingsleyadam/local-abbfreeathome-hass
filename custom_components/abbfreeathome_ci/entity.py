@@ -158,7 +158,8 @@ class FreeAtHomeEntity(Entity):
         such as wind and air quality sensors, read only the attribute's
         datapoints; otherwise all datapoints of the channel are read. Library
         errors, such as an unreachable SysAP, values the channel rejects, and
-        request timeouts are logged as a warning without a traceback.
+        request timeouts are logged as a warning without a traceback; debug
+        logging adds the traceback.
         """
         try:
             await self._channel.refresh_state(
@@ -170,9 +171,11 @@ class FreeAtHomeEntity(Entity):
             _LOGGER.warning(
                 "Could not refresh %s from the SysAP: %s", self.entity_id, err
             )
+            _LOGGER.debug("Refresh of %s failed", self.entity_id, exc_info=True)
         except TimeoutError:
             # aiohttp raises its total request timeout as plain TimeoutError.
             _LOGGER.warning(
                 "Could not refresh %s from the SysAP: request timed out",
                 self.entity_id,
             )
+            _LOGGER.debug("Refresh of %s failed", self.entity_id, exc_info=True)
