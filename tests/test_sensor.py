@@ -363,38 +363,23 @@ async def test_sensor_skips_missing_outputs(
     wind = build_channel(
         WindSensor, device, "ch0001", outputs={Pairing.AL_WIND_SPEED: "5"}
     )
+    # A plain window contact has no position output, so it gets no sensor,
+    # although the library reports its position as unknown rather than None.
+    window = build_channel(
+        WindowDoorSensor, device, "ch0002", outputs={Pairing.AL_WINDOW_DOOR: "1"}
+    )
 
     await setup_with_channels(
-        hass, mock_config_entry, mock_free_at_home_settings, [air_quality, wind]
+        hass,
+        mock_config_entry,
+        mock_free_at_home_settings,
+        [air_quality, wind, window],
     )
 
     assert _unique_ids(entity_registry, mock_config_entry) == [
         f"{SERIAL}_ch0000_AirQualitySensorCO2",
         f"{SERIAL}_ch0001_WindSensorSpeed",
     ]
-
-
-async def test_sensor_window_position_without_output(
-    hass: HomeAssistant,
-    mock_config_entry: MockConfigEntry,
-    mock_free_at_home_settings: MagicMock,
-    entity_registry: er.EntityRegistry,
-) -> None:
-    """Test a window contact without the position output has a position sensor.
-
-    The library reports the position of such a contact as unknown, not None,
-    so the sensor is created, and it always shows unknown.
-    """
-    window = build_channel(
-        WindowDoorSensor, build_device(SERIAL), outputs={Pairing.AL_WINDOW_DOOR: "1"}
-    )
-
-    await setup_with_channels(
-        hass, mock_config_entry, mock_free_at_home_settings, [window]
-    )
-
-    entity_id = _entity_id(entity_registry, f"{SERIAL}_ch0000_WindowDoorSensorPosition")
-    assert hass.states.get(entity_id).state == STATE_UNKNOWN
 
 
 async def test_sensor_removes_callbacks_on_unload(
