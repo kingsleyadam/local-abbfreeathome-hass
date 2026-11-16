@@ -456,14 +456,29 @@ async def test_sensor_update_entity(
     )
 
 
-async def test_sensor_update_entity_updates_channel_entities(
+# The wind sensor's outputs, with the values the SysAP has on refresh and the
+# states they show: wind speed, wind alarm, and wind force.
+WIND_REFRESH = {
+    (SENSOR_DOMAIN, "WindSensorSpeed"): ("odp0000", "15", "54.0"),
+    (BINARY_SENSOR_DOMAIN, "WindSensorOnOff"): ("odp0001", "1", STATE_ON),
+    (SENSOR_DOMAIN, "WindSensorForce"): ("odp0002", "7", "7"),
+}
+
+
+@pytest.mark.parametrize(("domain", "key"), WIND_REFRESH)
+async def test_update_entity_reads_only_its_datapoint(
     hass: HomeAssistant,
     mock_config_entry: MockConfigEntry,
     mock_free_at_home_settings: MagicMock,
     entity_registry: er.EntityRegistry,
     monkeypatch: pytest.MonkeyPatch,
+    domain: str,
+    key: str,
 ) -> None:
-    """Test updating the wind speed also updates wind force and the wind alarm."""
+    """Test updating a wind sensor entity reads and updates only that entity.
+
+    The library maps each attribute of a wind sensor to its datapoint.
+    """
     monkeypatch.setattr(
         "custom_components.abbfreeathome_ci.PLATFORMS",
         [Platform.BINARY_SENSOR, Platform.SENSOR],
@@ -476,24 +491,77 @@ async def test_sensor_update_entity_updates_channel_entities(
     await setup_with_channels(
         hass, mock_config_entry, mock_free_at_home_settings, [channel]
     )
-    speed = _entity_id(entity_registry, f"{SERIAL}_ch0000_WindSensorSpeed")
-    force = _entity_id(entity_registry, f"{SERIAL}_ch0000_WindSensorForce")
-    alarm = entity_registry.async_get_entity_id(
-        BINARY_SENSOR_DOMAIN, DOMAIN, f"{SERIAL}_ch0000_WindSensorOnOff"
-    )
-    # Wind speed, wind alarm, and wind force, in the order of the outputs.
-    sysap = {"odp0000": "15", "odp0001": "1", "odp0002": "7"}
+    entity_ids = {
+        entity: entity_registry.async_get_entity_id(
+            entity[0], DOMAIN, f"{SERIAL}_ch0000_{entity[1]}"
+        )
+        for entity in WIND_REFRESH
+    }
+    before = {
+        entity: hass.states.get(entity_id).state
+        for entity, entity_id in entity_ids.items()
+    }
+    sysap = {datapoint: value for datapoint, value, _ in WIND_REFRESH.values()}
     device.api.get_datapoint.side_effect = lambda **kwargs: [sysap[kwargs["datapoint"]]]
 
     await hass.services.async_call(
         HOMEASSISTANT_DOMAIN,
         SERVICE_UPDATE_ENTITY,
-        {ATTR_ENTITY_ID: speed},
+        {ATTR_ENTITY_ID: entity_ids[domain, key]},
         blocking=True,
     )
 
-    assert hass.states.get(speed).state == "54.0"
-    assert hass.states.get(force).state == "7"
+    datapoint, _, state = WIND_REFRESH[domain, key]
+    device.api.get_datapoint.assert_awaited_once_with(
+        device_serial=SERIAL, channel_id="ch0000", datapoint=datapoint
+    )
+    assert {
+        entity: hass.states.get(entity_id).state
+        for entity, entity_id in entity_ids.items()
+    } == before | {(domain, key): state}
+
+
+async def test_sensor_update_entity_updates_channel_entities(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test updating a sensor updates all entities of a channel without a mapping.
+
+    The library maps no attribute of a brightness sensor to a datapoint, so a
+    refresh reads the brightness and the brightness alarm.
+    """
+    monkeypatch.setattr(
+        "custom_components.abbfreeathome_ci.PLATFORMS",
+        [Platform.BINARY_SENSOR, Platform.SENSOR],
+    )
+    assert await async_setup_component(hass, HOMEASSISTANT_DOMAIN, {})
+    device = build_device(SERIAL)
+    channel = build_channel(
+        BrightnessSensor, device, outputs=SENSOR_CASES["BrightnessSensor"].outputs
+    )
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+    brightness = _entity_id(entity_registry, f"{SERIAL}_ch0000_BrightnessSensor")
+    alarm = entity_registry.async_get_entity_id(
+        BINARY_SENSOR_DOMAIN, DOMAIN, f"{SERIAL}_ch0000_BrightnessSensorOnOff"
+    )
+    # Brightness and brightness alarm, in the order of the outputs.
+    sysap = {"odp0000": "250", "odp0001": "1"}
+    device.api.get_datapoint.side_effect = lambda **kwargs: [sysap[kwargs["datapoint"]]]
+
+    await hass.services.async_call(
+        HOMEASSISTANT_DOMAIN,
+        SERVICE_UPDATE_ENTITY,
+        {ATTR_ENTITY_ID: brightness},
+        blocking=True,
+    )
+
+    assert device.api.get_datapoint.await_count == 2
+    assert hass.states.get(brightness).state == "250.0"
     assert hass.states.get(alarm).state == STATE_ON
 
 
@@ -554,17 +622,16 @@ async def test_sensor_update_entity_without_datapoint(
     """Test a refresh skips a datapoint the channel lacks without a warning."""
     assert await async_setup_component(hass, HOMEASSISTANT_DOMAIN, {})
     device = build_device(SERIAL)
-    # Without the wind alarm, only wind speed and force are read.
+    # A refresh reads all datapoints of a brightness sensor; without the
+    # brightness alarm, only the brightness.
     channel = build_channel(
-        WindSensor,
-        device,
-        outputs={Pairing.AL_WIND_SPEED: "5", Pairing.AL_WIND_FORCE: "3"},
+        BrightnessSensor, device, outputs={Pairing.AL_BRIGHTNESS_LEVEL: "100"}
     )
     await setup_with_channels(
         hass, mock_config_entry, mock_free_at_home_settings, [channel]
     )
-    entity_id = _entity_id(entity_registry, f"{SERIAL}_ch0000_WindSensorSpeed")
-    device.api.get_datapoint.return_value = ["10"]
+    entity_id = _entity_id(entity_registry, f"{SERIAL}_ch0000_BrightnessSensor")
+    device.api.get_datapoint.return_value = ["250"]
     caplog.clear()
 
     await hass.services.async_call(
@@ -574,8 +641,8 @@ async def test_sensor_update_entity_without_datapoint(
         blocking=True,
     )
 
-    assert hass.states.get(entity_id).state == "36.0"
-    assert device.api.get_datapoint.await_count == 2
+    assert hass.states.get(entity_id).state == "250.0"
+    assert device.api.get_datapoint.await_count == 1
     assert not [
         record for record in caplog.records if record.levelno >= logging.WARNING
     ]

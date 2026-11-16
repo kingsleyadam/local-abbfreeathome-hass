@@ -151,14 +151,16 @@ class FreeAtHomeEntity(Entity):
             lambda: device.remove_unresponsive_callback(self.async_write_ha_state)
         )
 
-    async def _async_refresh_channel(self) -> None:
-        """Refresh the channel's values from the SysAP.
+    async def _async_refresh_channel(self, attribute: str) -> None:
+        """Refresh a channel attribute from the SysAP.
 
-        Library errors, such as an unreachable SysAP, and request timeouts are
-        logged as a warning without a traceback.
+        Channels that map their attributes to datapoints, such as wind and air
+        quality sensors, read only the attribute's datapoints; others read all
+        datapoints of the channel. Library errors, such as an unreachable SysAP,
+        and request timeouts are logged as a warning without a traceback.
         """
         try:
-            await self._channel.refresh_state()
+            await self._channel.refresh_state(attributes=[attribute])
         except FreeAtHomeException as err:
             _LOGGER.warning(
                 "Could not refresh %s from the SysAP: %s", self.entity_id, err

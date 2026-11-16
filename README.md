@@ -253,10 +253,12 @@ the current values from the SysAP instead, call the
 switches, climate entities, valves, locks, numbers, sensors, and binary
 sensors.
 
-A refresh reads all datapoints of the entity's channel and updates all of its
-entities, such as wind force and the wind alarm along with the wind speed. If a
-sensor or binary sensor cannot be refreshed, for example while the SysAP is
-unreachable, the integration logs a warning.
+For the weather station's wind sensor and for air quality sensors, a refresh
+reads only the entity's datapoint, such as the wind speed. For other devices, it
+reads all datapoints of the entity's channel and updates all of its entities,
+such as the brightness alarm along with the brightness. If a sensor or binary
+sensor cannot be refreshed, for example while the SysAP is unreachable, the
+integration logs a warning.
 
 #### Wind Speed of the Weather Station
 
@@ -280,8 +282,8 @@ actions:
 mode: single
 ```
 
-Each refresh sends three requests to the SysAP (wind speed, wind alarm, and
-wind force), so refresh only as often as you need.
+Each refresh sends one request to the SysAP, for the wind speed only, so refresh
+only as often as you need.
 
 ## Device and Channel Parameters
 
