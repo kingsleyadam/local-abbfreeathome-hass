@@ -106,7 +106,7 @@ SENSOR_CASES = {
         "ch0002",
         datapoint="odp0000",
         value="1",
-        state="cooling",
+        state="heating",
         outputs={Pairing.AL_HEATING_COOLING: "0"},
     ),
     "MovementDetectorBrightness": SensorCase(

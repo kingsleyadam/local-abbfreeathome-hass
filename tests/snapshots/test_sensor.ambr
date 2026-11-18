@@ -216,7 +216,7 @@
     'original_device_class': <SensorDeviceClass.ENUM: 'enum'>,
     'original_icon': None,
     'original_name': 'Heating/Cooling Mode',
-    'state': 'heating',
+    'state': 'cooling',
     'supported_features': 0,
     'translation_key': 'heating_cooling_sensor',
     'unit_of_measurement': None,
