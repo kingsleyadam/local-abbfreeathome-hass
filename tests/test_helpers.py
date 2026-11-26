@@ -179,12 +179,12 @@ async def test_sub_device_info_falls_back_to_linked_device(
 
     mock_child_device_info.assert_not_called()
     mock_via_device_kwargs.assert_called_once_with(hass, "ENTRY123", "ABB700000001")
-    assert result == {
-        "identifiers": {(DOMAIN, "ABB700000001_ch0001")},
-        "name": "Actuator (ch0001)",
-        "manufacturer": MANUFACTURER,
-        "serial_number": "ABB700000001_ch0001",
-        "hw_version": "B002 (sub)",
-        "suggested_area": "Kitchen",
-        "via_device_id": "parent_device_id",
-    }
+    assert result == dr.DeviceInfo(
+        identifiers={(DOMAIN, "ABB700000001_ch0001")},
+        name="Actuator (ch0001)",
+        manufacturer=MANUFACTURER,
+        serial_number="ABB700000001_ch0001",
+        hw_version="B002 (sub)",
+        suggested_area="Kitchen",
+        via_device_id="parent_device_id",
+    )

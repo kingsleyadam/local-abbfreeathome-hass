@@ -246,6 +246,12 @@ def snapshot_entities(
         # compat: homeassistant<2026.12 - climate entities report Home Assistant's temperature unit as a capability
         if capabilities is not None:
             capabilities.pop("temperature_unit", None)
+        # compat: homeassistant<2026.12 - tilting covers report their open and closed tilt positions
+        for key in ("open_tilt_position", "closed_tilt_positions"):
+            attributes.pop(key, None)
+            if capabilities is not None:
+                capabilities.pop(key, None)
+        capabilities = capabilities or None
         assert {
             "domain": entity_entry.domain,
             "device": sorted(device_entry.identifiers) if device_entry else None,
