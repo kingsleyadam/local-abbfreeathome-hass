@@ -37,11 +37,15 @@ applyTo: "custom_components/**/*.py,tests/**/*.py"
   only when the WebSocket update arrives. Do not write optimistic state; the
   exception is virtual channels whose state the library updates locally (see
   `FreeAtHomeLightEntity` for `VirtualDimmingActuator`).
-- Entity names use `has_entity_name=True` with `name=channel.channel_name` and
-  `translation_placeholders={"channel_id": channel.channel_id}`. When an entity
-  is a secondary feature of the channel, set a `translation_key`; the translated
-  name then replaces the channel name. Every new `translation_key` needs entries
-  in the JSON files covered by `translations.instructions.md`.
+- Entity names use `has_entity_name=True` with
+  `name=channel_entity_name(channel, create_subdevices)` from `entity.py` and
+  `translation_placeholders={"channel_id": channel.channel_id}`. Home Assistant
+  shows the device name in front, so `channel_entity_name()` removes it from the
+  start of the channel name; a channel named like its device gets no name of
+  its own (`None`). When an entity is a secondary feature of the channel, set a
+  `translation_key`; the translated name then replaces the channel name. Every
+  new `translation_key` needs entries in the JSON files covered by
+  `translations.instructions.md`.
 - `unique_id` is `<device_serial>_<channel_id>_<suffix>`, where the suffix is the
   description key or a fixed platform name such as `light` or `climate`. Several
   platforms keep legacy suffixes for backward compatibility (for example

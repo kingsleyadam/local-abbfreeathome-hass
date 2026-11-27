@@ -37,6 +37,46 @@ def signal_devices_removed(entry_id: str) -> str:
     return f"{DOMAIN}_{entry_id}_devices_removed"
 
 
+def _strip_device_name(name: str, device_name: str) -> str | None:
+    """Return the name without the device name in front, or None if it is not.
+
+    Follows Home Assistant's prefix stripping of legacy entity names: the
+    device name matches case-insensitively and must be followed by a
+    separator, and a lowercase first word of the rest is capitalized. Unlike
+    Home Assistant, the comparison is per character, so a letter whose
+    case-folded form has another length, such as "ß" and "SS", does not match.
+    An empty device name is no prefix; it would match an empty name forever.
+    """
+    if not device_name or name[: len(device_name)].casefold() != device_name.casefold():
+        return None
+    rest = name[len(device_name) :].lstrip(" -:")
+    if not rest:
+        return ""
+    if len(rest) == len(name) - len(device_name):
+        return None
+    if rest.partition(" ")[0].islower():
+        return rest[0].upper() + rest[1:]
+    return rest
+
+
+def channel_entity_name(channel: Base, create_subdevices: bool) -> str | None:
+    """Return the name of an entity named after its channel.
+
+    Home Assistant shows the device name in front of the entity name, so the
+    device name is removed from the start of the channel name, repeatedly
+    because the SysAP may repeat it, as in "Switch 2 Switch 2 Left". If
+    nothing is left, the channel is the device's main feature and the entity
+    has no name of its own. A sub-device has a name of its own with the
+    channel ID, not the device name, so there the channel name is kept.
+    """
+    name = channel.channel_name
+    if create_subdevices and channel.device.is_multi_device:
+        return name
+    while (stripped := _strip_device_name(name, channel.device_name)) is not None:
+        name = stripped
+    return name or None
+
+
 def channel_has_output(channel: Base, pairing: Pairing) -> bool:
     """Return whether the channel has the output with the pairing."""
     try:

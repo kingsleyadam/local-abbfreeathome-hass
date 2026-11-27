@@ -44,6 +44,7 @@ from .entity import (
     FreeAtHomeEntity,
     async_release_removed_entities,
     async_setup_platform_entities,
+    channel_entity_name,
     channel_has_output,
     signal_channels_added,
 )
@@ -400,7 +401,7 @@ class FreeAtHomeSensorEntity(FreeAtHomeEntity, SensorEntity):
 
         self.entity_description = SensorEntityDescription(
             has_entity_name=True,
-            name=channel.channel_name,
+            name=channel_entity_name(channel, create_subdevices),
             translation_placeholders={"channel_id": channel.channel_id},
             **entity_description_kwargs,
         )

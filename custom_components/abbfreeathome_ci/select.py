@@ -25,7 +25,12 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN
-from .entity import ChannelGetter, FreeAtHomeEntity, async_setup_platform_entities
+from .entity import (
+    ChannelGetter,
+    FreeAtHomeEntity,
+    async_setup_platform_entities,
+    channel_entity_name,
+)
 from .helpers import AnyDeviceInfo, async_get_sub_device_info
 
 SELECT_DESCRIPTIONS = {
@@ -164,7 +169,7 @@ class FreeAtHomeSelectEntity(FreeAtHomeEntity, SelectEntity):
 
         self.entity_description = SelectEntityDescription(
             has_entity_name=True,
-            name=channel.channel_name,
+            name=channel_entity_name(channel, create_subdevices),
             translation_placeholders={
                 "channel_id": channel.channel_id,
                 "channel_name": channel.channel_name,

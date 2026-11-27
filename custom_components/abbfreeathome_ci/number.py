@@ -41,6 +41,7 @@ from .entity import (
     ChannelGetter,
     FreeAtHomeEntity,
     async_setup_platform_entities,
+    channel_entity_name,
     channel_has_output,
 )
 from .helpers import AnyDeviceInfo, async_get_sub_device_info
@@ -359,7 +360,7 @@ class FreeAtHomeNumberEntity(FreeAtHomeEntity, NumberEntity):
 
         self.entity_description = NumberEntityDescription(
             has_entity_name=True,
-            name=channel.channel_name,
+            name=channel_entity_name(channel, create_subdevices),
             translation_placeholders={"channel_id": channel.channel_id},
             **entity_description_kwargs,
         )
