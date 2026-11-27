@@ -183,6 +183,34 @@ async def test_climate_entities(
     snapshot_entities(hass, snapshot, mock_config_entry.entry_id)
 
 
+async def test_climate_named_like_device(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test a thermostat named like its device shows the device name only."""
+    device = build_device(SERIAL, display_name="Office thermostat")
+    channel = build_channel(
+        RoomTemperatureController,
+        device,
+        RTC,
+        channel_name="Office thermostat",
+        inputs=INPUTS,
+        outputs=RTC_OUTPUTS,
+    )
+
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+
+    entity_id = _entity_id(entity_registry, RTC)
+    entity_entry = entity_registry.async_get(entity_id)
+    assert entity_entry.has_entity_name
+    assert entity_entry.original_name is None
+    assert hass.states.get(entity_id).name == "Office thermostat"
+
+
 @pytest.mark.parametrize(
     ("state_indication", "heating", "cooling", "expected"),
     [

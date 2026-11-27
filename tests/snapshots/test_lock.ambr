@@ -14,7 +14,7 @@
     ]),
     'domain': 'lock',
     'entity_category': None,
-    'has_entity_name': False,
+    'has_entity_name': True,
     'original_device_class': None,
     'original_icon': None,
     'original_name': 'DesDoorOpenerActuator ch0000',

@@ -9,7 +9,12 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN
-from .entity import ChannelGetter, FreeAtHomeEntity, async_setup_platform_entities
+from .entity import (
+    ChannelGetter,
+    FreeAtHomeEntity,
+    async_setup_platform_entities,
+    channel_entity_name,
+)
 from .helpers import AnyDeviceInfo, async_get_sub_device_info
 
 
@@ -51,8 +56,9 @@ class FreeAtHomeLockEntity(FreeAtHomeEntity, LockEntity):
         self._create_subdevices = create_subdevices
 
         self.entity_description = LockEntityDescription(
+            has_entity_name=True,
             key="DesDoorOpenerActuatorLock",
-            name=channel.channel_name,
+            name=channel_entity_name(channel, create_subdevices),
         )
 
     async def async_added_to_hass(self) -> None:
