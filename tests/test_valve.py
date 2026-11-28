@@ -441,3 +441,59 @@ async def test_valve_device(
     # Valves are disabled by default, but still belong to their device.
     assert device_identifiers(f"{SERIAL}_ch0000_valve") == {multi_device_identifier}
     assert device_identifiers("ABB700000002_ch0000_valve") == {(DOMAIN, "ABB700000002")}
+
+
+async def test_valve_main_feature_names(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test heating and cooling valves are named after their channel.
+
+    A channel named like its device keeps the translated name.
+    """
+    device = build_device(SERIAL, display_name="Heating actuator")
+    channels = [
+        build_channel(
+            channel_class,
+            device,
+            channel_id,
+            channel_name=channel_name,
+            inputs=inputs,
+            outputs=outputs,
+        )
+        for channel_class, channel_id, channel_name, inputs, outputs in (
+            (
+                HeatingActuator,
+                "ch0000",
+                "Heating actuator",
+                HEATING_INPUTS,
+                HEATING_OUTPUTS,
+            ),
+            (
+                HeatingActuator,
+                "ch0001",
+                "Heating actuator Bathroom",
+                HEATING_INPUTS,
+                HEATING_OUTPUTS,
+            ),
+            (CoolingActuator, "ch0002", "Office", COOLING_INPUTS, COOLING_OUTPUTS),
+        )
+    ]
+
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, channels
+    )
+
+    # Valves are disabled by default, but are named in the registry.
+    assert [
+        entity_registry.async_get(
+            entity_registry.async_get_entity_id(VALVE_DOMAIN, DOMAIN, unique_id)
+        ).original_name
+        for unique_id in (
+            f"{SERIAL}_ch0000_valve",
+            f"{SERIAL}_ch0001_valve",
+            f"{SERIAL}_ch0002_CoolingActuatorValve",
+        )
+    ] == ["Heating Valve", "Bathroom", "Office"]

@@ -25,6 +25,7 @@ from .entity import (
     FreeAtHomeEntity,
     async_setup_platform_entities,
     channel_entity_name,
+    main_feature_name,
 )
 from .helpers import AnyDeviceInfo, async_get_sub_device_info
 
@@ -34,6 +35,7 @@ VALVE_DESCRIPTIONS = {
         "position_attribute": "position",
         "set_position_method": "set_position",
         "callback_attributes": ["position"],
+        "main_feature": True,
         "entity_description_kwargs": {
             "device_class": ValveDeviceClass.WATER,
             "translation_key": "heating_actuator",
@@ -44,6 +46,7 @@ VALVE_DESCRIPTIONS = {
         "position_attribute": "position",
         "set_position_method": "set_position",
         "callback_attributes": ["position"],
+        "main_feature": True,
         "entity_description_kwargs": {
             "device_class": ValveDeviceClass.WATER,
             "translation_key": "cooling_actuator",
@@ -86,6 +89,7 @@ async def async_setup_entry(
                 position_attribute=description.get("position_attribute"),
                 set_position_method=description.get("set_position_method"),
                 callback_attributes=description.get("callback_attributes"),
+                main_feature=description.get("main_feature", False),
                 entity_description_kwargs={"key": key}
                 | description.get("entity_description_kwargs"),
                 sysap_serial_number=entry.data[CONF_SERIAL],
@@ -112,6 +116,7 @@ class FreeAtHomeValveEntity(FreeAtHomeEntity, ValveEntity):
         entity_description_kwargs: dict[str, Any],
         sysap_serial_number: str,
         create_subdevices: bool,
+        main_feature: bool = False,
     ) -> None:
         """Initialize the valve."""
         super().__init__()
@@ -129,6 +134,9 @@ class FreeAtHomeValveEntity(FreeAtHomeEntity, ValveEntity):
             reports_position=True,
             **entity_description_kwargs,
         )
+        # The translated name takes precedence over the description's name.
+        if main_feature and (name := main_feature_name(channel, create_subdevices)):
+            self._attr_name = name
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""

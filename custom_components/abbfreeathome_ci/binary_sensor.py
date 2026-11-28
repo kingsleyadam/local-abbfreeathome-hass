@@ -31,6 +31,7 @@ from .entity import (
     FreeAtHomeEntity,
     async_setup_platform_entities,
     channel_entity_name,
+    main_feature_name,
 )
 from .helpers import AnyDeviceInfo, async_get_sub_device_info
 
@@ -62,6 +63,7 @@ BINARY_SENSOR_DESCRIPTIONS = {
     "MovementDetectorMotion": {
         "channel_class": MovementDetector,
         "value_attribute": "state",
+        "main_feature": True,
         "entity_description_kwargs": {
             "device_class": BinarySensorDeviceClass.MOTION,
             "translation_key": "movement_detector_motion",
@@ -70,6 +72,7 @@ BINARY_SENSOR_DESCRIPTIONS = {
     "BlockableMovementDetectorMotion": {
         "channel_class": BlockableMovementDetector,
         "value_attribute": "state",
+        "main_feature": True,
         "entity_description_kwargs": {
             "device_class": BinarySensorDeviceClass.MOTION,
             "translation_key": "movement_detector_motion",
@@ -86,6 +89,7 @@ BINARY_SENSOR_DESCRIPTIONS = {
     "WindowDoorSensorOnOff": {
         "channel_class": WindowDoorSensor,
         "value_attribute": "state",
+        "main_feature": True,
         "entity_description_kwargs": {
             "device_class": BinarySensorDeviceClass.WINDOW,
             "translation_key": "window_door",
@@ -140,6 +144,7 @@ async def async_setup_entry(
             FreeAtHomeBinarySensorEntity(
                 channel,
                 value_attribute=description.get("value_attribute"),
+                main_feature=description.get("main_feature", False),
                 entity_description_kwargs={"key": key}
                 | description.get("entity_description_kwargs"),
                 sysap_serial_number=entry.data[CONF_SERIAL],
@@ -173,6 +178,7 @@ class FreeAtHomeBinarySensorEntity(FreeAtHomeEntity, BinarySensorEntity):
         entity_description_kwargs: dict[str, Any],
         sysap_serial_number: str,
         create_subdevices: bool,
+        main_feature: bool = False,
     ) -> None:
         """Initialize the binary sensor."""
         super().__init__()
@@ -187,6 +193,9 @@ class FreeAtHomeBinarySensorEntity(FreeAtHomeEntity, BinarySensorEntity):
             translation_placeholders={"channel_id": channel.channel_id},
             **entity_description_kwargs,
         )
+        # The translated name takes precedence over the description's name.
+        if main_feature and (name := main_feature_name(channel, create_subdevices)):
+            self._attr_name = name
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
