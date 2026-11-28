@@ -193,7 +193,8 @@ class FreeAtHomeBinarySensorEntity(FreeAtHomeEntity, BinarySensorEntity):
             translation_placeholders={"channel_id": channel.channel_id},
             **entity_description_kwargs,
         )
-        # The translated name takes precedence over the description's name.
+        # Set _attr_name, because a translated name would override the
+        # description's name.
         if main_feature and (name := main_feature_name(channel, create_subdevices)):
             self._attr_name = name
 

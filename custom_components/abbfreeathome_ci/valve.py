@@ -134,7 +134,8 @@ class FreeAtHomeValveEntity(FreeAtHomeEntity, ValveEntity):
             reports_position=True,
             **entity_description_kwargs,
         )
-        # The translated name takes precedence over the description's name.
+        # Set _attr_name, because a translated name would override the
+        # description's name.
         if main_feature and (name := main_feature_name(channel, create_subdevices)):
             self._attr_name = name
 

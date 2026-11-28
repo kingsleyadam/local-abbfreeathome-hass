@@ -490,6 +490,35 @@ async def test_binary_sensor_main_feature_names(
     ] == names
 
 
+async def test_binary_sensor_main_feature_name_on_single_channel_device(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test a single-channel motion detector is named after its channel too.
+
+    Like a switch or a cover, it uses a channel name of its own.
+    """
+    device = build_device(SERIAL, display_name="Hall sensor")
+    channel = build_channel(
+        MovementDetector,
+        device,
+        channel_name="Stairs",
+        outputs=BINARY_SENSOR_CASES["MovementDetectorMotion"].outputs,
+    )
+    assert not device.is_multi_device
+
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+
+    entity_id = entity_registry.async_get_entity_id(
+        BINARY_SENSOR_DOMAIN, DOMAIN, f"{SERIAL}_ch0000_MovementDetectorMotion"
+    )
+    assert hass.states.get(entity_id).name == "Hall sensor Stairs"
+
+
 def test_binary_sensor_translation_key_fallback() -> None:
     """Test translation_key falls back to _attr_translation_key.
 
