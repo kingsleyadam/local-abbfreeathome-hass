@@ -187,6 +187,35 @@ async def test_cover_entities(
         assert state.attributes[ATTR_CURRENT_POSITION] == case.position
 
 
+async def test_cover_named_like_device(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test a cover named like its device shows the device name only."""
+    device = build_device(SERIAL, display_name="Office blind")
+    channel = build_channel(
+        BlindActuator,
+        device,
+        COVER_CASES["BlindActuator"].channel_id,
+        channel_name="Office blind",
+        inputs=COVER_INPUTS,
+        outputs={
+            Pairing.AL_INFO_MOVE_UP_DOWN: "1",
+            Pairing.AL_CURRENT_ABSOLUTE_POSITION_BLINDS_PERCENTAGE: "30",
+        },
+    )
+
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+
+    entity_id = _entity_id(entity_registry, "BlindActuator")
+    assert entity_registry.async_get(entity_id).original_name is None
+    assert hass.states.get(entity_id).name == "Office blind"
+
+
 @pytest.mark.parametrize("key", COVER_CASES)
 async def test_cover_follows_sysap(
     hass: HomeAssistant,

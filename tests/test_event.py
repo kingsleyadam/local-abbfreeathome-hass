@@ -411,6 +411,35 @@ async def test_event_doorbell_rings(
     assert _fired(states) == [("ring", None), ("activated", None)]
 
 
+async def test_event_doorbell_named_like_device(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test a doorbell named like its device shows the device name only.
+
+    The doorbell's translation has no name, so it is named after its channel.
+    """
+    case = EVENT_CASES["EventDesDoorRingingSensorActivated"]
+    device = build_device(SERIAL, display_name="Front door")
+    channel = build_channel(
+        case.channel_class,
+        device,
+        case.channel_id,
+        channel_name="Front door",
+        outputs=case.outputs,
+    )
+
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+
+    entity_id = _entity_id(entity_registry, "EventDesDoorRingingSensorActivated")
+    assert entity_registry.async_get(entity_id).original_name is None
+    assert hass.states.get(entity_id).name == "Front door"
+
+
 @pytest.mark.parametrize("key", REPEATABLE_KEYS)
 async def test_event_repeated_request_fires_again(
     hass: HomeAssistant,

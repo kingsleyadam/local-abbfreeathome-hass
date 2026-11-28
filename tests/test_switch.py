@@ -550,6 +550,117 @@ async def test_switch_device(
     }
 
 
+@pytest.mark.parametrize(
+    ("channel_name", "name", "friendly_name"),
+    [
+        # The device's main feature has no name of its own.
+        ("Test light", None, "Test light"),
+        # The SysAP may repeat the device name in front of the channel name.
+        ("Test light Test light Left", "Left", "Test light Left"),
+        # Case-insensitive, with a separator; a lowercase rest is capitalized.
+        ("test light: left", "Left", "Test light Left"),
+        # Without a separator, the device name is part of a longer word.
+        ("Test lighting", "Test lighting", "Test light Test lighting"),
+        ("Hall", "Hall", "Test light Hall"),
+    ],
+)
+async def test_switch_name_without_device_name(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    channel_name: str,
+    name: str | None,
+    friendly_name: str,
+) -> None:
+    """Test a switch named after its channel does not repeat the device name."""
+    device = build_device(SERIAL, display_name="Test light")
+    channel = build_channel(
+        SwitchActuator,
+        device,
+        channel_name=channel_name,
+        inputs={Pairing.AL_SWITCH_ON_OFF: "1"},
+        outputs={Pairing.AL_INFO_ON_OFF: "1"},
+    )
+
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+
+    entity_id = entity_registry.async_get_entity_id(
+        SWITCH_DOMAIN, DOMAIN, f"{SERIAL}_ch0000_switch"
+    )
+    assert entity_registry.async_get(entity_id).original_name == name
+    assert hass.states.get(entity_id).name == friendly_name
+
+
+async def test_switch_name_with_empty_device_name(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test an empty device name is not removed from the channel name."""
+    device = build_device(SERIAL, display_name="")
+    channel = build_channel(
+        SwitchActuator,
+        device,
+        channel_name=": Left",
+        inputs={Pairing.AL_SWITCH_ON_OFF: "1"},
+        outputs={Pairing.AL_INFO_ON_OFF: "1"},
+    )
+
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+
+    entity_id = entity_registry.async_get_entity_id(
+        SWITCH_DOMAIN, DOMAIN, f"{SERIAL}_ch0000_switch"
+    )
+    assert entity_registry.async_get(entity_id).original_name == ": Left"
+
+
+async def test_switch_name_on_subdevice(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test a switch on a subdevice keeps its channel name.
+
+    The subdevice is named after the channel ID, not the device.
+    """
+    entry = MockConfigEntry(
+        version=mock_config_entry.version,
+        minor_version=mock_config_entry.minor_version,
+        domain=DOMAIN,
+        title=mock_config_entry.title,
+        data={**mock_config_entry.data, CONF_CREATE_SUBDEVICES: True},
+        source=mock_config_entry.source,
+        unique_id=mock_config_entry.unique_id,
+    )
+    device = build_device(SERIAL, display_name="Test light", room_name=None)
+    channels = [
+        build_channel(
+            SwitchActuator,
+            device,
+            channel_id,
+            channel_name="Test light",
+            inputs={Pairing.AL_SWITCH_ON_OFF: "1"},
+            outputs={Pairing.AL_INFO_ON_OFF: "1"},
+        )
+        for channel_id in ("ch0000", "ch0001")
+    ]
+    assert device.is_multi_device
+
+    await setup_with_channels(hass, entry, mock_free_at_home_settings, channels)
+
+    entity_id = entity_registry.async_get_entity_id(
+        SWITCH_DOMAIN, DOMAIN, f"{SERIAL}_ch0000_switch"
+    )
+    assert entity_registry.async_get(entity_id).original_name == "Test light"
+
+
 def test_switch_translation_key_fallback() -> None:
     """Test translation_key falls back to _attr_translation_key.
 
