@@ -430,6 +430,95 @@ async def test_binary_sensor_device(
     }
 
 
+@pytest.mark.parametrize(
+    ("create_subdevices", "names"),
+    [
+        (False, ["Window", "Front door", "Back door"]),
+        # A subdevice is named after the channel ID, so the channel name stays.
+        (True, ["Window", "Binary input Front door", "Back door"]),
+    ],
+)
+async def test_binary_sensor_main_feature_names(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+    create_subdevices: bool,
+    names: list[str],
+) -> None:
+    """Test the window contacts of a binary input are named after their channel.
+
+    A channel named like its device keeps the translated name.
+    """
+    entry = MockConfigEntry(
+        version=mock_config_entry.version,
+        minor_version=mock_config_entry.minor_version,
+        domain=DOMAIN,
+        title=mock_config_entry.title,
+        data={**mock_config_entry.data, CONF_CREATE_SUBDEVICES: create_subdevices},
+        source=mock_config_entry.source,
+        unique_id=mock_config_entry.unique_id,
+    )
+    device = build_device(SERIAL, display_name="Binary input", room_name=None)
+    channels = [
+        build_channel(
+            WindowDoorSensor,
+            device,
+            channel_id,
+            channel_name=channel_name,
+            outputs={Pairing.AL_WINDOW_DOOR: "1"},
+        )
+        for channel_id, channel_name in (
+            ("ch0000", "Binary input"),
+            ("ch0001", "Binary input Front door"),
+            ("ch0002", "Back door"),
+        )
+    ]
+    assert device.is_multi_device
+
+    await setup_with_channels(hass, entry, mock_free_at_home_settings, channels)
+
+    assert [
+        entity_registry.async_get(
+            entity_registry.async_get_entity_id(
+                BINARY_SENSOR_DOMAIN,
+                DOMAIN,
+                f"{SERIAL}_{channel.channel_id}_WindowDoorSensorOnOff",
+            )
+        ).original_name
+        for channel in channels
+    ] == names
+
+
+async def test_binary_sensor_main_feature_name_on_single_channel_device(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_free_at_home_settings: MagicMock,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test a single-channel motion detector is named after its channel too.
+
+    Like a switch or a cover, it uses a channel name of its own.
+    """
+    device = build_device(SERIAL, display_name="Hall sensor")
+    channel = build_channel(
+        MovementDetector,
+        device,
+        channel_name="Stairs",
+        outputs=BINARY_SENSOR_CASES["MovementDetectorMotion"].outputs,
+    )
+    assert not device.is_multi_device
+
+    await setup_with_channels(
+        hass, mock_config_entry, mock_free_at_home_settings, [channel]
+    )
+
+    entity_id = entity_registry.async_get_entity_id(
+        BINARY_SENSOR_DOMAIN, DOMAIN, f"{SERIAL}_ch0000_MovementDetectorMotion"
+    )
+    assert hass.states.get(entity_id).name == "Hall sensor Stairs"
+
+
 def test_binary_sensor_translation_key_fallback() -> None:
     """Test translation_key falls back to _attr_translation_key.
 

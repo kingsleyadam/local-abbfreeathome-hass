@@ -43,8 +43,13 @@ applyTo: "custom_components/**/*.py,tests/**/*.py"
   shows the device name in front, so `channel_entity_name()` removes it from the
   start of the channel name; a channel named like its device gets no name of
   its own (`None`). When an entity is a secondary feature of the channel, set a
-  `translation_key`; the translated name then replaces the channel name. Every
-  new `translation_key` needs entries in the JSON files covered by
+  `translation_key`; the translated name then replaces the channel name. A
+  channel's main feature with a `translation_key`, such as a window contact or a
+  heating valve, also sets `"main_feature": True` in its description and its
+  `_attr_name` from `main_feature_name()`, so it is named after its channel and
+  the translated name applies only on a channel named like its device. Mark at
+  most one entity per channel; marked entities of one channel share its name.
+  Every new `translation_key` needs entries in the JSON files covered by
   `translations.instructions.md`.
 - `unique_id` is `<device_serial>_<channel_id>_<suffix>`, where the suffix is the
   description key or a fixed platform name such as `light` or `climate`. Several

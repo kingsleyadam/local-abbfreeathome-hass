@@ -78,7 +78,7 @@
   dict({
     'attributes': dict({
       'device_class': 'motion',
-      'friendly_name': 'Runtime Device Motion',
+      'friendly_name': 'Runtime Device MovementDetector ch0002',
     }),
     'capabilities': None,
     'device': list([
@@ -92,7 +92,7 @@
     'has_entity_name': True,
     'original_device_class': <BinarySensorDeviceClass.MOTION: 'motion'>,
     'original_icon': None,
-    'original_name': 'Motion',
+    'original_name': 'MovementDetector ch0002',
     'state': 'on',
     'supported_features': 0,
     'translation_key': 'movement_detector_motion',
@@ -103,7 +103,7 @@
   dict({
     'attributes': dict({
       'device_class': 'motion',
-      'friendly_name': 'Runtime Device Motion',
+      'friendly_name': 'Runtime Device BlockableMovementDetector ch0003',
     }),
     'capabilities': None,
     'device': list([
@@ -117,7 +117,7 @@
     'has_entity_name': True,
     'original_device_class': <BinarySensorDeviceClass.MOTION: 'motion'>,
     'original_icon': None,
-    'original_name': 'Motion',
+    'original_name': 'BlockableMovementDetector ch0003',
     'state': 'on',
     'supported_features': 0,
     'translation_key': 'movement_detector_motion',
@@ -153,7 +153,7 @@
   dict({
     'attributes': dict({
       'device_class': 'window',
-      'friendly_name': 'Runtime Device Window',
+      'friendly_name': 'Runtime Device WindowDoorSensor ch0005',
     }),
     'capabilities': None,
     'device': list([
@@ -167,7 +167,7 @@
     'has_entity_name': True,
     'original_device_class': <BinarySensorDeviceClass.WINDOW: 'window'>,
     'original_icon': None,
-    'original_name': 'Window',
+    'original_name': 'WindowDoorSensor ch0005',
     'state': 'on',
     'supported_features': 0,
     'translation_key': 'window_door',

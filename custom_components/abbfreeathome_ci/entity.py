@@ -77,6 +77,20 @@ def channel_entity_name(channel: Base, create_subdevices: bool) -> str | None:
     return name or None
 
 
+def main_feature_name(channel: Base, create_subdevices: bool) -> str | None:
+    """Return the name of a channel's main feature that has a translated name.
+
+    The main feature, such as a window contact or a heating valve, is named
+    after its channel like an entity without a translated name, so the
+    channels of a multi-channel device can be told apart. On a channel without
+    a name of its own, one named like its device, this returns None and the
+    translated name, such as "Window", applies, also on a sub-device.
+    """
+    if channel_entity_name(channel, create_subdevices=False) is None:
+        return None
+    return channel_entity_name(channel, create_subdevices)
+
+
 def channel_has_output(channel: Base, pairing: Pairing) -> bool:
     """Return whether the channel has the output with the pairing."""
     try:
