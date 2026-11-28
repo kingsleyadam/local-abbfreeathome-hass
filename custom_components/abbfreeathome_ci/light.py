@@ -24,7 +24,12 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util.color import brightness_to_value, value_to_brightness
 
 from .const import CONF_CREATE_SUBDEVICES, CONF_SERIAL, DOMAIN
-from .entity import ChannelGetter, FreeAtHomeEntity, async_setup_platform_entities
+from .entity import (
+    ChannelGetter,
+    FreeAtHomeEntity,
+    async_setup_platform_entities,
+    channel_entity_name,
+)
 from .helpers import AnyDeviceInfo, async_get_sub_device_info
 
 BRIGHTNESS_SCALE = (1, 100)
@@ -77,8 +82,9 @@ class FreeAtHomeLightEntity(FreeAtHomeEntity, LightEntity):
         self._create_subdevices = create_subdevices
 
         self.entity_description = LightEntityDescription(
+            has_entity_name=True,
             key="light",
-            name=channel.channel_name,
+            name=channel_entity_name(channel, create_subdevices),
         )
 
     async def async_added_to_hass(self) -> None:
