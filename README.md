@@ -1,7 +1,11 @@
 # Home Assistant Integration - ABB-free@home
 
+<!-- ha-marketplace:exclude-start -->
+
 [![Open in Dev Containers](https://img.shields.io/static/v1?label=Dev%20Containers&message=Open&color=blue)](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/kingsleyadam/local-abbfreeathome-hass)
 ![GitHub Release](https://img.shields.io/github/v/release/kingsleyadam/local-abbfreeathome-hass) ![hassfest](https://github.com/kingsleyadam/local-abbfreeathome-hass/actions/workflows/hassfest.yaml/badge.svg) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+<!-- ha-marketplace:exclude-end -->
 
 This is a custom component to integrate with [Home Assistant](https://www.home-assistant.io/) for the ABB-free@home system over the **local api server**.
 
@@ -72,6 +76,8 @@ This is a new repo written from the ground up in tandem with the PyPi Package [l
 
 I (kingsleyadam) don't have access to the number of different ABB devices and would rely on others to either provide configurations, or contribute code directly in order to add additional device support.
 
+<!-- ha-marketplace:exclude-start -->
+
 ## Installation
 
 ### Home Assistant Marketplace or HACS
@@ -90,6 +96,8 @@ The easiest way to install this integration is through the Home Assistant Market
 2. Restart Home Assistant
 3. You should be able to add a new integration "ABB-free@home".
 4. Follow the UI configuration to add the integration to your instance.
+
+<!-- ha-marketplace:exclude-end -->
 
 ## Configuration
 
